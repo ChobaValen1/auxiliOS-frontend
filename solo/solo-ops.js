@@ -152,23 +152,25 @@ function wizard(box,s,cl,tp,tk,rates,step){
   const particular=cl?.kind==='particular';
   const $=x=>document.getElementById(x),uid=C.user.id;
   let sigDirty=false;
-  box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Cerrar y guardar">${icon('x')}</button>
+  box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Descartar remito">${icon('x')}</button>
       <div class="grow"><h1>${s.remito_number?'Remito N.º '+s.remito_number:'Remito nuevo'}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p></div><span class="pill wait">En curso</span></div>
     <ol class="rm-steps" aria-label="Progreso del remito">${STEPS.map((l,i)=>`<li data-i="${i+1}"><span class="rm-num">${i+1}</span><span class="rm-label">${l}</span></li>`).join('')}</ol>
     <div class="rm-counter hint" aria-live="polite"></div>
     <div id="rm-panels">
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
-        <!-- El N.º de remito lo pone el sistema: no se escribe. -->
+        <!-- El N.º de remito lo pone el sistema: no se escribe. La fecha se elige como en Gastos (Hoy / Ayer / otra). -->
+        <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
+          <div class="svc-row${particular?' two':''}"><div class="field"><label for="r-day">Fecha</label><button class="gx-chip rm-day" type="button" id="r-day">${icon('calendar')}<span>Hoy</span></button></div>
+            <div class="field"><label for="r-time">Hora</label><input id="r-time" type="time" value="${localDT(new Date(s.service_date)).slice(11)}"></div>
+            ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="Prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
+          <input type="hidden" id="r-date" value="${localDT(new Date(s.service_date))}"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('car')} Vehículo</span>
           <div class="grid2"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
           <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div></div>
         <div class="rm-group"><span class="rm-glabel">${icon('route')} Recorrido</span>
-          <div class="route"><div class="route-ends"><div class="field"><label for="r-orig">Desde</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
+          <div class="route-ends"><div class="field"><label for="r-orig">Desde</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
             <div class="field"><label for="r-dest">Hasta</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div></div>
-            <div class="field route-km"><label for="r-km">Km</label><input id="r-km" placeholder="0" value="${s.km??''}"></div></div></div>
-        <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
-          <div class="grid2"><div class="field ${particular?'span2':''}"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div>
-          ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div></div>
+          <div class="field route-km"><label for="r-km">Km recorridos</label><span class="km-in"><input id="r-km" inputmode="numeric" placeholder="0" value="${s.km??''}"><i>km</i></span></div></div>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
         <div class="rm-group"><span class="rm-glabel">${icon('user')} Quién recibe el servicio</span>
@@ -215,7 +217,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
         <p id="r-sig-err" class="err" hidden></p>
       </section>
     </div>
-    <div class="rm-footer"><button class="btn" type="button" id="r-back">${icon('chevron-left')} Atrás</button><button class="btn ghost" type="button" id="r-later">Guardar y seguir después</button><button class="btn pri" type="button" id="r-next">Siguiente ${icon('chevron-right')}</button></div>`;
+    <div class="rm-footer"><button class="btn" type="button" id="r-back" aria-label="Atrás" title="Atrás">${icon('chevron-left')}</button><button class="btn ghost" type="button" id="r-later">Guardar y seguir después</button><button class="btn pri" type="button" id="r-next">Siguiente ${icon('chevron-right')}</button></div>`;
 
   // ── Precio: base de la tarifa + km excedentes + adicionales ──
   const rate=()=>particular?null:rateForAt(rates,s.client_id,s.service_type_id,new Date($('r-date').value||s.service_date));
@@ -248,6 +250,19 @@ function wizard(box,s,cl,tp,tk,rates,step){
   $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);});
   $('r-mixed-add').onclick=()=>{if(!$('r-p1m').value)return;$('r-mixed').checked=true;payUI();};
   $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p1a').value='';$('r-p2a').value='';payUI();};
+
+  // ── Fecha del servicio: chip Hoy / Ayer / otra fecha (igual que en Gastos) + hora ──
+  const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().join('/');
+  const setWhen=()=>{const d=$('r-date').value.slice(0,10),t=$('r-time').value||'00:00';$('r-date').value=d+'T'+t;
+    $('r-day').querySelector('span').textContent=dayTxt(d);$('r-date').dispatchEvent(new Event('input'));};
+  $('r-day').querySelector('span').textContent=dayTxt($('r-date').value.slice(0,10));
+  $('r-time').addEventListener('change',setWhen);
+  $('r-day').onclick=()=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5)),cur=$('r-date').value.slice(0,10);
+    const pick=d=>{$('r-date').value=d+$('r-date').value.slice(10);setWhen();sh.close();UI().haptic(6);};
+    const sh=sheet('¿Cuándo fue el servicio?',`<div class="gx-opts">${[[t,'Hoy'],[y,'Ayer']].map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${cur===d}">${l}<small>${d.split('-').reverse().join('/')}</small></button>`).join('')}</div>
+      <div class="field"><label for="r-other">Otra fecha</label><input id="r-other" type="date" value="${cur}" max="${t}"></div>`);
+    sh.el.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>pick(b.dataset.d));
+    sh.el.querySelector('#r-other').addEventListener('change',e=>{if(e.target.value&&e.target.value<=t)pick(e.target.value);});};
 
   // ── Validación de cada paso (misma lógica que Flota) ──
   function validate(n){const panel=box.querySelector(`.rm-panel[data-step="${n}"]`);
@@ -284,13 +299,23 @@ function wizard(box,s,cl,tp,tk,rates,step){
     box.querySelectorAll('.rm-steps li').forEach(li=>{const i=Number(li.dataset.i);li.classList.toggle('is-done',i<n);li.classList.toggle('is-current',i===n);li.toggleAttribute('aria-current',i===n);if(i===n)li.setAttribute('aria-current','step');
       li.querySelector('.rm-num').textContent=i<n?'✓':i;});
     box.querySelector('.rm-counter').textContent='Paso '+n+' de 5 · '+STEPS[n-1];
-    $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
+    $('r-back').hidden=n===1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
     if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
     if(prev)$('rm-panels').scrollTop=0;}
   $('r-back').onclick=()=>{if(current>1)show(current-1,-1);};
-  // Cerrar guarda lo que haya en el paso actual (sin exigir que esté completo) y vuelve a Servicios.
-  $('rm-x').onclick=async()=>{await save(current);toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');};
-  $('r-later').onclick=async()=>{if(!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;if(await save(1)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}};
+  // La cruz descarta el remito (con confirmación) en cualquier paso: lo único que lo guarda es «Guardar y seguir después».
+  $('rm-x').onclick=async()=>{
+    const ok=await confirmBox('¿Descartar este remito?','Se borra todo lo que cargaste'+(s.remito_number?' en el remito N.º '+s.remito_number:'')+' y volvés al inicio. No se puede deshacer.','Descartar remito',true);
+    if(!ok)return;
+    const {error}=await C.db.from('solo_services').delete().eq('id',s.id);
+    if(error){toast(errText(error));return;}
+    // Las fotos ya subidas se limpian sin frenar al chofer.
+    const files=[...(s.photos||[]),s.signature_path].filter(x=>typeof x==='string'&&x);
+    if(files.length)Promise.resolve().then(()=>C.db.storage.from('solo_files').remove(files)).catch(()=>{});
+    sessionStorageSet('rm-step-'+s.id,'');toast('Remito descartado');go('inicio');};
+  $('r-later').onclick=async()=>{const b=$('r-later');if(b.disabled)return;
+    if(current===1&&!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;
+    b.disabled=true;try{if(await save(current)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}}finally{b.disabled=false;}};
   $('r-next').onclick=async()=>{const b=$('r-next');if(b.disabled)return;if(!validate(current))return;b.disabled=true;
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
 

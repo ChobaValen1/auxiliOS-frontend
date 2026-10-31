@@ -176,3 +176,18 @@ test('Solo: Servicios por día (arranca en Hoy, días pasados solo para ver, avi
   assert.match(v,/id="sv-pick"/);assert.match(v,/sv-strip/);
   const nv=ops.slice(ops.indexOf('views.nuevo='));assert.match(nv,/service_date:new Date\(\)\.toISOString\(\)/,'lo nuevo va con la fecha de hoy');
 });
+test('Solo: remito paso 1 (Servicio arriba con fecha tipo Gastos, Km debajo del recorrido) y la cruz descarta con confirmación',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const w=ops.slice(ops.indexOf('function wizard('),ops.indexOf('// ── Paso 4: fotos por posición'));
+  const p1=w.slice(w.indexOf('data-step="1"'),w.indexOf('data-step="2"'));
+  assert.ok(p1.indexOf('Servicio</span>')<p1.indexOf('Vehículo</span>'),'Servicio va primero');
+  assert.ok(p1.indexOf('id="r-dest"')<p1.indexOf('id="r-km"'),'Km debajo del recorrido');
+  assert.match(p1,/id="r-day"/);assert.match(p1,/id="r-time" type="time"/);assert.doesNotMatch(p1,/datetime-local/);
+  assert.match(w,/sheet\('¿Cuándo fue el servicio\?'/);assert.match(w,/max="\$\{t\}"/,'no se eligen días futuros');
+  assert.match(w,/confirmBox\('¿Descartar este remito\?'/);assert.match(w,/from\('solo_services'\)\.delete\(\)\.eq\('id',s\.id\)/);assert.match(w,/go\('inicio'\)/);
+  const x=w.slice(w.indexOf("$('rm-x').onclick"),w.indexOf("$('r-later').onclick"));assert.doesNotMatch(x,/save\(/,'la cruz no guarda');
+  assert.doesNotMatch(w,/\$\('r-later'\)\.hidden/,'Guardar y seguir después está en todos los pasos');
+});
+test('Solo: pantalla de carga con contador hasta 100',()=>{
+  assert.match(html,/id="boot" class="boot" role="progressbar"/);assert.match(html,/id="boot-n">0</);assert.match(html,/MutationObserver/);
+  assert.match(html,/prefers-reduced-motion/);assert.doesNotMatch(html,/Cargando AuxiliOS Solo…<\/div>/);assert.match(css,/\.boot\.done\{/);
+});
