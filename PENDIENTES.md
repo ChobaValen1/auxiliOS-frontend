@@ -34,7 +34,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
-- [x] Excel de Facturación y Servicios (v618): km redondeados según Parámetros de la prestadora (Servicios, Facturación y Excel); Dirección/Localidad bien separadas (CABA, «, Argentina», letras del código postal adelante); Estado = FINALIZADO | ACTIVADO MOVIDA | ACTIVADO ORIGEN, sin las columnas Activado, Tipo de activado ni Activado se cobra.
+- [x] Excel de Facturación y Servicios (v618): km redondeados según Parámetros de la prestadora (Servicios, Facturación y Excel); Dirección/Localidad bien separadas (CABA, «, Argentina», letras del código postal adelante); Estado = FINALIZADO | ACTIVADO MOVIDA | ACTIVADO ORIGEN, sin las columnas Activado, Tipo de activado ni Activado se cobra. Del selector también salen Precio Base (= Importe Movida), N° Interno y Logística.
 - [x] Particular: interruptores, segmentados con marca que se desliza, listas del sistema; Registrar cobro sólo con saldo; editar cómo se pagó (update_service_payment_method_v1).
 - [x] Remito del chofer con el sistema visual en todos los pasos.
 - [x] Prestadora: sugerencias de Origen por encima de Destino; duplicar peajes.
