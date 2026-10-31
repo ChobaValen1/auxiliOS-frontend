@@ -83,7 +83,7 @@ if (AUXILIOS_RUNTIME.edition === 'monogruero' && !/\/solo(\.html)?$/.test(locati
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'flota-v617-20261031';
+window.AUXILIOS_BUILD_ID = 'flota-v618-20261031';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -178,6 +178,11 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-remitos-filtros-sheet-v1', '/remitos-filtros-sheet-v1.js');
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   loadAuxiliosStyle('auxilios-toll-map-v1-css', '/toll-map-v1.css');
+  // Separador de direcciones y redondeo de km de la prestadora: los usan Servicios, Facturación y el Excel.
+  await Promise.all([
+    loadAuxiliosModule('auxilios-address-parts-v1', '/address-parts-v1.js'),
+    loadAuxiliosModule('auxilios-km-rounding-v1', '/km-rounding-v1.js')
+  ]);
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),

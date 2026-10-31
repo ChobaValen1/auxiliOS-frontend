@@ -17,6 +17,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Excel de Facturación (v618) de una prestadora con «Kilómetros enteros»: KM Asfalto, Ripio, Total y KM activado sin decimales; Calle y Localidad de un servicio en CABA; columna Estado con un activado. En Servicios, la columna Km de esa prestadora también sin decimales.
 - [ ] Remito del chofer con AuxiliosQA en el teléfono: los cuatro pasos (datos, peajes y excedentes, evidencia, conformidad y firma), "Guardar y seguir después" sólo en el paso 1, y la firma con la marca de listo.
 - [ ] Editar un particular con seña (QA): cambiar el medio en "Cómo se pagó" y guardar. En el menú ⋯ de un particular ya pago no tiene que aparecer Registrar cobro.
 - [ ] Peajes de una prestadora: Duplicar una fila y "Duplicar para la vuelta".
@@ -33,6 +34,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Excel de Facturación y Servicios (v618): km redondeados según Parámetros de la prestadora (Servicios, Facturación y Excel); Dirección/Localidad bien separadas (CABA, «, Argentina», letras del código postal adelante); Estado = FINALIZADO | ACTIVADO MOVIDA | ACTIVADO ORIGEN, sin las columnas Activado, Tipo de activado ni Activado se cobra.
 - [x] Particular: interruptores, segmentados con marca que se desliza, listas del sistema; Registrar cobro sólo con saldo; editar cómo se pagó (update_service_payment_method_v1).
 - [x] Remito del chofer con el sistema visual en todos los pasos.
 - [x] Prestadora: sugerencias de Origen por encima de Destino; duplicar peajes.
