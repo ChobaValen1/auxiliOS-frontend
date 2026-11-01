@@ -295,27 +295,39 @@ async function renderAlerts(){
 }
 
 async function renderMas(){
+  // Estructura tomada de apps de ajustes muy usadas (Signal, Bitwarden, Cashew): tarjeta de perfil arriba,
+  // grupos en tarjetas con filas compactas (ícono, título, dato a la derecha) y la salida de la cuenta aparte, al final.
   const canInstall=window.SoloPWA&&!window.SoloPWA.installed;
-  shell(`<h1>Más</h1>
-    <button class="item item-row help-item" type="button" id="help">${icon('life-buoy','lead')}<span><b>Ayuda y soporte</b><span class="hint">Escribinos por WhatsApp o email, te respondemos rápido</span></span>${icon('chevron-right','trail')}</button>
-    <button class="item item-row" type="button" data-go="numeros">${icon('chart-column','lead')}<span><b>Mis números</b><span class="hint">Ganancia por servicio, punto de equilibrio y meses</span></span>${icon('chevron-right','trail')}</button>
-    <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
-    <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
-    <button class="item item-row" type="button" data-go="perfil">${icon('file-check','lead')}<span><b>Datos del remito</b><span class="hint">Nombre, CUIT, condición fiscal y logo de tu grúa</span></span>${icon('chevron-right','trail')}</button>
-    <button class="item item-row" type="button" data-go="tipos">${icon('list-checks','lead')}<span><b>Tipos de servicio</b><span class="hint">Remolque, auxilio, traslado y los que agregues</span></span>${icon('chevron-right','trail')}</button>
-    ${canInstall?`<button class="item item-row" type="button" id="inst">${icon('download','lead')}<span><b>Instalar la app</b><span class="hint">Tenela en la pantalla de inicio del celular</span></span>${icon('chevron-right','trail')}</button>`:''}
-    <div id="truck" class="card"><h2>Mi grúa</h2><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i></div></div>
-    <div class="card"><h2>Mi cuenta</h2><div class="row"><span>${esc(profile.full_name)}</span></div><p class="hint">${esc(user.email)}</p>
-      <button class="btn block" type="button" id="logout">${icon('log-out')} Cerrar sesión</button></div>`,'mas');
-  app.querySelector('[data-to]').onclick=()=>go('clientes');
+  const P=profile||{},name=P.business_name||P.full_name||'Tu grúa',cuit=P.cuit&&String(P.cuit).length===11?String(P.cuit).replace(/^(\d{2})(\d{8})(\d)$/,'$1-$2-$3'):'';
+  const TAX={monotributo:'Monotributo',responsable_inscripto:'Resp. inscripto',exento:'Exento'};
+  const initials=String(name).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'A';
+  const row=(go,ic,title,{val='',id='',danger=false}={})=>`<button class="set-row${danger?' danger':''}" type="button" ${go?`data-go="${go}"`:''} ${id?`id="${id}"`:''}><span class="set-ico">${icon(ic)}</span><span class="set-t">${title}</span><span class="set-v" ${id?`data-v="${id}"`:''}>${val}</span>${icon('chevron-right','set-chev')}</button>`;
+  const group=(label,rows)=>`<section class="set-group" aria-label="${label}"><h2 class="set-label">${label}</h2><div class="set-card">${rows.join('')}</div></section>`;
+  shell(`<h1 class="set-title">Más</h1>
+    <button class="set-profile" type="button" data-go="perfil" aria-label="Datos del remito">
+      <span class="set-avatar" id="mas-av">${esc(initials)}</span>
+      <span class="set-pt"><b class="ell">${esc(name)}</b><small class="ell">${esc([P.business_name&&P.full_name?P.full_name:'',user?.email||''].filter(Boolean).join(' · '))}</small>
+        ${cuit?`<em class="set-chip ok">CUIT ${cuit}${TAX[P.tax_condition]?' · '+TAX[P.tax_condition]:''}</em>`:`<em class="set-chip warn">${icon('circle-alert')} Completá CUIT y logo del remito</em>`}</span>
+      ${icon('chevron-right','set-chev')}</button>
+    ${group('Tu negocio',[row('numeros','chart-column','Mis números'),row('facturacion','receipt','Facturación por prestadora')])}
+    ${group('Configuración',[row('clientes','building-2','Prestadoras y tarifas',{id:'v-cli'}),row('tipos-mas','list-checks','Tipos de servicio',{id:'v-tip'}),row('grua','truck','Mi grúa',{id:'v-gru'})])}
+    ${group('Ayuda',[row('','life-buoy','Ayuda y soporte',{id:'help'}),row('','file-text','Términos y privacidad',{id:'terms'}),...(canInstall?[row('','download','Instalar la app',{id:'inst'})]:[])])}
+    <button class="set-logout" type="button" id="logout">${icon('log-out')} Cerrar sesión</button>
+    <p class="set-foot">AuxiliOS Solo · ${esc(appVersion().replace(/^solo-|-\d{8}$/g,'')||'')}</p>`,'mas');
   document.getElementById('help').onclick=()=>support();
+  document.getElementById('terms').onclick=()=>window.open('/terminos-solo.html','_blank','noopener');
   document.getElementById('inst')?.addEventListener('click',()=>window.SoloPWA.open());
   document.getElementById('logout').onclick=async()=>{
     const n=window.SoloOffline?await window.SoloOffline.pending():0;
     if(n&&!confirm(`Tenés ${n} cambio${n===1?'':'s'} cargado${n===1?'':'s'} sin señal que todavía no se subieron. Si cerrás la sesión se pierden. ¿Cerrar igual?`))return;
     await db.auth.signOut();if(window.SoloOffline)await window.SoloOffline.clear();location.hash='';};
-  const {data:t}=await db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
-  const box=document.getElementById('truck');if(box)box.innerHTML='<h2>Mi grúa</h2>'+(t?`<div class="row"><b class="num">${esc(t.plate)}</b><span class="sub">${esc([t.brand,t.model].filter(Boolean).join(' '))}</span></div>${t.km?'<p class="hint">'+Number(t.km).toLocaleString('es-AR')+' km</p>':''}`:'<p class="hint">Sin grúa cargada.</p>');
+  // Datos a la derecha de cada fila y logo propio en el perfil (se completan sin frenar la pantalla).
+  const set=(id,t)=>{const el=app.querySelector(`[data-v="${id}"]`);if(el)el.textContent=t;};
+  const [cl,tp,tk]=await Promise.all([db.from('solo_clients').select('id,kind,active'),db.from('solo_service_types').select('id,active'),db.from('solo_trucks').select('plate').order('created_at').limit(1).maybeSingle()]);
+  const nCli=(cl.data||[]).filter(c=>c.kind!=='particular'&&c.active!==false).length,nTip=(tp.data||[]).filter(t=>t.active!==false).length;
+  set('v-cli',nCli?nCli+(nCli===1?' activa':' activas'):'Sin cargar');set('v-tip',nTip?String(nTip):'');set('v-gru',tk.data?.plate||'Sin cargar');
+  if(P.logo_path){const {data}=await db.storage.from('solo_files').createSignedUrl(P.logo_path,3600);const av=document.getElementById('mas-av');
+    if(av&&data?.signedUrl){av.classList.add('own');av.innerHTML=`<img src="${data.signedUrl}" alt="">`;}}
 }
 /* ── Ayuda y soporte: arma el mensaje con lo que necesitamos para ayudar (cuenta, versión, pantalla, cambios sin subir) ── */
 const TOPICS=['No puedo entrar','Remitos y firma','Sin señal','Facturación y cobros','Gastos','Otra consulta'];

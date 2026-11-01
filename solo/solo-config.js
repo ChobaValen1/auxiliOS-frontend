@@ -127,12 +127,15 @@ function rateSheet(c,t,rates,after){
 }
 
 /* ── Tipos de servicio (compartidos por todas las prestadoras) ── */
-views.tipos=async function(){
+// Se vuelve a donde se entró: desde Más (tipos-mas) o desde Prestadoras. Al recargar la lista (sin argumento) se mantiene.
+let tiposFrom='clientes';
+views.tipos=async function(from){
+  if(from!==undefined)tiposFrom=from==='mas'?'mas':'clientes';
   shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Tipos de servicio</h1></div>
     <p class="sub">Los servicios que hacés. Cada prestadora tiene su tarifa para cada tipo.</p>
     <div id="tp-list" class="stack fill">${UI().SKELETON}</div>
     <button class="btn pri block" type="button" id="tp-add">${icon('plus')} Nuevo tipo</button>`,'mas');
-  $('back').onclick=()=>go('clientes');
+  $('back').onclick=()=>go(tiposFrom);
   const ask=(title,val,okLabel)=>new Promise(res=>{let done=false;const sh=S().sheet(title,`<form class="cf-form" novalidate><div class="field"><label for="tp-name">Nombre</label><input id="tp-name" data-v="name!" placeholder="Ej.: Paso de corriente" value="${esc(val||'')}" autocomplete="off"></div><button class="btn pri block" type="button" id="tp-ok">${icon('check')} ${okLabel}</button></form>`);
     const f=sh.el.querySelector('form');setTimeout(()=>f.querySelector('#tp-name').focus(),120);
     new MutationObserver((m,o)=>{if(!document.body.contains(sh.el)){o.disconnect();if(!done)res(null);}}).observe(document.body,{childList:true});
@@ -210,6 +213,26 @@ views.perfil=async function(){
       if(error)return toast(errText(error));
       if(old&&old!==patch.logo_path&&'logo_path' in patch)Promise.resolve().then(()=>C.db.storage.from('solo_files').remove([old])).catch(()=>{});
       C.profile=data||{...P,...patch};UI().success();toast('Datos guardados. Ya salen en tus remitos.');go('mas');
+    }finally{UI().setBusy(f,false);}});
+};
+
+/* ── Mi grúa: patente (sale en cada remito), marca, modelo y km ── */
+views.grua=async function(){
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Mi grúa</h1></div>
+    <p class="sub">La patente sale en el encabezado de cada remito.</p><div id="gr">${UI().SKELETON}</div>`,'mas');
+  $('back').onclick=()=>go('mas');
+  const {data:t,error}=await C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
+  const box=$('gr');if(!box)return;if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
+  box.innerHTML=`<form id="gr-f" class="card pf-form" novalidate>
+      <div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
+      <div class="grid2"><div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
+        <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div></div>
+      <div class="field"><label for="g-km">Km actuales</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div>
+      <button class="btn pri block" type="submit">${icon('check')} Guardar</button></form>`;
+  $('gr-f').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
+    try{const patch={plate:UI().plateFmt?UI().plateFmt($('g-plate').value):$('g-plate').value.trim().toUpperCase(),brand:$('g-brand').value.trim()||null,model:$('g-model').value.trim()||null,km:$('g-km').value.trim()?num($('g-km').value):null};
+      const q=t?C.db.from('solo_trucks').update(patch).eq('id',t.id):C.db.from('solo_trucks').insert(patch);
+      const {error}=await q;if(error)return toast(errText(error));UI().success();toast('Grúa guardada');go('mas');
     }finally{UI().setBusy(f,false);}});
 };
 })();

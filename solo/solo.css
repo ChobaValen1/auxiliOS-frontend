@@ -833,3 +833,33 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .send-opt:disabled{opacity:.6;cursor:progress}
 .send-opt .spin{flex:none}
 .send-opt:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+/* Más: perfil arriba, grupos en tarjeta con filas compactas y separadores finos (patrón Signal / Bitwarden) */
+.set-title{margin-bottom:clamp(6px,1vh,12px)}
+.set-profile{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:16px;border:1px solid var(--ax-border);background:var(--ax-surface-2);text-align:left;color:var(--ax-text);cursor:pointer;min-width:0}
+.set-avatar{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--ax-accent);color:var(--ax-accent-fg,#111);font:400 22px/1 var(--ax-font-brand);letter-spacing:.04em;overflow:hidden}
+.set-avatar.own{background:#fff;padding:4px}
+.set-avatar img{width:100%;height:100%;object-fit:contain}
+.set-pt{display:grid;gap:2px;min-width:0;flex:1}
+.set-pt b{font-size:16px}
+.set-pt small{color:var(--ax-text-2);font-size:12.5px}
+.set-chip{justify-self:start;display:inline-flex;align-items:center;gap:4px;margin-top:3px;font-style:normal;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.set-chip .ico{width:12px;height:12px}
+.set-chip.ok{background:var(--ax-surface);color:var(--ax-text-2);border:1px solid var(--ax-border)}
+.set-chip.warn{background:var(--ax-accent-soft);color:var(--ax-accent)}
+.set-group{margin-top:clamp(8px,1.4vh,14px)}
+.set-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ax-text-3);margin:0 4px 5px;line-height:1.3}
+.set-card{border-radius:16px;border:1px solid var(--ax-border);background:var(--ax-surface-2);overflow:hidden}
+.set-row{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:clamp(40px,5.6vh,50px);padding:0 12px 0 12px;background:none;border:0;color:var(--ax-text);text-align:left;cursor:pointer;font-size:15px}
+.set-row+.set-row::before{content:"";position:absolute;top:0;left:56px;right:0;height:1px;background:var(--ax-border)}
+.set-row:active{background:var(--ax-surface)}
+.set-row:focus-visible,.set-profile:focus-visible,.set-logout:focus-visible{outline:none;box-shadow:inset var(--ax-focus)}
+.set-ico{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--ax-accent-soft);color:var(--ax-accent)}
+.set-ico .ico{width:18px;height:18px}
+.set-t{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-v{flex:none;color:var(--ax-text-3);font-size:13.5px;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-v:empty{display:none}
+.set-chev{flex:none;width:18px;height:18px;color:var(--ax-text-3)}
+.set-logout{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:clamp(8px,1.4vh,16px);min-height:clamp(40px,5.4vh,48px);border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface-2);color:var(--ax-danger);font-weight:600;cursor:pointer}
+.set-logout .ico{width:18px;height:18px}
+.set-foot{text-align:center;color:var(--ax-text-3);font-size:12px;margin:4px 0 0}
+@media (max-height:760px){.set-profile{padding:9px 12px}.set-avatar{width:42px;height:42px;font-size:19px}.set-pt small{display:none}.set-ico{width:28px;height:28px}.set-ico .ico{width:16px;height:16px}.set-row{font-size:14.5px}.set-row+.set-row::before{left:52px}.set-foot{display:none}.set-row{min-height:37px}.set-group{margin-top:6px}.set-label{margin-bottom:4px}}

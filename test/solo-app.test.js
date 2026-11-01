@@ -133,7 +133,7 @@ test('Solo: nuevo gasto usa toda la pantalla (teclado abajo, monto con el contex
 });
 test('Solo etapa 3: Mis números (ganancia por servicio y km, punto de equilibrio, 6 meses, vencimientos)',()=>{
   const nx=fs.readFileSync('solo/solo-numeros.js','utf8');
-  assert.match(html,/\/solo\/solo-numeros\.js/);assert.match(js,/\['k-left','numeros'\]/);assert.match(js,/data-go="numeros"/);
+  assert.match(html,/\/solo\/solo-numeros\.js/);assert.match(js,/\['k-left','numeros'\]/);assert.match(js,/row\('numeros'/);
   assert.match(nx,/views\.numeros=/);assert.match(nx,/left\/n/);assert.match(nx,/left\/km/);
   assert.match(nx,/perSvc=n\?\(billed-variable\)\/n:0/);assert.match(nx,/Math\.ceil\(fixedM\/perSvc\)/,'punto de equilibrio con lo que deja cada servicio');
   assert.match(nx,/\[\.\.\.Array\(6\)\]/);assert.match(nx,/solo_month_summary_v1/);assert.match(nx,/Vencimientos/);
@@ -216,7 +216,7 @@ test('Solo: términos y privacidad al crear la cuenta, y ayuda y soporte',()=>{
   const t=fs.readFileSync('terminos-solo.html','utf8');
   assert.match(t,/id="terminos"/);assert.match(t,/id="privacidad"/);assert.match(t,/Ley N\.º 25\.326/);assert.match(t,/AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA/);assert.match(t,/No reemplaza la factura/);assert.doesNotMatch(t,/\[completar/,'sin datos pendientes');assert.match(t,/CUIT 20-47733776-8/);
   assert.match(js,/id="a-terms"/);assert.match(js,/if\(signup&&!\$\('a-terms'\)\.checked\)/,'sin aceptar no se crea la cuenta');assert.match(js,/terms_version:TERMS_VERSION,terms_accepted_at:/);
-  assert.match(js,/id="help"/);assert.match(js,/id="a-help"/);assert.match(js,/'https:\/\/wa\.me\/'\+wa\+'\?text='\+encodeURIComponent/);assert.match(js,/RT\.supportWhatsapp/);
+  assert.match(js,/id:'help'/);assert.match(js,/id="a-help"/);assert.match(js,/'https:\/\/wa\.me\/'\+wa\+'\?text='\+encodeURIComponent/);assert.match(js,/RT\.supportWhatsapp/);
   const svg=fs.readFileSync('ui/icons.svg','utf8');for(const i of ['life-buoy','message-circle','mail'])assert.match(svg,new RegExp('id="'+i+'"'));
   assert.match(fs.readFileSync('solo-sw.js','utf8'),/if\(!\['\/solo\.html','\/solo'\]\.includes\(url\.pathname\)\)return;/,'solo la app se guarda como /solo.html');
 });
@@ -230,4 +230,12 @@ test('Solo: enviar remito al teléfono y email del socio, e ingreso con Google c
   assert.match(js,/signInWithOAuth\(\{provider:'google'/);assert.match(js,/\/auth\/v1\/settings/,'el botón solo aparece si Google está activo');
   assert.match(js,/id="o-terms"/);assert.match(js,/if\(needsTerms\(\)\)\{const t=document\.getElementById\('o-terms'\);if\(!t\.checked\)/);assert.match(js,/updateUser\(\{data:\{terms_version:TERMS_VERSION/);
   assert.match(fs.readFileSync('ui/icons.svg','utf8'),/id="send"/);
+});
+test('Solo: Más ordenado como ajustes profesionales (perfil, grupos, cerrar sesión aparte) y Mi grúa editable',()=>{
+  const m=js.slice(js.indexOf('async function renderMas('),js.indexOf('/* ── Ayuda y soporte'));
+  assert.match(m,/class="set-profile"[^>]*data-go="perfil"/,'el perfil abre los datos del remito');
+  const g=[...m.matchAll(/group\('([^']+)'/g)].map(x=>x[1]);assert.deepEqual(g,['Tu negocio','Configuración','Ayuda']);
+  assert.match(m,/row\('grua','truck','Mi grúa'/);assert.match(m,/row\('tipos-mas'/);assert.match(m,/id="logout"/);assert.ok(m.indexOf('id="logout"')>m.indexOf("group('Ayuda'"),'cerrar sesión va al final');
+  const cf=fs.readFileSync('solo/solo-config.js','utf8');assert.match(cf,/views\.grua=/);assert.match(cf,/from\('solo_trucks'\)\.update\(patch\)/);assert.match(cf,/go\(tiposFrom\)/);
+  assert.match(fs.readFileSync('solo/solo-ui.js','utf8'),/'g-plate':'plate!'/);assert.match(css,/\.set-row\+\.set-row::before/);
 });
