@@ -113,7 +113,7 @@ test('Solo: nuevo gasto con teclado propio, repetir, detalle que sugiere categor
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');const g=ops.slice(ops.indexOf('async function gastoNuevo'));
   assert.match(g,/class="gx-pad"/);assert.match(g,/'Sumar otro ticket'/);assert.match(g,/expr\.split\('\+'\)/,'suma varios tickets');
   assert.match(g,/pickCategory\(kind,cat\)/,'la categoría se elige en un modal');assert.match(g,/Repetir/);assert.match(g,/if\(CATS\[kind\]\.includes\(p\.category\)\)setCat\(p\.category\)/,'el detalle pone la categoría');
-  assert.match(g,/'¿Cuándo fue\?'/);assert.match(g,/'¿Cuántos meses cubre\?'/);assert.match(g,/Marcá el monto con el teclado/);
+  assert.match(g,/dateField\('e-date',\{value:date,max:isoDate\(new Date\(\)\),quick:'past'\}\)/);assert.match(g,/'¿Cuántos meses cubre\?'/);assert.match(g,/Marcá el monto con el teclado/);
   assert.doesNotMatch(g,/b\.disabled=true/,'el estado de guardado lo maneja solo-ui');
   assert.match(fx,/Renová \$\{x\.category/);assert.match(js,/if\(a\.go\)return go\(a\.go\)/);
 });
@@ -181,8 +181,8 @@ test('Solo: remito paso 1 (Servicio arriba con fecha tipo Gastos, Km debajo del 
   const p1=w.slice(w.indexOf('data-step="1"'),w.indexOf('data-step="2"'));
   assert.ok(p1.indexOf('Servicio</span>')<p1.indexOf('Vehículo</span>'),'Servicio va primero');
   assert.ok(p1.indexOf('id="r-dest"')<p1.indexOf('id="r-km"'),'Km debajo del recorrido');
-  assert.match(p1,/id="r-day"/);assert.match(p1,/id="r-time" type="time"/);assert.doesNotMatch(p1,/datetime-local/);
-  assert.match(w,/sheet\('¿Cuándo fue el servicio\?'/);assert.match(w,/max="\$\{t\}"/,'no se eligen días futuros');
+  assert.match(p1,/dateField\('r-day',/);assert.match(p1,/id="r-time" type="time"/);assert.doesNotMatch(p1,/datetime-local/);
+  assert.match(p1,/max:isoDate\(new Date\(\)\),quick:'past'/,'no se eligen días futuros');
   assert.match(w,/confirmBox\('¿Descartar este remito\?'/);assert.match(w,/from\('solo_services'\)\.delete\(\)\.eq\('id',s\.id\)/);assert.match(w,/go\('inicio'\)/);
   const x=w.slice(w.indexOf("$('rm-x').onclick"),w.indexOf("$('r-later').onclick"));assert.doesNotMatch(x,/save\(/,'la cruz no guarda');
   assert.doesNotMatch(w,/\$\('r-later'\)\.hidden/,'Guardar y seguir después está en todos los pasos');
@@ -256,5 +256,17 @@ test('Solo: km de la grúa automáticos al firmar y fotos desde la cámara o la 
   assert.match(m,/new\.status='signed' and old\.status is distinct from 'signed' then delta:=coalesce\(new\.km,0\)/);assert.match(m,/old\.status='signed' and new\.status='cancelled' then delta:=-coalesce\(old\.km,0\)/);
   assert.match(m,/after update of status on public\.solo_services/);assert.match(m,/security definer set search_path=''/);
   assert.doesNotMatch(ops,/capture="environment"/,'se puede elegir de la galería');assert.match(ops,/id="r-many" accept="image\/\*" multiple/);assert.match(ops,/async function uploadSlot\(k,f\)/);
-  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/Km · se suman solos/);
+  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/Km<small>se suman solos<\/small>/);
+});
+test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas siempre con el mismo campo',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8'),cf=fs.readFileSync('solo/solo-config.js','utf8'),ui=fs.readFileSync('solo/solo-ui.js','utf8');
+  for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/class="grid2"/,'sin campos de a dos en '+n);
+  for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/<input[^>]*type="date"(?![^>]*-other)/,'sin fechas nativas sueltas en '+n);
+  assert.doesNotMatch(ops,/class="add-grid"|class="pay-row"|class="svc-row/,'sin grillas de campos en el remito');
+  assert.match(ui,/function dateField\(id,/);assert.match(ui,/function relDay\(iso\)/);assert.match(ui,/data-dfield/);
+  const rel=new Function(ui.slice(ui.indexOf('const isoToday='),ui.indexOf('const QUICK='))+';return relDay;')();
+  const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  assert.equal(rel(iso(0)),'Hoy');assert.equal(rel(iso(-1)),'Ayer');assert.equal(rel(iso(9)),'en 9 días');assert.equal(rel(iso(-3)),'hace 3 días');assert.equal(rel(''),'');
+  for(const id of ["'r-day'","'e-date'","'gv-date'","'rt-from'","'g-'+k"])assert.ok(ops.includes('dateField('+id)||cf.includes('dateField('+id),'fecha con el campo único: '+id);
+  assert.match(css,/--fld-h:/);assert.match(css,/\.frm>\.field\{[^}]*grid-template-columns:var\(--fl-w\) minmax\(0,1fr\)/);
 });

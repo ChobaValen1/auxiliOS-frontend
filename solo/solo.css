@@ -901,3 +901,75 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .slots-many .ico{width:16px;height:16px}
 .slots-head .rm-glabel{white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .slots-head .rm-glabel small{display:none}
+
+/* ══ Formularios ══════════════════════════════════════════════════════════════
+   Un campo por fila y siempre de arriba hacia abajo (nunca en zigzag). Etiqueta a la izquierda y campo a la derecha:
+   todos los campos tienen el mismo alto y el mismo ancho. Las fechas usan siempre el mismo campo («01/11/2026 · Hoy»). */
+:root{--fld-h:clamp(40px,5.4vh,46px);--fl-w:116px}
+.field input:not([type=checkbox]):not([type=hidden]):not([type=file]),.field select,.dfield{min-height:var(--fld-h);height:var(--fld-h)}
+.frm{display:grid;border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface-2);overflow:hidden;gap:0}
+.rm-panel .frm,.card .frm,.sheet .frm{background:var(--ax-surface)}
+.frm>.field{position:relative;display:grid;grid-template-columns:var(--fl-w) minmax(0,1fr);align-items:center;column-gap:10px;row-gap:3px;padding:clamp(4px,.7vh,6px) 10px clamp(4px,.7vh,6px) 14px;min-width:0}
+.frm>.field+.field::before{content:"";position:absolute;top:0;left:14px;right:0;height:1px;background:var(--ax-border)}
+.frm>.field>label,.frm>.field>.lbl{font-size:13.5px;text-transform:none;letter-spacing:0;color:var(--ax-text-2);white-space:normal;line-height:1.2;overflow:visible;font-weight:500}
+.frm>.field>label small{display:block;margin-top:2px;font-size:11.5px;font-weight:400;color:var(--ax-text-3)}
+.frm>.field>label small.due-ok{color:var(--ax-ok)}.frm>.field>label small.due-wait{color:var(--ax-accent)}.frm>.field>label small.due-bad{color:var(--ax-danger)}
+.frm>.field>input:not([type=hidden]),.frm>.field>select,.frm>.field>.dfield,.frm>.field>.fx{width:100%;min-width:0;grid-column:2}
+.frm>.field input:not([type=checkbox]):not([type=hidden]){border-radius:10px;font-size:15.5px;padding:0 12px}
+.frm>.field>.field-err,.frm>.field>.help{grid-column:2;font-size:12px}
+.frm>.field.full{grid-template-columns:1fr}
+.frm>.field.full>*{grid-column:1}
+/* Campo con unidad ($ adelante, km atrás): mismo alto y ancho que los demás */
+.fx{position:relative;display:block}
+.fx>input{width:100%}
+.fx>i{position:absolute;top:50%;transform:translateY(-50%);font-style:normal;font-size:14px;color:var(--ax-text-3);pointer-events:none}
+.fx.pre>i{left:12px}.fx.pre>input{padding-left:26px!important}
+.fx.post>i{right:12px}.fx.post>input{padding-right:40px!important}
+.fx>input{font-variant-numeric:tabular-nums}
+/* Campo de fecha: igual a un campo de texto */
+.dfield{display:flex;align-items:center;gap:8px;width:100%;padding:0 12px;border-radius:10px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);color:var(--ax-text);font-size:15.5px;text-align:left;cursor:pointer;min-width:0}
+.field .dfield{border-radius:12px}.frm .dfield{border-radius:10px}
+.dfield>.ico{width:16px;height:16px;flex:none;color:var(--ax-accent)}
+.dfield .df-v{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.dfield.empty .df-v{color:var(--ax-text-3)}
+.dfield .df-r{flex:none;font-size:12.5px;color:var(--ax-text-3)}
+.dfield:focus-visible{outline:none;box-shadow:var(--ax-focus);border-color:var(--ax-accent)}
+.dfield:disabled{opacity:.75;cursor:default}
+.dfield:has(+input[aria-invalid="true"]){border-color:var(--ax-danger);box-shadow:0 0 0 3px var(--ax-danger-soft)}
+.gx-opts.three{grid-template-columns:repeat(3,1fr)}
+/* Firma: aclaración y DNI de arriba hacia abajo, sobre fondo claro */
+.pad-foot.frm{display:grid;grid-template-columns:1fr;gap:0;padding:0;border:0;border-top:1px dashed #d5d8de;border-radius:0;background:#fff}
+.pad-foot.frm>.field{padding:4px 10px 4px 12px;--fl-w:84px}
+.pad-foot.frm>.field+.field::before{background:#e6e8ec}
+.pad-foot.frm>.field>label{color:#5b606b}
+.pad-foot.frm .field input{min-height:38px;height:38px;background:#f5f6f8;border-color:#dfe2e7;color:#111}
+.rm-panel .frm>.field input:not([type=checkbox]):not([type=hidden]),.rm-panel .frm .dfield{min-height:var(--fld-h);height:var(--fld-h)}
+/* Paso 3 con dos medios: los adicionales quedan resumidos en una fila (tocás «Editar» para verlos) */
+.add-sum{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--fld-h);padding:0 14px;border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface);color:var(--ax-text);cursor:pointer;text-align:left}
+.add-sum .ico{width:16px;height:16px;color:var(--ax-accent);flex:none}
+.add-sum span{flex:1;color:var(--ax-text-2);font-size:13.5px}
+.add-sum b{font-variant-numeric:tabular-nums}
+.add-sum em{font-style:normal;color:var(--ax-accent);font-weight:600;font-size:13.5px}
+.pay-second{padding:8px 0 0;border:0;border-top:1px dashed var(--ax-border-strong);border-radius:0}
+/* Gasto nuevo: fecha, meses y detalle del mismo ancho; la fecha con el mismo formato que en toda la app */
+.gx-meta{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
+.gx-meta>.gx-chip,.gx-meta>.gx-datefield{width:100%;min-width:0;justify-content:center}
+.gx-datefield{display:block;min-width:0}
+.gx-datefield .dfield{height:38px;min-height:38px;padding:0 10px;gap:6px;border-radius:10px;font-size:13px;font-weight:600;justify-content:center}
+.gx-datefield .dfield .df-v{flex:none}
+.gx-datefield .dfield .df-r{display:none}
+/* Gasto (ver y modificar): mismas filas que el resto de los formularios */
+.gv-form>.frm>.field.gv-amount input{font:400 15.5px/1.2 var(--ax-font)!important}
+.gv-form>.frm .gx-catbtn{height:var(--fld-h);min-height:var(--fld-h);width:100%}
+/* Celulares bajos: las filas se achican un poco (todas por igual) para que cada formulario entre sin scroll */
+@media (max-height:720px){
+  :root{--fld-h:38px}
+  .frm>.field{padding:3px 10px 3px 14px}
+  .frm>.field>label{font-size:13px}
+  .frm>.field>label small{font-size:11px;margin-top:0}
+  .rm-panel{gap:8px}
+  .rm-group{gap:4px}
+  .pf-form{gap:8px;margin-top:8px}
+  .pf-logo-pick{width:52px;height:52px}
+}
+@media (max-height:720px){.refund small{display:none}.refund{padding:8px 12px}.total-card{padding:10px 12px}.pay-chips .pay-chip{min-height:46px}.pay-second{gap:4px}}

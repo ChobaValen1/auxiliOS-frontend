@@ -20,9 +20,10 @@ function bindDays(root,input){root.querySelectorAll('[data-d]').forEach(b=>b.onc
 /* ── Formulario de prestadora en hoja (alta y edición) ── */
 function clientSheet(c){return new Promise(res=>{const edit=!!c;let done=false;
   const sh=S().sheet(edit?'Editar prestadora':'Nueva prestadora',`<form class="cf-form" novalidate>
-      <div class="field"><label for="cf-name">Nombre</label><input id="cf-name" data-v="name!" placeholder="Ej.: Asistencia Ruta S.A." value="${esc(c?.name||'')}" autocomplete="off"></div>
-      <div class="field"><label for="cf-days">¿A cuántos días te paga?</label>${daysChips(c?c.payment_days:30)}<input id="cf-days" data-v="days!" inputmode="numeric" value="${c?c.payment_days:30}"></div>
-      <div class="field"><label for="cf-notes">Notas (opcional)</label><input id="cf-notes" data-v="text" placeholder="CUIT, contacto, mail para facturar…" value="${esc(c?.notes||'')}"></div>
+      <div class="frm"><div class="field"><label for="cf-name">Nombre</label><input id="cf-name" data-v="name!" placeholder="Asistencia Ruta S.A." value="${esc(c?.name||'')}" autocomplete="off"></div>
+        <div class="field"><label for="cf-days">Te paga a</label><span class="fx post"><input id="cf-days" data-v="days!" inputmode="numeric" value="${c?c.payment_days:30}"><i>días</i></span></div>
+        <div class="field full">${daysChips(c?c.payment_days:30)}</div>
+        <div class="field"><label for="cf-notes">Notas<small>opcional</small></label><input id="cf-notes" data-v="text" placeholder="CUIT, contacto, mail…" value="${esc(c?.notes||'')}"></div></div>
       <p class="err" id="cf-err" hidden></p>
       <button class="btn pri block" type="button" id="cf-ok">${icon('check')} ${edit?'Guardar cambios':'Agregar prestadora'}</button></form>`);
   const f=sh.el.querySelector('form');bindDays(f,f.querySelector('#cf-days'));setTimeout(()=>f.querySelector('#cf-name').focus(),120);
@@ -99,10 +100,10 @@ function rateSheet(c,t,rates,after){
   const r=currentRate(rates,t.id),hist=rates.filter(x=>x.service_type_id===t.id).sort((a,b)=>a.valid_from<b.valid_from?1:-1);
   const sh=S().sheet('Tarifa · '+t.name,`<form class="cf-form" novalidate>
       <p class="hint">${esc(c.name)}${r?' · vigente desde '+dmy(r.valid_from):' · todavía sin tarifa'}</p>
-      <div class="grid2"><div class="field"><label for="rt-base">Base $</label><input id="rt-base" data-v="money" inputmode="decimal" value="${r?Number(r.base_amount):''}" placeholder="0"></div>
-        <div class="field"><label for="rt-km">Km incluidos</label><input id="rt-km" data-v="km" inputmode="decimal" value="${r?Number(r.included_km):''}" placeholder="0"></div></div>
-      <div class="grid2"><div class="field"><label for="rt-per">$ por km extra</label><input id="rt-per" data-v="money" inputmode="decimal" value="${r?Number(r.per_km):''}" placeholder="0"></div>
-        <div class="field"><label for="rt-from">Vigente desde</label><input id="rt-from" data-v="date!" type="date" value="${isoDate(new Date())}"></div></div>
+      <div class="frm"><div class="field"><label for="rt-base">Base</label><span class="fx pre"><i>$</i><input id="rt-base" data-v="money" inputmode="decimal" value="${r?Number(r.base_amount):''}" placeholder="0"></span></div>
+        <div class="field"><label for="rt-km">Km incluidos</label><span class="fx post"><input id="rt-km" data-v="km" inputmode="decimal" value="${r?Number(r.included_km):''}" placeholder="0"><i>km</i></span></div>
+        <div class="field"><label for="rt-per">Km extra<small>precio por km</small></label><span class="fx pre"><i>$</i><input id="rt-per" data-v="money" inputmode="decimal" value="${r?Number(r.per_km):''}" placeholder="0"></span></div>
+        <div class="field"><label for="rt-from">Vigente desde</label>${UI().dateField('rt-from',{value:isoDate(new Date()),quick:'rate',rule:'date!'})}</div></div>
       <div class="cf-example" id="rt-ex"></div>
       ${hist.length?`<details class="cf-hist"><summary>Historial de precios (${hist.length})</summary>${hist.map(h=>`<div class="cf-hist-row"><span>${dmy(h.valid_from)}</span><span class="ell">${esc(rateTxt(h))}</span><button class="btn ghost icon-btn" type="button" data-del="${h.id}" aria-label="Borrar precio del ${dmy(h.valid_from)}">${icon('trash-2')}</button></div>`).join('')}</details>`:''}
       <p class="err" id="rt-err" hidden></p>
@@ -136,7 +137,7 @@ views.tipos=async function(from){
     <div id="tp-list" class="stack fill">${UI().SKELETON}</div>
     <button class="btn pri block" type="button" id="tp-add">${icon('plus')} Nuevo tipo</button>`,'mas');
   $('back').onclick=()=>go(tiposFrom);
-  const ask=(title,val,okLabel)=>new Promise(res=>{let done=false;const sh=S().sheet(title,`<form class="cf-form" novalidate><div class="field"><label for="tp-name">Nombre</label><input id="tp-name" data-v="name!" placeholder="Ej.: Paso de corriente" value="${esc(val||'')}" autocomplete="off"></div><button class="btn pri block" type="button" id="tp-ok">${icon('check')} ${okLabel}</button></form>`);
+  const ask=(title,val,okLabel)=>new Promise(res=>{let done=false;const sh=S().sheet(title,`<form class="cf-form" novalidate><div class="frm"><div class="field"><label for="tp-name">Nombre</label><input id="tp-name" data-v="name!" placeholder="Paso de corriente" value="${esc(val||'')}" autocomplete="off"></div></div><button class="btn pri block" type="button" id="tp-ok">${icon('check')} ${okLabel}</button></form>`);
     const f=sh.el.querySelector('form');setTimeout(()=>f.querySelector('#tp-name').focus(),120);
     new MutationObserver((m,o)=>{if(!document.body.contains(sh.el)){o.disconnect();if(!done)res(null);}}).observe(document.body,{childList:true});
     f.querySelector('#tp-ok').onclick=()=>{if(!UI().validateForm(f))return;done=true;const v=f.querySelector('#tp-name').value.trim();sh.close();res(v);};});
@@ -175,12 +176,12 @@ views.perfil=async function(){
         <div class="pf-logo-txt"><b>Logo de tu grúa</b><span class="hint" id="pf-logo-hint">Opcional. Si no subís uno, va el de AuxiliOS.</span>
           <div class="row"><button class="link" type="button" id="pf-logo-ch">Elegir imagen</button><button class="link danger" type="button" id="pf-logo-rm" hidden>Quitar</button></div></div>
         <input type="file" id="pf-file" accept="image/png,image/jpeg,image/webp" hidden></div>
-      <div class="field"><label for="pf-biz">Nombre de la grúa o empresa</label><input id="pf-biz" placeholder="Ej.: Grúas Pérez" value="${esc(P.business_name||'')}" autocomplete="organization"></div>
-      <div class="grid2"><div class="field"><label for="pf-name">Titular</label><input id="pf-name" value="${esc(P.full_name||'')}" autocomplete="name"></div>
-        <div class="field"><label for="pf-phone">Teléfono</label><input id="pf-phone" type="tel" inputmode="tel" placeholder="11 2345 6789" value="${esc(P.phone||'')}"></div></div>
-      <div class="field"><label for="pf-cuit">CUIT</label><input id="pf-cuit" inputmode="numeric" placeholder="20-12345678-9" value="${esc(cuitTxt(P.cuit||''))}"></div>
-      <div class="field"><span class="lbl">Condición frente a ARCA</span><input type="hidden" id="pf-tax" value="${esc(P.tax_condition||'')}">
-        <div class="cf-days pf-tax" role="radiogroup" aria-label="Condición fiscal">${Object.entries(TAX).map(([k,l])=>`<button type="button" class="chip" role="radio" data-t="${k}" aria-pressed="${P.tax_condition===k}">${l}</button>`).join('')}</div></div>
+      <div class="frm"><div class="field"><label for="pf-biz">Nombre<small>de la grúa o empresa</small></label><input id="pf-biz" placeholder="Grúas Pérez" value="${esc(P.business_name||'')}" autocomplete="organization"></div>
+        <div class="field"><label for="pf-name">Titular</label><input id="pf-name" value="${esc(P.full_name||'')}" autocomplete="name"></div>
+        <div class="field"><label for="pf-phone">Teléfono</label><input id="pf-phone" type="tel" inputmode="tel" placeholder="11 2345 6789" value="${esc(P.phone||'')}"></div>
+        <div class="field"><label for="pf-cuit">CUIT</label><input id="pf-cuit" inputmode="numeric" placeholder="20-12345678-9" value="${esc(cuitTxt(P.cuit||''))}"></div>
+      <div class="field full"><span class="lbl">Condición frente a ARCA</span><input type="hidden" id="pf-tax" value="${esc(P.tax_condition||'')}">
+        <div class="cf-days pf-tax" role="radiogroup" aria-label="Condición fiscal">${Object.entries(TAX).map(([k,l])=>`<button type="button" class="chip" role="radio" data-t="${k}" aria-pressed="${P.tax_condition===k}">${l}</button>`).join('')}</div></div></div>
       <button class="btn pri block" type="submit">${icon('check')} Guardar datos</button>
     </form>`,'mas');
   $('back').onclick=()=>go('mas');
@@ -233,14 +234,14 @@ views.grua=async function(){
   const {data:t,error}=await C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
   const box=$('gr');if(!box)return;if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
   box.innerHTML=`<form id="gr-f" class="gr-form" novalidate>
-      <section class="set-group"><h2 class="set-label">Datos · la patente sale en cada remito</h2><div class="card gr-card">
-        <div class="grid2"><div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
-          <div class="field"><label for="g-km">Km · se suman solos</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div></div>
-        <div class="grid2"><div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
-          <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div></div></div></section>
-      <section class="set-group"><h2 class="set-label">Vencimientos · te avisamos 15 días antes</h2><div class="set-card">
-        ${DUE.map(([k,l])=>`<label class="due-row" for="g-${k}"><span class="due-l"><b>${l}</b><small id="st-${k}"></small></span><input type="date" id="g-${k}" value="${esc(t?.[k]||'')}"></label>`).join('')}
-        <label class="due-row" for="g-next"><span class="due-l"><b>Próximo service</b><small id="st-service"></small></span><span class="due-km"><input id="g-next" inputmode="numeric" placeholder="km" value="${t?.next_service_km!=null?Number(t.next_service_km):''}"><i>km</i></span></label>
+      <section class="set-group"><h2 class="set-label">Datos · la patente sale en cada remito</h2><div class="frm">
+        <div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
+        <div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
+        <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div>
+        <div class="field"><label for="g-km">Km<small>se suman solos</small></label><span class="fx post"><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"><i>km</i></span></div></div></section>
+      <section class="set-group"><h2 class="set-label">Vencimientos · te avisamos 15 días antes</h2><div class="frm">
+        ${DUE.map(([k,l])=>`<div class="field"><label for="g-${k}">${l}<small id="st-${k}"></small></label>${UI().dateField('g-'+k,{value:t?.[k]||'',quick:'future'})}</div>`).join('')}
+        <div class="field"><label for="g-next">Próximo service<small id="st-service"></small></label><span class="fx post"><input id="g-next" inputmode="numeric" placeholder="0" value="${t?.next_service_km!=null?Number(t.next_service_km):''}"><i>km</i></span></div>
       </div></section>
       <button class="btn pri block" type="submit">${icon('check')} Guardar</button></form>`;
   const paint=()=>{const cur={km:$('g-km').value.trim()?num($('g-km').value):null,next_service_km:$('g-next').value.trim()?num($('g-next').value):null};

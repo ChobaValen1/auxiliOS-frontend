@@ -195,17 +195,18 @@ function renderOnboarding(step){
   const metaName=user?.user_metadata?.full_name||user?.user_metadata?.name||'';
   const body={
     1:`<h1>Bienvenido</h1><p class="sub">Contanos quién sos. Lo usamos en tus remitos.</p>
-      <div class="field"><label for="o-name">Nombre y apellido</label><input id="o-name" autocomplete="name" value="${esc(metaName)}" required></div>
-      <div class="field"><label for="o-biz">Nombre comercial (opcional)</label><input id="o-biz" placeholder="Ej.: Grúas Pérez"></div>
-      <div class="field"><label for="o-phone">Teléfono (opcional)</label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel"></div>
+      <div class="frm"><div class="field"><label for="o-name">Nombre y apellido</label><input id="o-name" autocomplete="name" value="${esc(metaName)}" required></div>
+        <div class="field"><label for="o-biz">Nombre comercial<small>opcional</small></label><input id="o-biz" placeholder="Grúas Pérez"></div>
+        <div class="field"><label for="o-phone">Teléfono<small>opcional</small></label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789"></div></div>
       ${needsTerms()?`<label class="terms" for="o-terms"><input type="checkbox" id="o-terms"><span>Acepto los <a href="/terminos-solo.html" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/terminos-solo.html#privacidad" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>`:''}`,
     2:`<h1>Tu grúa</h1><p class="sub">La patente sale en cada remito.</p>
-      <div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" required></div>
-      <div class="grid2"><div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco"></div><div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily"></div></div>
-      <div class="field"><label for="o-km">Km actuales (opcional)</label><input id="o-km" inputmode="numeric"></div>`,
+      <div class="frm"><div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" required></div>
+        <div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco"></div>
+        <div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily"></div>
+        <div class="field"><label for="o-km">Km actuales<small>opcional</small></label><span class="fx post"><input id="o-km" inputmode="numeric" placeholder="0"><i>km</i></span></div></div>`,
     3:`<h1>Tu primera prestadora</h1><p class="sub">La empresa que más servicios te pasa. Las tarifas las cargás después. «Particular» ya viene creado.</p>
-      <div class="field"><label for="o-client">Nombre de la prestadora</label><input id="o-client" placeholder="Ej.: Asistencia Ruta S.A."></div>
-      <div class="field"><label for="o-days">¿A cuántos días te paga?</label><input id="o-days" inputmode="numeric" value="30"></div>`
+      <div class="frm"><div class="field"><label for="o-client">Prestadora</label><input id="o-client" placeholder="Asistencia Ruta S.A."></div>
+        <div class="field"><label for="o-days">Te paga a</label><span class="fx post"><input id="o-days" inputmode="numeric" value="30"><i>días</i></span></div></div>`
   }[step];
   screen(`<form id="onb" class="view" novalidate><div class="brand">AuxiliOS <b>Solo</b></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" hidden></p></div>
     <button class="btn pri block" type="submit">${step<3?'Seguir':'Empezar'}</button>

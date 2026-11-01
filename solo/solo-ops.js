@@ -23,7 +23,7 @@ views.servicios=async function(day){
   const strip=[...Array(14)].map((_,i)=>isoDate(new Date(dayStart(today).getTime()-(13-i)*864e5)));
   if(!strip.includes(sel))strip.unshift(sel);
   shell(`<div class="top"><h1 class="grow">${esc(dayLabel2(sel))}${!isToday&&sel.slice(0,4)!==today.slice(0,4)?` <small class="sv-date">${sel.slice(0,4)}</small>`:''}</h1>
-      <label class="btn ghost icon-btn sv-cal" aria-label="Elegir otro día">${icon('calendar')}<input type="date" id="sv-pick" max="${today}" value="${sel}"></label></div>
+      <button class="btn ghost icon-btn sv-cal" type="button" data-dfield="sv-pick" aria-label="Elegir otro día">${icon('calendar')}</button><input type="hidden" id="sv-pick" value="${sel}" data-max="${today}" data-quick="past"></div>
     <div class="sv-strip" id="sv-strip" role="tablist" aria-label="Días">${strip.map(d=>{const dd=dayStart(d);return `<button type="button" role="tab" class="sv-day ${d===sel?'on':''}" data-d="${d}" aria-selected="${d===sel}" aria-label="${esc(dayLabel2(d))}"><small>${d===today?'Hoy':dd.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','')}</small><b>${dd.getDate()}</b><i></i></button>`;}).join('')}</div>
     <div id="sv-pend"></div>
     <p class="hint" id="sv-sum"></p>
@@ -108,7 +108,7 @@ views.nuevo=async function(){
       if(st.kind==='particular')return goStep(stepPrice);create(0,b);});}
   function stepPrice(dir){
     frame(3,'Precio acordado',`<form id="svc" class="card" novalidate><p class="sub">${esc(st.type.name)} para un particular. Poné lo que acordaste cobrarle; los adicionales los sumás en el remito.</p>
-      <div class="field"><label for="n-manual">Precio $</label><input id="n-manual" class="big-input" data-v="moneypos!" inputmode="decimal" placeholder="0"></div>
+      <div class="frm"><div class="field"><label for="n-manual">Precio acordado</label><span class="fx pre"><i>$</i><input id="n-manual" data-v="moneypos!" inputmode="decimal" placeholder="0"></span></div></div>
       <p id="n-err" class="err" hidden></p><button class="btn pri block" type="submit" data-busy-text="Abriendo remito…">Empezar remito</button></form>`,dir);
     setTimeout(()=>$('n-manual')?.focus(),80);
     $('svc').onsubmit=e=>{e.preventDefault();create(num($('n-manual').value));};}
@@ -158,32 +158,33 @@ function wizard(box,s,cl,tp,tk,rates,step){
     <div class="rm-counter hint" aria-live="polite"></div>
     <div id="rm-panels">
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
-        <!-- El N.º de remito lo pone el sistema: no se escribe. La fecha se elige como en Gastos (Hoy / Ayer / otra). -->
+        <!-- El N.º de remito lo pone el sistema: no se escribe. Un campo por fila, de arriba hacia abajo. -->
         <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
-          <div class="svc-row${particular?' two':''}"><div class="field"><label for="r-day">Fecha</label><button class="gx-chip rm-day" type="button" id="r-day">${icon('calendar')}<span>Hoy</span></button></div>
+          <div class="frm"><div class="field"><label for="r-day">Fecha</label>${UI().dateField?UI().dateField('r-day',{value:localDT(new Date(s.service_date)).slice(0,10),max:isoDate(new Date()),quick:'past'}):''}</div>
             <div class="field"><label for="r-time">Hora</label><input id="r-time" type="time" value="${localDT(new Date(s.service_date)).slice(11)}"></div>
-            ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="Prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
+            ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
           <input type="hidden" id="r-date" value="${localDT(new Date(s.service_date))}"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('car')} Vehículo</span>
-          <div class="grid2"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
-          <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div></div>
+          <div class="frm"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
+            <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div></div>
         <div class="rm-group"><span class="rm-glabel">${icon('route')} Recorrido</span>
-          <div class="route-ends"><div class="field"><label for="r-orig">Desde</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
-            <div class="field"><label for="r-dest">Hasta</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div></div>
-          <div class="field route-km"><label for="r-km">Km recorridos</label><span class="km-in"><input id="r-km" inputmode="numeric" placeholder="0" value="${s.km??''}"><i>km</i></span></div></div>
+          <div class="frm"><div class="field"><label for="r-orig">Desde</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
+            <div class="field"><label for="r-dest">Hasta</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div>
+            <div class="field"><label for="r-km">Km recorridos</label><span class="fx post"><input id="r-km" inputmode="numeric" placeholder="0" value="${s.km??''}"><i>km</i></span></div></div></div>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
         <div class="rm-group"><span class="rm-glabel">${icon('user')} Quién recibe el servicio</span>
-          <div class="field"><label for="r-cname">Nombre y apellido</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
-          <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="Ej.: 28.456.112" value="${esc(s.customer_doc||'')}"></div></div>
+          <div class="frm"><div class="field"><label for="r-cname">Nombre y apellido</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
+            <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="28.456.112" value="${esc(s.customer_doc||'')}"></div></div></div>
         <div class="rm-group"><span class="rm-glabel">${icon('phone')} Contacto <small>teléfono y/o email</small></span>
-          <div class="field"><label for="r-cphone">Teléfono</label><input id="r-cphone" type="tel" inputmode="tel" placeholder="11 2345 6789 · sin 0 ni 15" value="${esc(s.customer_phone||'')}"></div>
-          <div class="field"><label for="r-cemail">Email</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div>
+          <div class="frm"><div class="field"><label for="r-cphone">Teléfono<small>sin 0 ni 15</small></label><input id="r-cphone" type="tel" inputmode="tel" placeholder="11 2345 6789" value="${esc(s.customer_phone||'')}"></div>
+            <div class="field"><label for="r-cemail">Email</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div></div>
       </section>
       <section class="rm-panel card" data-step="3" aria-label="Paso 3: Adicionales" hidden>
-        <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
-          <div class="add-grid">${[['r-tolls','Peajes','route',extraOf(s,'Peajes')],['r-exc','Excedente km','gauge',extraOf(s,'Excedente')],['r-wait','Espera / maniobras','clock',extraOf(s,'Espera')],['r-other','Otros','ellipsis',Number(s.other_amount)]]
-            .map(([id,l,ic,v])=>`<label class="add-tile" for="${id}"><span class="add-name">${icon(ic)}${l}</span><span class="add-in"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></label>`).join('')}</div></div>
+        <button class="add-sum" type="button" id="r-addsum" hidden>${icon('plus')}<span>Adicionales</span><b class="num"></b><em>Editar</em></button>
+        <div class="rm-group" id="r-addgrp"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
+          <div class="frm">${[['r-tolls','Peajes',extraOf(s,'Peajes')],['r-exc','Excedente km',extraOf(s,'Excedente')],['r-wait','Espera<small>o maniobras</small>',extraOf(s,'Espera')],['r-other','Otros',Number(s.other_amount)]]
+            .map(([id,l,v])=>`<div class="field"><label for="${id}">${l}</label><span class="fx pre"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></div>`).join('')}</div></div>
         ${particular?'':`<label class="refund" for="r-refund"><input type="checkbox" id="r-refund" ${(s.tolls||[]).some(x=>x&&x.refund)?'checked':''}><span class="conf-box">${icon('check')}</span><span><b>${esc(cl?.name||'La prestadora')} me reintegra los peajes</b><small>No los paga el socio: se suman a lo que le facturás a la prestadora</small></span></label>`}
         <div id="r-total" class="total-card"></div>
         <div class="rm-group" id="r-pay"><span class="rm-glabel">${icon('wallet')} <span id="r-pay-title">Cobro</span> <small id="r-pay-hint"></small></span>
@@ -195,8 +196,8 @@ function wizard(box,s,cl,tp,tk,rates,step){
             <div class="row"><span class="hint">Segundo medio</span><button class="link" type="button" id="r-mixed-del">Quitar</button></div>
             <div class="pay-chips small" id="r-p2chips" role="radiogroup" aria-label="Segundo medio de pago">${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div>
             <!-- Los montos por medio aparecen solo con dos medios; con uno, se cobra el total. -->
-            <div class="pay-row"><div class="field"><label for="r-p1a">En <span id="r-p1lbl"></span> $</label><input id="r-p1a" value="${s.payment_2_method?(s.payment_1_amount??''):''}"></div>
-              <div class="field"><label for="r-p2a">En <span id="r-p2lbl"></span> $</label><input id="r-p2a" value="${s.payment_2_amount??''}"></div></div></div>
+            <div class="frm"><div class="field"><label for="r-p1a">En <span id="r-p1lbl"></span></label><span class="fx pre"><i>$</i><input id="r-p1a" value="${s.payment_2_method?(s.payment_1_amount??''):''}"></span></div>
+              <div class="field"><label for="r-p2a">En <span id="r-p2lbl"></span></label><span class="fx pre"><i>$</i><input id="r-p2a" value="${s.payment_2_amount??''}"></span></div></div></div>
           <p id="r-pay-err" class="err" hidden></p></div>
       </section>
       <section class="rm-panel card" data-step="4" aria-label="Paso 4: Evidencia" hidden>
@@ -204,7 +205,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
           <label class="btn ghost slots-many" for="r-many">${icon('upload')} Subir varias<input type="file" id="r-many" accept="image/*" multiple hidden></label></div>
         <!-- Sin «capture»: el celular deja elegir entre sacar la foto o adjuntarla desde la galería. -->
         <div class="slots">${SLOTS.map(([k,l])=>`<label class="slot" data-slot="${k}"><input type="file" accept="image/*" hidden data-slot-in="${k}"><span class="slot-img"></span><span class="slot-label">${l}</span></label>`).join('')}</div>
-        <div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado del vehículo…" value="${esc(s.notes||'')}"></div>
+        <div class="frm"><div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado…" value="${esc(s.notes||'')}"></div></div>
       </section>
       <section class="rm-panel card sign-panel" data-step="5" aria-label="Paso 5: Firma" hidden>
         <div class="sig-state" id="r-sig-state" role="status" aria-live="polite"></div>
@@ -215,7 +216,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
         <div class="pad-wrap">
           <div class="pad-head"><span class="pad-title" id="r-sig-title">Firma del socio</span><span class="pad-status" id="pad-status"><i></i><span>Sin firma</span></span><button class="pad-clear" type="button" id="clr">${icon('trash-2')} Limpiar</button></div>
           <canvas id="pad" tabindex="0" width="600" height="300" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span>
-          <div class="pad-foot"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
+          <div class="pad-foot frm"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
         </div>
         <p id="r-sig-err" class="err" hidden></p>
       </section>
@@ -247,7 +248,9 @@ function wizard(box,s,cl,tp,tk,rates,step){
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
   $('r-refund')?.addEventListener('change',()=>{paintTotal();UI().haptic(6);});
   // ── Medio de pago con botones (el valor queda en r-p1m / r-p2m) ──
+  let addsOpen=false;
   function payUI(){const m1=$('r-p1m').value,mixed=$('r-mixed').checked&&!!m1,m2=$('r-p2m').value;
+    const showAdds=!mixed||addsOpen;$('r-addgrp').hidden=!showAdds;$('r-addsum').hidden=showAdds;if(!showAdds)$('r-addsum').querySelector('b').textContent=money(totals().extras);
     $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-checked',String(!!m1&&b.dataset.m===m1)));
     $('r-mixed').checked=mixed;$('r-p2').hidden=!mixed;$('r-p1chips').classList.toggle('small',mixed);$('r-mixed-add').hidden=mixed;$('r-mixed-add').disabled=!m1;
     $('r-p1lbl').textContent=(PAY[m1]||'').toLowerCase();$('r-p2lbl').textContent=(PAY[m2]||'el segundo medio').toLowerCase();
@@ -255,21 +258,13 @@ function wizard(box,s,cl,tp,tk,rates,step){
   $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p1m').value=b.dataset.m;UI().haptic(6);
     if(b.dataset.m===$('r-p2m').value)$('r-p2m').value='';payUI();$('r-pay-err').hidden=true;});
   $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);});
+  $('r-addsum').onclick=()=>{addsOpen=true;payUI();setTimeout(()=>$('r-tolls').focus({preventScroll:false}),40);};
   $('r-mixed-add').onclick=()=>{if(!$('r-p1m').value)return;$('r-mixed').checked=true;payUI();};
   $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p1a').value='';$('r-p2a').value='';payUI();};
 
-  // ── Fecha del servicio: chip Hoy / Ayer / otra fecha (igual que en Gastos) + hora ──
-  const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().join('/');
-  const setWhen=()=>{const d=$('r-date').value.slice(0,10),t=$('r-time').value||'00:00';$('r-date').value=d+'T'+t;
-    $('r-day').querySelector('span').textContent=dayTxt(d);$('r-date').dispatchEvent(new Event('input'));};
-  $('r-day').querySelector('span').textContent=dayTxt($('r-date').value.slice(0,10));
-  $('r-time').addEventListener('change',setWhen);
-  $('r-day').onclick=()=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5)),cur=$('r-date').value.slice(0,10);
-    const pick=d=>{$('r-date').value=d+$('r-date').value.slice(10);setWhen();sh.close();UI().haptic(6);};
-    const sh=sheet('¿Cuándo fue el servicio?',`<div class="gx-opts">${[[t,'Hoy'],[y,'Ayer']].map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${cur===d}">${l}<small>${d.split('-').reverse().join('/')}</small></button>`).join('')}</div>
-      <div class="field"><label for="r-other">Otra fecha</label><input id="r-other" type="date" value="${cur}" max="${t}"></div>`);
-    sh.el.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>pick(b.dataset.d));
-    sh.el.querySelector('#r-other').addEventListener('change',e=>{if(e.target.value&&e.target.value<=t)pick(e.target.value);});};
+  // ── Fecha del servicio (campo de fecha único) + hora: se juntan en r-date ──
+  const setWhen=()=>{const d=$('r-day').value||$('r-date').value.slice(0,10),t=$('r-time').value||'00:00';$('r-date').value=d+'T'+t;$('r-date').dispatchEvent(new Event('input'));};
+  $('r-time').addEventListener('change',setWhen);$('r-day').addEventListener('change',setWhen);
 
   // ── Validación de cada paso (misma lógica que Flota) ──
   function validate(n){const panel=box.querySelector(`.rm-panel[data-step="${n}"]`);
@@ -764,15 +759,15 @@ async function gastoVer(id){
   $('gv-kind').textContent=fixed?'Fijo':'Del día';
   let cat=x.category,editing=false,ticket=null;
   // El monto va sin formato: la capa de campos (solo-ui) lo muestra como «15.500».
-  box.innerHTML=`<form id="gv-form" class="card gv-form" novalidate>
+  box.innerHTML=`<form id="gv-form" class="gv-form" novalidate><div class="frm">
       <div class="field gv-amount"><label for="gv-amount">Monto $</label><input id="gv-amount" data-v="moneypos!" inputmode="decimal" value="${Number(x.amount)}" disabled></div>
       <div class="field"><label>Categoría</label><button class="gx-catbtn on" type="button" id="gv-cat" disabled><span class="ex-ico">${catIcon(cat)}</span><span class="gx-catbtn-t"><b>${esc(cat)}</b></span>${icon('chevron-down','trail')}</button></div>
-      <div class="grid2"><div class="field ${fixed?'':'span2'}"><label for="gv-date">${fixed?'Pagado el':'Fecha'}</label><input id="gv-date" data-v="date!" type="date" value="${esc(x.spent_on)}" disabled></div>
-        ${fixed?`<div class="field"><label for="gv-period">Cubre</label><select id="gv-period" disabled>${[1,2,3,6,12].map(m=>`<option value="${m}" ${Number(x.period_months)===m?'selected':''}>${m} ${m>1?'meses':'mes'}</option>`).join('')}</select></div>`:''}</div>
+      <div class="field"><label for="gv-date">${fixed?'Pagado el':'Fecha'}</label>${UI().dateField('gv-date',{value:x.spent_on,max:isoDate(new Date()),quick:'past',rule:'date!',disabled:true})}</div>
+        ${fixed?`<div class="field"><label for="gv-period">Cubre</label><select id="gv-period" disabled>${[1,2,3,6,12].map(m=>`<option value="${m}" ${Number(x.period_months)===m?'selected':''}>${m} ${m>1?'meses':'mes'}</option>`).join('')}</select></div>`:''}
       <div class="field"><label for="gv-note">Detalle</label><input id="gv-note" data-v="text" value="${esc(x.notes||'')}" placeholder="Sin detalle" disabled></div>
       <div class="field"><label>Foto del ticket</label>
         <div class="gv-ticket"><button class="gv-thumb" type="button" id="gv-thumb" ${x.receipt_path?'':'hidden'} aria-label="Ver foto del ticket"></button><span class="hint" id="gv-noticket" ${x.receipt_path?'hidden':''}>Sin foto del ticket</span>
-          <label class="btn gv-change" id="gv-change" hidden>${icon('camera')} <span>${x.receipt_path?'Cambiar foto':'Agregar foto'}</span><input type="file" accept="image/*" hidden id="gv-file"></label></div></div>
+          <label class="btn gv-change" id="gv-change" hidden>${icon('camera')} <span>${x.receipt_path?'Cambiar foto':'Agregar foto'}</span><input type="file" accept="image/*" hidden id="gv-file"></label></div></div></div>
       <p class="hint">Cargado el ${esc(new Date(x.created_at||x.spent_on).toLocaleDateString('es-AR'))}</p>
       <p id="gv-err" class="err" hidden></p></form>
     <div class="rm-footer" id="gv-actions"></div>`;
@@ -781,7 +776,7 @@ async function gastoVer(id){
   $('gv-cat').onclick=async()=>{const c=await pickCategory(x.kind,cat);if(c){cat=c;$('gv-cat').querySelector('.ex-ico').innerHTML=catIcon(c);$('gv-cat').querySelector('b').textContent=c;}};
   $('gv-file').addEventListener('change',()=>{const f=$('gv-file').files[0];if(!f)return;ticket=f;const t=$('gv-thumb');t.hidden=false;$('gv-noticket').hidden=true;t.style.backgroundImage=`url("${URL.createObjectURL(f)}")`;UI().success();});
   const fields=['gv-amount','gv-cat','gv-date','gv-period','gv-note'];
-  function mode(edit){editing=edit;fields.forEach(f=>{const el=$(f);if(el)el.disabled=!edit;});$('gv-change').hidden=!edit;$('gv-form').classList.toggle('editing',edit);$('gv-title').textContent=edit?'Modificar gasto':'Gasto';
+  function mode(edit){editing=edit;fields.forEach(f=>{const el=$(f);if(el)el.disabled=!edit;});UI().paintDate?.('gv-date');$('gv-change').hidden=!edit;$('gv-form').classList.toggle('editing',edit);$('gv-title').textContent=edit?'Modificar gasto':'Gasto';
     $('gv-actions').innerHTML=edit?`<button class="btn" type="button" id="gv-cancel">Cancelar</button><button class="btn pri" type="button" id="gv-save">${icon('check')} Guardar cambios</button>`
       :`<button class="btn danger-ghost" type="button" id="gv-del">${icon('trash-2')} Eliminar</button><button class="btn pri" type="button" id="gv-edit">${icon('pencil')} Modificar</button>`;
     if(edit){$('gv-cancel').onclick=()=>gastoVer(id);$('gv-save').onclick=save;setTimeout(()=>$('gv-amount').focus(),50);}
@@ -819,12 +814,12 @@ async function gastoNuevo(kind){
       <div class="gx-quick" id="gx-quick" hidden></div>
       <button class="gx-catbtn" type="button" id="gx-catbtn" aria-haspopup="dialog"><span class="ex-ico">${icon('list-checks')}</span><span class="gx-catbtn-t"><small>Categoría</small><b>Elegir categoría</b></span>${icon('chevron-down','trail')}</button>
       <div class="gx-meta">
-        <button class="gx-chip" type="button" id="gx-date">${icon('calendar')}<span>Hoy</span></button>
+        <span class="gx-datefield">${UI().dateField('e-date',{value:date,max:isoDate(new Date()),quick:'past'})}</span>
         ${fixed?`<button class="gx-chip" type="button" id="gx-period">${icon('calendar-clock')}<span>12 meses</span></button>`:''}
-        <button class="gx-chip grow" type="button" id="gx-note">${icon('pencil')}<span class="ell">Detalle</span></button>
+        <button class="gx-chip" type="button" id="gx-note">${icon('pencil')}<span class="ell">Detalle</span></button>
       </div>
       <label class="gx-ticket2" id="e-ticket"><span class="gx-ticket-thumb" id="e-ticket-img">${icon('camera')}</span><span class="gx-ticket-t"><b id="e-ticket-t">Foto del ticket</b><small id="e-ticket-s">Opcional · sacala o elegila de la galería</small></span>${icon('plus','trail')}<input type="file" accept="image/*" hidden id="e-file"></label>
-      <input type="date" id="e-date" class="sr" tabindex="-1" aria-hidden="true" value="${date}"><input type="hidden" id="e-period" value="12"><input type="hidden" id="e-note" value="">
+      <input type="hidden" id="e-period" value="12"><input type="hidden" id="e-note" value="">
       <p id="e-err" class="err" hidden></p>
       <div class="gx-pad" role="group" aria-label="Teclado del monto">
         ${['7','8','9','del','4','5','6','+','1','2','3','ok','000','0',','].map(k=>k==='ok'?`<button class="gx-key ok" type="submit">${icon('check')}<span>Guardar</span></button>`
@@ -867,14 +862,9 @@ async function gastoNuevo(kind){
   $('gx-catbtn').onclick=async()=>{const c=await pickCategory(kind,cat);if(c){setCat(c);UI().haptic(6);
     if(c==='Peajes')toast('Cargá lo que pagaste. Si te lo devuelve la prestadora, marcalo en el remito para facturárselo.');}};
   // ── Fecha: Hoy / Ayer / otra ──
-  const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().slice(0,2).join('/');
-  const setDate=d=>{date=d;$('e-date').value=d;$('gx-date').querySelector('span').textContent=(fixed?'Pagado ':'')+dayTxt(d).toLowerCase().replace(/^./,c=>fixed?c:c.toUpperCase());};
-  setDate(date);
-  $('gx-date').onclick=()=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5));
-    const sh=sheet(fixed?'¿Cuándo lo pagaste?':'¿Cuándo fue?',`<div class="gx-opts">${[[t,'Hoy'],[y,'Ayer']].map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${date===d}">${l}<small>${d.split('-').reverse().join('/')}</small></button>`).join('')}</div>
-      <div class="field"><label for="gx-other">Otra fecha</label><input id="gx-other" type="date" value="${date}" max="${t}"></div>`);
-    sh.el.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{setDate(b.dataset.d);sh.close();});
-    sh.el.querySelector('#gx-other').addEventListener('change',e=>{if(e.target.value){setDate(e.target.value);sh.close();}});};
+  // Fecha con el campo único de la app (mismo formato que en el resto: «01/11/2026»).
+  const setDate=d=>{date=d;UI().setDate('e-date',d);};
+  $('e-date').addEventListener('change',()=>{if($('e-date').value)date=$('e-date').value;});
   // ── Período de los fijos ──
   $('gx-period')?.addEventListener('click',()=>{const sh=sheet('¿Cuántos meses cubre?',`<div class="gx-opts five">${[1,2,3,6,12].map(m=>`<button class="gx-opt" type="button" data-m="${m}" aria-pressed="${period===m}">${m}<small>${m>1?'meses':'mes'}</small></button>`).join('')}</div><p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>`);
     sh.el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{period=Number(b.dataset.m);$('e-period').value=period;$('gx-period').querySelector('span').textContent=period+(period>1?' meses':' mes');sh.close();paint();});});
