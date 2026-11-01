@@ -134,12 +134,12 @@ function relDay(iso){if(!iso)return '';const n=Math.round((new Date(iso+'T12:00:
   return n===0?'Hoy':n===-1?'Ayer':n===1?'Mañana':n>1&&n<=60?'en '+n+' días':n<-1&&n>=-60?'hace '+(-n)+' días':'';}
 const QUICK={past:t=>[[t,'Hoy'],[isoAdd(t,{days:-1}),'Ayer']],future:t=>[[isoAdd(t,{months:1}),'En 1 mes'],[isoAdd(t,{months:6}),'En 6 meses'],[isoAdd(t,{months:12}),'En 1 año']],
   rate:t=>[[t,'Hoy'],[isoAdd(t.slice(0,8)+'01',{months:1}),'1° del mes que viene']]};
-function dateField(id,{value='',min='',max='',quick='past',placeholder='Elegir fecha',disabled=false,rule=''}={}){
+function dateField(id,{value='',min='',max='',quick='past',placeholder='Elegir fecha',disabled=false,rule='',time=null}={}){
   const ico=window.SoloCore?.icon?window.SoloCore.icon('calendar'):'';
-  return `<button type="button" class="dfield${value?'':' empty'}" data-dfield="${id}" aria-label="Elegir fecha"${disabled?' disabled':''}>${ico}<span class="df-v">${value?dmyFull(value):placeholder}</span><small class="df-r">${relDay(value)}</small></button>`
-    +`<input type="hidden" id="${id}" value="${value}" data-min="${min}" data-max="${max}" data-quick="${quick}"${rule?` data-v="${rule}"`:''}${rule.endsWith('!')?' data-req="1"':''}${disabled?' disabled':''}>`;}
+  return `<button type="button" class="dfield${value?'':' empty'}" data-dfield="${id}" aria-label="Elegir fecha"${disabled?' disabled':''}>${ico}<span class="df-v">${value?dmyFull(value)+(time?' · '+time.value:''):placeholder}</span><small class="df-r">${relDay(value)}</small></button>`
+    +`<input type="hidden" id="${id}" value="${value}" data-min="${min}" data-max="${max}" data-quick="${quick}"${time?` data-time="${time.id}"`:''}${rule?` data-v="${rule}"`:''}${rule.endsWith('!')?' data-req="1"':''}${disabled?' disabled':''}>`+(time?`<input type="hidden" id="${time.id}" value="${time.value}">`:'');}
 function paintDate(id){const inp=document.getElementById(id),b=document.querySelector(`[data-dfield="${id}"]`);if(!inp||!b)return;if(!b.querySelector('.df-v')){b.disabled=inp.disabled;return;}
-  b.classList.toggle('empty',!inp.value);b.querySelector('.df-v').textContent=inp.value?dmyFull(inp.value):'Elegir fecha';b.querySelector('.df-r').textContent=relDay(inp.value);b.disabled=inp.disabled;}
+  const tm=inp.dataset.time?document.getElementById(inp.dataset.time)?.value:'';b.classList.toggle('empty',!inp.value);b.querySelector('.df-v').textContent=inp.value?dmyFull(inp.value)+(tm?' · '+tm:''):'Elegir fecha';b.querySelector('.df-r').textContent=relDay(inp.value);b.disabled=inp.disabled;}
 function setDate(id,iso){const inp=document.getElementById(id);if(!inp)return;inp.value=iso||'';paintDate(id);
   inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));if(iso)check(inp,{force:false});}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-dfield]');if(!b||b.disabled)return;e.preventDefault();
@@ -148,8 +148,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-dfield]');
   const opts=(QUICK[inp.dataset.quick]||(()=>[]))(t).filter(([d])=>(!min||d>=min)&&(!max||d<=max));
   const sh=S.sheet(lbl,`${opts.length?`<div class="gx-opts${opts.length===3?' three':''}">${opts.map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${cur===d}">${l}<small>${dmyFull(d)}</small></button>`).join('')}</div>`:''}
     <div class="field"><label for="${id}-other">${opts.length?'Otra fecha':'Fecha'}</label><input id="${id}-other" type="date" value="${cur}"${min?` min="${min}"`:''}${max?` max="${max}"`:''}></div>
-    ${cur&&!inp.dataset.req?`<button class="link danger" type="button" data-clear>Quitar fecha</button>`:''}`);
-  const pick=d=>{setDate(id,d);sh.close();haptic(6);};
+    ${inp.dataset.time?`<div class="field"><label for="${id}-hh">Hora</label><input id="${id}-hh" type="time" value="${document.getElementById(inp.dataset.time)?.value||''}"></div><button class="btn pri block" type="button" data-ok>Listo</button>`:''}
+    ${cur&&!inp.dataset.req&&!inp.dataset.time?`<button class="link danger" type="button" data-clear>Quitar fecha</button>`:''}`);
+  const withTime=!!inp.dataset.time;let chosen=cur;
+  const apply=d=>{if(withTime){const t=sh.el.querySelector(`#${id}-hh`).value;const ti=document.getElementById(inp.dataset.time);if(t&&ti){ti.value=t;ti.dispatchEvent(new Event('change',{bubbles:true}));}}setDate(id,d);sh.close();haptic(6);};
+  const pick=d=>{if(!withTime)return apply(d);chosen=d;sh.el.querySelectorAll('[data-d]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.d===d)));const o=sh.el.querySelector(`#${id}-other`);if(o)o.value=d;};
+  sh.el.querySelector('[data-ok]')?.addEventListener('click',()=>apply(chosen||cur));
   sh.el.querySelectorAll('[data-d]').forEach(x=>x.onclick=()=>pick(x.dataset.d));
   sh.el.querySelector(`#${id}-other`).addEventListener('change',ev=>{const v=ev.target.value;if(v&&(!min||v>=min)&&(!max||v<=max))pick(v);});
   sh.el.querySelector('[data-clear]')?.addEventListener('click',()=>pick(''));});

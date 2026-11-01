@@ -160,8 +160,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
         <!-- El N.º de remito lo pone el sistema: no se escribe. Un campo por fila, de arriba hacia abajo. -->
         <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
-          <div class="frm"><div class="field"><label for="r-day">Fecha</label>${UI().dateField?UI().dateField('r-day',{value:localDT(new Date(s.service_date)).slice(0,10),max:isoDate(new Date()),quick:'past'}):''}</div>
-            <div class="field"><label for="r-time">Hora</label><input id="r-time" type="time" value="${localDT(new Date(s.service_date)).slice(11)}"></div>
+          <div class="frm"><div class="field"><label for="r-day">Fecha y hora</label>${UI().dateField('r-day',{value:localDT(new Date(s.service_date)).slice(0,10),max:isoDate(new Date()),quick:'past',time:{id:'r-time',value:localDT(new Date(s.service_date)).slice(11)}})}</div>
             ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
           <input type="hidden" id="r-date" value="${localDT(new Date(s.service_date))}"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('car')} Vehículo</span>

@@ -181,7 +181,7 @@ test('Solo: remito paso 1 (Servicio arriba con fecha tipo Gastos, Km debajo del 
   const p1=w.slice(w.indexOf('data-step="1"'),w.indexOf('data-step="2"'));
   assert.ok(p1.indexOf('Servicio</span>')<p1.indexOf('Vehículo</span>'),'Servicio va primero');
   assert.ok(p1.indexOf('id="r-dest"')<p1.indexOf('id="r-km"'),'Km debajo del recorrido');
-  assert.match(p1,/dateField\('r-day',/);assert.match(p1,/id="r-time" type="time"/);assert.doesNotMatch(p1,/datetime-local/);
+  assert.match(p1,/dateField\('r-day',/);assert.match(p1,/time:\{id:'r-time'/,'fecha y hora en un solo campo');assert.doesNotMatch(p1,/datetime-local/);
   assert.match(p1,/max:isoDate\(new Date\(\)\),quick:'past'/,'no se eligen días futuros');
   assert.match(w,/confirmBox\('¿Descartar este remito\?'/);assert.match(w,/from\('solo_services'\)\.delete\(\)\.eq\('id',s\.id\)/);assert.match(w,/go\('inicio'\)/);
   const x=w.slice(w.indexOf("$('rm-x').onclick"),w.indexOf("$('r-later').onclick"));assert.doesNotMatch(x,/save\(/,'la cruz no guarda');
@@ -268,5 +268,5 @@ test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas
   const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
   assert.equal(rel(iso(0)),'Hoy');assert.equal(rel(iso(-1)),'Ayer');assert.equal(rel(iso(9)),'en 9 días');assert.equal(rel(iso(-3)),'hace 3 días');assert.equal(rel(''),'');
   for(const id of ["'r-day'","'e-date'","'gv-date'","'rt-from'","'g-'+k"])assert.ok(ops.includes('dateField('+id)||cf.includes('dateField('+id),'fecha con el campo único: '+id);
-  assert.match(css,/--fld-h:/);assert.match(css,/\.frm>\.field\{[^}]*grid-template-columns:var\(--fl-w\) minmax\(0,1fr\)/);
+  assert.match(css,/--fld-h:/);assert.match(css,/\.frm>\.field\{display:grid;grid-template-columns:minmax\(0,1fr\);gap:4px/,'nombre arriba y campo debajo, de a uno');
 });
