@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v617-flota-v593-solo-v616';
+const CACHE_NAME='auxilios-v618-flota-v593-solo-v616';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
@@ -23,7 +23,7 @@ const PRECACHE_ASSETS=[
   '/jornadas-admin-tools-v1.css','/jornadas-admin-tools-v1.js',
   '/operator-services.css','/operator-services.js','/private-service-v1.css','/private-service-v1.js','/private-payments-v1.css','/private-payments-v1.js','/private-view-v1.css','/private-view-v1.js','/fleet-control-v1.css','/fleet-control-v1.js','/fleet-truck-detail-v1.css','/fleet-truck-detail-v1.js','/fleet-type-plans-v1.js','/truck-doc-reader-v1.js',
   '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/remito-pdf-v2.js','/remitos-calidad-v1.css','/remitos-calidad-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js','/fuel-efficiency-v1.js',
-  '/operator-invoices.css','/operator-invoices.js','/billing-breakdown-v1.js','/table-columns-v1.js',
+  '/operator-invoices.css','/operator-invoices.js','/billing-breakdown-v1.js','/table-columns-v1.js','/address-parts-v1.js','/km-rounding-v1.js',
   '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
   '/toll-route-detection-v1.js',
