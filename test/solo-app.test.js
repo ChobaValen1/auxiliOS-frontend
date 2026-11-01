@@ -29,7 +29,7 @@ test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
   assert.match(ops,/const STEPS=\['Servicio','Socio','Adicionales','Evidencia','Firma'\]/);
   for(const l of ['Frente del vehículo','Lateral','Daños o estado adicional','Odómetro'])assert.ok(ops.includes(l),l);
-  for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente (firma el chofer)'])assert.ok(ops.includes(l),l);
+  for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente'])assert.ok(ops.includes(l),l);
   assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Dos medios/);assert.match(ops,/Los dos medios suman/);assert.match(ops,/Faltan confirmaciones/);
   assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
 });
@@ -64,12 +64,16 @@ test('Solo: facturación agrupada por prestadora (facturado → cobrado) con res
   assert.match(fx,/addDays\(invoicedOn,client\.payment_days\)/,'vence según los días de pago');assert.match(fx,/'Vencido'/);
   assert.match(fx,/Resumen de servicios/);assert.match(fx,/navigator\.share/);assert.match(fx,/Confirmar \$\{next\.rows\.length\} remito/);
 });
-test('Solo: remito sin «Llegada», medios de pago con botones y firma con estados como en Flota',()=>{
+test('Solo: remito sin «Llegada», medios de pago con botones y firma sin cartel, con más lugar para firmar',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
   assert.doesNotMatch(ops,/Llegué|<label>Llegada<\/label>/);
   assert.match(ops,/class="pay-chip" data-m="\$\{k\}"/);assert.match(ops,/PAY_ICON=\{cash:'banknote'/);
-  for(const t of ['Faltan conformidades','Falta la firma del socio','Falta la aclaración','Listo para finalizar','Sin firma','Firma registrada'])assert.ok(ops.includes(t),t);
-  assert.match(css,/\.conf-area\{flex:4 1 0/);assert.match(css,/\.pad-wrap\{flex:6 1 0/,'60% firma / 40% conformidades');
+  for(const t of ['Sin firma','Firma registrada','Falta la firma del socio.'])assert.ok(ops.includes(t),t);
+  assert.doesNotMatch(ops,/id="r-sig-state"|class="conf wide"/,'sin cartel de estado ni la confirmación ancha de socio ausente');
+  assert.match(ops,/class="pad-absent"[^>]*><input type="checkbox" id="r-absent">/,'socio ausente queda chico en la cabecera del recuadro');
+  const p5=ops.slice(ops.indexOf('data-step="5"'),ops.indexOf('<div class="rm-footer">'));assert.match(p5,/<div class="pad-foot"><div class="field"><label for="r-sn">Aclaración<\/label>/,'aclaración y DNI en la misma línea');
+  assert.match(ops,/<small>\$\{sub\}<\/small>/,'cada conformidad con un texto corto');assert.match(css,/\.pad-foot\{display:grid;grid-template-columns:1\.4fr 1fr/);
+  assert.match(css,/\.sign-panel>\.pad-wrap\{flex:1 1 auto;min-height:220px\}/,'el recuadro de firma ocupa el resto');
   assert.match(ops,/pad\.width=Math\.round\(r0\.width\*dpr\)/,'el trazo no se deforma');
   assert.match(ops,/Remito creado exitosamente/);assert.match(ops,/doneView\(box,s,cl,tp,tk\)/);assert.match(ops,/Enviar remito<\/button>/);
 });
@@ -168,21 +172,23 @@ test('Solo: configuración de prestadoras, tarifas y tipos con confirmaciones y 
   assert.doesNotMatch(cf,/from\('solo_service_types'\)\.delete/,'los tipos se desactivan, no se borran');
   assert.doesNotMatch(cf,/innerHTML=[^;]*\$\{c\.name\}/,'los nombres se escapan');
 });
-test('Solo: Servicios por día (arranca en Hoy, días pasados solo para ver, aviso de remitos sin firmar)',()=>{
+test('Solo: Servicios por día (arranca en Hoy, el servicio nuevo toma el día del filtro, aviso de remitos sin firmar)',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');const v=ops.slice(ops.indexOf('views.servicios='),ops.indexOf("const app=()=>"));
   assert.match(v,/day<=today\?day:today/,'no se puede elegir un día futuro');assert.match(v,/isToday\?`<button class="btn pri block" type="button" id="add">/,'solo en Hoy se crea');
-  assert.match(v,/Volver a hoy/);assert.match(v,/Los servicios nuevos se cargan con la fecha de hoy/);
+  assert.match(v,/go\(isToday\?'nuevo':'nuevo-'\+sel\)/,'en un día anterior el servicio nuevo va con ese día');assert.match(v,/Servicio de ayer/);
   assert.match(v,/\.eq\('status','open'\)\.lt\('service_date',dayStart\(today\)\.toISOString\(\)\)/,'remitos sin firmar de días anteriores');
   assert.match(v,/id="sv-pick"/);assert.match(v,/sv-strip/);
-  const nv=ops.slice(ops.indexOf('views.nuevo='));assert.match(nv,/service_date:new Date\(\)\.toISOString\(\)/,'lo nuevo va con la fecha de hoy');
+  const nv=ops.slice(ops.indexOf('views.nuevo='));assert.match(nv,/service_date:when\(\)\.toISOString\(\)/,'lo nuevo va con el día del filtro');
+  assert.match(nv,/dayArg<today\?dayArg:null/,'nunca un día futuro');assert.match(nv,/d\.setHours\(n\.getHours\(\),n\.getMinutes\(\),0,0\)/,'con la hora actual');
+  assert.match(ops,/const svDay=s=>/,'al salir del remito vuelve al día del servicio');
 });
 test('Solo: remito paso 1 (Servicio arriba con fecha tipo Gastos, Km debajo del recorrido) y la cruz descarta con confirmación',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');const w=ops.slice(ops.indexOf('function wizard('),ops.indexOf('// ── Paso 4: fotos por posición'));
   const p1=w.slice(w.indexOf('data-step="1"'),w.indexOf('data-step="2"'));
   assert.ok(p1.indexOf('Servicio</span>')<p1.indexOf('Vehículo</span>'),'Servicio va primero');
   assert.ok(p1.indexOf('id="r-dest"')<p1.indexOf('id="r-km"'),'Km debajo del recorrido');
-  assert.match(p1,/dateField\('r-day',/);assert.match(p1,/time:\{id:'r-time'/,'fecha y hora en un solo campo');assert.doesNotMatch(p1,/datetime-local/);
-  assert.match(p1,/max:isoDate\(new Date\(\)\),quick:'past'/,'no se eligen días futuros');
+  assert.match(p1,/<input id="r-time" type="time"/,'solo se elige la hora');assert.doesNotMatch(p1,/dateField\(|datetime-local/,'el día sale del filtro, no se elige acá');
+  assert.match(p1,/el día sale del filtro/);assert.match(w,/\$\('r-date'\)\.value\.slice\(0,10\)\+'T'\+t/,'se guarda el día del servicio con la hora elegida');
   assert.match(w,/confirmBox\('¿Descartar este remito\?'/);assert.match(w,/from\('solo_services'\)\.delete\(\)\.eq\('id',s\.id\)/);assert.match(w,/go\('inicio'\)/);
   const x=w.slice(w.indexOf("$('rm-x').onclick"),w.indexOf("$('r-later').onclick"));assert.doesNotMatch(x,/save\(/,'la cruz no guarda');
   assert.doesNotMatch(w,/\$\('r-later'\)\.hidden/,'Guardar y seguir después está en todos los pasos');
@@ -237,6 +243,10 @@ test('Solo: Más ordenado como ajustes profesionales (perfil, grupos, cerrar ses
   const g=[...m.matchAll(/group\('([^']+)'/g)].map(x=>x[1]);assert.deepEqual(g,['Tu negocio','Configuración','Ayuda']);
   assert.match(m,/row\('grua','truck','Mi grúa'/);assert.match(m,/row\('tipos-mas'/);assert.match(m,/id="logout"/);assert.ok(m.indexOf('id="logout"')>m.indexOf("group('Ayuda'"),'cerrar sesión va al final');
   const cf=fs.readFileSync('solo/solo-config.js','utf8');assert.match(cf,/views\.grua=/);assert.match(cf,/from\('solo_trucks'\)\.update\(patch\)/);assert.match(cf,/go\(tiposFrom\)/);
+  const gr=cf.slice(cf.indexOf('views.grua='));const secs=[...gr.matchAll(/<h2 class="set-label">([^<]+)<\/h2>/g)].map(x=>x[1]);
+  assert.deepEqual(secs,['Información de la grúa','Documentación de la grúa','Mantenimiento de la grúa'],'Mi grúa en tres secciones');
+  assert.match(gr,/class="plate"/,'la ficha muestra la patente');assert.match(gr,/data-dfield="gd-\$\{k\}"/,'cada vencimiento se toca y se cambia la fecha');
+  assert.match(gr,/save\(\{\[k\]:inp\.value\|\|null\}/,'el vencimiento se guarda solo');assert.match(gr,/\.in\('category',MAINT\)/,'últimos arreglos de la grúa');
   assert.match(fs.readFileSync('solo/solo-ui.js','utf8'),/'g-plate':'plate!'/);assert.match(css,/\.set-row\+\.set-row::before/);
 });
 test('Solo: vencimientos de la grúa con aviso y peajes que reintegra la prestadora',()=>{
@@ -256,17 +266,18 @@ test('Solo: km de la grúa automáticos al firmar y fotos desde la cámara o la 
   assert.match(m,/new\.status='signed' and old\.status is distinct from 'signed' then delta:=coalesce\(new\.km,0\)/);assert.match(m,/old\.status='signed' and new\.status='cancelled' then delta:=-coalesce\(old\.km,0\)/);
   assert.match(m,/after update of status on public\.solo_services/);assert.match(m,/security definer set search_path=''/);
   assert.doesNotMatch(ops,/capture="environment"/,'se puede elegir de la galería');assert.match(ops,/id="r-many" accept="image\/\*" multiple/);assert.match(ops,/async function uploadSlot\(k,f\)/);
-  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/Km<small>se suman solos<\/small>/);
+  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/Se suman solos con cada remito/);
 });
 test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas siempre con el mismo campo',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),cf=fs.readFileSync('solo/solo-config.js','utf8'),ui=fs.readFileSync('solo/solo-ui.js','utf8');
   for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/class="grid2"/,'sin campos de a dos en '+n);
   for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/<input[^>]*type="date"(?![^>]*-other)/,'sin fechas nativas sueltas en '+n);
-  assert.doesNotMatch(ops,/class="add-grid"|class="pay-row"|class="svc-row/,'sin grillas de campos en el remito');
+  assert.doesNotMatch(ops,/class="pay-row"|class="svc-row/,'sin grillas de campos en el remito');
+  assert.match(ops,/<div class="add-grid">/,'los adicionales siguen en mosaico (pedido del usuario)');
   assert.match(ui,/function dateField\(id,/);assert.match(ui,/function relDay\(iso\)/);assert.match(ui,/data-dfield/);
   const rel=new Function(ui.slice(ui.indexOf('const isoToday='),ui.indexOf('const QUICK='))+';return relDay;')();
   const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
   assert.equal(rel(iso(0)),'Hoy');assert.equal(rel(iso(-1)),'Ayer');assert.equal(rel(iso(9)),'en 9 días');assert.equal(rel(iso(-3)),'hace 3 días');assert.equal(rel(''),'');
-  for(const id of ["'r-day'","'e-date'","'gv-date'","'rt-from'","'g-'+k"])assert.ok(ops.includes('dateField('+id)||cf.includes('dateField('+id),'fecha con el campo único: '+id);
+  for(const id of ["'e-date'","'gv-date'","'rt-from'"])assert.ok(ops.includes('dateField('+id)||cf.includes('dateField('+id),'fecha con el campo único: '+id);
   assert.match(css,/--fld-h:/);assert.match(css,/\.frm>\.field\{display:grid;grid-template-columns:minmax\(0,1fr\);gap:4px/,'nombre arriba y campo debajo, de a uno');
 });

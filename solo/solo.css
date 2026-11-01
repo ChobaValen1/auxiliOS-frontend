@@ -291,9 +291,6 @@ p{margin:0}
 .svc-row.two{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
 .svc-row .field{min-width:0}
 .svc-row input{width:0;min-width:100%}
-#r-time{padding:0 8px;text-align:center;font-variant-numeric:tabular-nums}
-#r-time::-webkit-calendar-picker-indicator{display:none}
-#r-time::-webkit-datetime-edit{justify-content:center}
 .rm-day{width:100%;height:var(--ih);min-height:0;justify-content:flex-start;font-size:15px;color:var(--ax-text);border-radius:var(--ax-r-md,10px)}
 .route-ends{position:relative;display:grid;gap:10px;padding-left:22px}
 .route-ends::before{content:"";position:absolute;left:5px;top:calc(20px + var(--ih) / 2);bottom:calc(var(--ih) / 2);border-left:2px dashed var(--ax-border-strong)}
@@ -342,19 +339,10 @@ p{margin:0}
 /* Evidencia: las fotos llenan el paso */
 .rm-panel[data-step="4"] .slots{flex:1 1 auto;grid-auto-rows:1fr;min-height:0}
 .rm-panel[data-step="4"] .slot{aspect-ratio:auto;min-height:84px}
-/* Firma: 40% conformidades, 60% firma, con el estado siempre visible */
+/* Firma: conformidades arriba (alto justo) y el recuadro de firma ocupa el resto */
 .sign-panel{gap:10px}
-.sig-state{display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:12px;font-size:13px;transition:background 200ms ease,color 200ms ease}
-.sig-state .ico{width:20px;height:20px}
-.sig-state b{display:block;font-size:14px;line-height:1.2}
-.sig-state small{display:block;color:var(--ax-text-2);font-size:12px}
-.sig-state[data-state="warn"]{background:var(--ax-warn-soft);color:var(--ax-warn)}
-.sig-state[data-state="ok"]{background:var(--ax-ok-soft);color:var(--ax-ok)}
-.sig-state.strong{box-shadow:0 0 0 2px var(--ax-warn);animation:pop 300ms var(--ease-spring)}
-.conf-area{flex:4 1 0;min-height:0;display:flex;flex-direction:column;gap:8px}
 .conf-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:8px;min-height:0}
 .conf{position:relative;display:flex;align-items:center;gap:8px;padding:6px 10px;min-height:42px;border-radius:12px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);cursor:pointer;font-size:13px;font-weight:600;line-height:1.2;transition:background 160ms ease,border-color 160ms ease}
-.conf.wide{flex:none}
 .conf input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .conf:focus-within{box-shadow:var(--ax-focus)}
 .conf-box{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:6px;border:2px solid var(--ax-border-strong);transition:background 160ms ease,border-color 160ms ease}
@@ -938,18 +926,8 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .dfield:has(+input[aria-invalid="true"]){border-color:var(--ax-danger);box-shadow:0 0 0 3px var(--ax-danger-soft)}
 .gx-opts.three{grid-template-columns:repeat(3,1fr)}
 /* Firma: aclaración y DNI de arriba hacia abajo, sobre fondo claro */
-.pad-foot.frm{display:grid;grid-template-columns:1fr;gap:0;padding:0;border:0;border-top:1px dashed #d5d8de;border-radius:0;background:#fff}
-.pad-foot.frm>.field{padding:4px 10px 4px 12px;--fl-w:84px}
-.pad-foot.frm>.field+.field::before{background:#e6e8ec}
-.pad-foot.frm>.field>label{color:#5b606b}
-.pad-foot.frm .field input{min-height:38px;height:38px;background:#f5f6f8;border-color:#dfe2e7;color:#111}
 .rm-panel .frm>.field input:not([type=checkbox]):not([type=hidden]),.rm-panel .frm .dfield{min-height:var(--fld-h);height:var(--fld-h)}
 /* Paso 3 con dos medios: los adicionales quedan resumidos en una fila (tocás «Editar» para verlos) */
-.add-sum{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--fld-h);padding:0 14px;border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface);color:var(--ax-text);cursor:pointer;text-align:left}
-.add-sum .ico{width:16px;height:16px;color:var(--ax-accent);flex:none}
-.add-sum span{flex:1;color:var(--ax-text-2);font-size:13.5px}
-.add-sum b{font-variant-numeric:tabular-nums}
-.add-sum em{font-style:normal;color:var(--ax-accent);font-weight:600;font-size:13.5px}
 .pay-second{padding:8px 0 0;border:0;border-top:1px dashed var(--ax-border-strong);border-radius:0}
 /* Gasto nuevo: fecha, meses y detalle del mismo ancho; la fecha con el mismo formato que en toda la app */
 .gx-meta{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
@@ -985,8 +963,6 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .frm>.field input:not([type=checkbox]):not([type=hidden]),.frm .dfield{border-radius:12px;font-size:16px}
 .field input[type=time]{text-align:left}
 .field input[type=time]::-webkit-date-and-time-value{text-align:left}
-.pad-foot.frm{gap:6px;padding:8px 10px 10px}
-.pad-foot.frm>.field>label{color:#5b606b}
 .gv-form>.frm{gap:clamp(8px,1.4vh,12px)}
 @media (max-height:720px){.frm{gap:6px}.frm>.field{gap:3px;padding:0}.frm>.field>label{font-size:10.5px}}
 @media (max-height:720px){
@@ -999,3 +975,113 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 @media (max-height:720px){:root{--fld-h:36px}.frm{gap:5px}.frm>.field>label{font-size:10px}.pay-chips .pay-chip{min-height:40px}.rm-panel{gap:7px}}
 @media (max-height:720px){.pay-second>.row{font-size:12.5px;line-height:1.1}.pay-second>.row .link{padding:0}.total-card .total-parts{margin-top:2px}}
 .set-group>.frm{margin-top:6px}
+
+/* ── Remito v622: firma con más espacio, conformidades con texto y adicionales en mosaico ── */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sign-panel>.conf-grid{flex:none;grid-auto-rows:auto}
+.conf{align-items:center;padding:8px 10px;min-height:52px}
+.conf-t{display:grid;gap:1px;min-width:0}
+.conf-t small{display:block;font-weight:400;color:var(--ax-text-2);font-size:11.5px;line-height:1.25}
+.conf-t em{font-style:normal;font-weight:500;color:var(--ax-text-3);font-size:11px}
+.sign-panel>.pad-wrap{flex:1 1 auto;min-height:220px}
+.pad-title{display:inline-flex;align-items:center;gap:6px}
+.pad-status i{display:block}
+.pad-absent{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px 0 6px;border-radius:8px;background:#f1f2f4;color:#3a3f4a;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto}
+.pad-absent input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.pad-absent .conf-box{width:16px;height:16px;border-radius:5px;border-color:#b9bec7}
+.pad-absent .conf-box .ico{width:11px;height:11px;stroke-width:3;opacity:0;transform:scale(.4);transition:opacity 160ms ease,transform 260ms var(--ease-spring)}
+.pad-absent:has(input:checked){background:#fff3dc;color:#7a4b00}
+.pad-absent:has(input:checked) .conf-box{background:#f5a623;border-color:#f5a623;color:#111}
+.pad-absent:has(input:checked) .conf-box .ico{opacity:1;transform:none}
+.pad-absent:focus-within{box-shadow:var(--ax-focus)}
+.pad-absent+.pad-clear{margin-left:0}
+.pad-foot .field{display:grid;gap:3px;min-width:0}
+.pad-foot .field label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.pad-foot .field input{border-radius:10px;padding:0 10px;font-size:15.5px}
+@media (max-height:720px){
+  .sign-panel{gap:8px}
+  .conf{min-height:44px;padding:6px 8px;gap:6px}
+  .conf-t small{font-size:11px}
+  .sign-panel>.pad-wrap{min-height:170px}
+  .pad-foot{padding:6px 8px 8px;gap:6px}
+}
+.sv-past{grid-template-columns:auto 1fr;gap:8px}
+
+/* ── Mi grúa v622: Información (ficha con patente), Documentación (cuenta regresiva) y Mantenimiento (km y service) ── */
+.gr{display:flex;flex-direction:column;gap:clamp(10px,1.8vh,16px);min-height:0}
+.gr-sec{display:grid;gap:6px}
+.gr-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 4px}
+.gr-head .set-label{margin:0}
+.gr-head .link{display:inline-flex;align-items:center;gap:4px;font-size:13px;padding:0}
+.gr-head .link .ico{width:14px;height:14px}
+.gr-note{color:var(--ax-text-3);font-size:12px}
+.gr-hero{display:flex;align-items:center;gap:12px;width:100%;padding:clamp(12px,2vh,16px) 14px;border-radius:16px;border:1px solid var(--ax-border);color:var(--ax-text);text-align:left;cursor:pointer;
+  background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--ax-accent) 16%,transparent),transparent 60%),var(--ax-surface-2)}
+.gr-hero:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.plate{flex:none;display:grid;width:112px;border-radius:7px;overflow:hidden;background:#fff;border:2px solid #1b1d22;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.plate i{display:block;background:#1f4ea3;color:#fff;font:700 7.5px/1 var(--ax-font);letter-spacing:.24em;text-align:center;padding:3px 0 2px;font-style:normal}
+.plate b{display:block;color:#111;font:400 22px/1 var(--ax-font-brand);letter-spacing:.06em;text-align:center;padding:4px 4px 3px;white-space:nowrap}
+.gr-id{flex:1;min-width:0;display:grid;gap:2px}
+.gr-id b{font-size:17px;line-height:1.2}
+.gr-id small{color:var(--ax-text-3);font-size:12px;line-height:1.25}
+.gr-pill,.gr-chip{flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gr-pill.ok,.gr-chip.ok{background:var(--ax-ok-soft);color:var(--ax-ok)}
+.gr-pill.wait,.gr-chip.wait{background:var(--ax-accent-soft);color:var(--ax-accent)}
+.gr-pill.bad,.gr-chip.bad{background:var(--ax-danger-soft);color:var(--ax-danger)}
+.gr-pill.none,.gr-chip.none{background:var(--ax-surface);color:var(--ax-text-3);border:1px dashed var(--ax-border-strong)}
+.gr-doc{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:clamp(48px,6.6vh,58px);padding:6px 12px;background:none;border:0;color:var(--ax-text);text-align:left;cursor:pointer}
+.gr-doc+.gr-doc::before{content:"";position:absolute;top:0;left:56px;right:0;height:1px;background:var(--ax-border)}
+.gr-doc:active{background:var(--ax-surface)}
+.gr-doc:focus-visible{outline:none;box-shadow:inset var(--ax-focus)}
+.gr-dl{flex:1;min-width:0;display:grid;gap:1px}
+.gr-dl b{font-size:15px}
+.gr-dl small{color:var(--ax-text-3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-doc:has(.gr-chip.bad) .set-ico{background:var(--ax-danger-soft);color:var(--ax-danger)}
+.gr-maint .set-card{display:grid;gap:clamp(8px,1.4vh,12px);padding:clamp(10px,1.6vh,14px) 12px}
+.gr-meters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gr-meter{display:grid;gap:1px;padding:8px 10px;border-radius:12px;background:var(--ax-surface);min-width:0}
+.gr-meter small{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-text-3)}
+.gr-meter b{font-size:17px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-meter em{font-style:normal;color:var(--ax-text-3);font-size:11.5px;line-height:1.25}
+.gr-meter.wait b{color:var(--ax-accent)}.gr-meter.bad b{color:var(--ax-danger)}
+.gr-bar{height:6px;border-radius:99px;background:var(--ax-surface);overflow:hidden}
+.gr-bar i{display:block;height:100%;border-radius:inherit;background:var(--ax-ok);transition:width 400ms var(--ease-out)}
+.gr-bar.wait i{background:var(--ax-accent)}.gr-bar.bad i{background:var(--ax-danger)}
+.gr-works{display:grid;gap:2px}
+.gr-wt{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-text-3);margin-bottom:2px}
+.gr-work{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px;min-height:36px;padding:0 2px;background:none;border:0;border-top:1px solid var(--ax-border);color:var(--ax-text);text-align:left;font-size:13.5px;cursor:pointer}
+.gr-work:first-of-type{border-top:0}
+.gr-wc{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--ax-accent-soft);color:var(--ax-accent)}
+.gr-wd{color:var(--ax-text-3);font-size:12px;font-variant-numeric:tabular-nums}
+.gr-empty{margin:0;color:var(--ax-text-3);font-size:13px}
+.gr-add{margin-top:6px;min-height:40px}
+@media (max-height:720px){
+  .gr{gap:8px}
+  .gr-hero{padding:10px 12px}
+  .plate{width:100px}.plate b{font-size:19px}
+  .gr-doc{min-height:44px}
+  .gr-meter{padding:6px 8px}.gr-meter em{display:none}
+  .gr-work{min-height:32px}
+  .gr-add{min-height:36px;margin-top:4px}
+}
+.conf-t b{font-weight:600}
+.pad-head{gap:8px}
+.pad-title,.pad-absent,.pad-clear{white-space:nowrap}
+/* Con dos medios de pago: adicionales en una fila y los dos montos lado a lado (mismo ancho) para que entre sin scroll */
+.rm-panel[data-step="3"]:has(#r-mixed:checked) .add-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.rm-panel[data-step="3"]:has(#r-mixed:checked) .add-tile{padding:6px 8px}
+.rm-panel[data-step="3"]:has(#r-mixed:checked) .add-in input{font-size:16px}
+.rm-panel[data-step="3"]:has(#r-mixed:checked) .refund small{display:none}
+.rm-panel[data-step="3"]:has(#r-mixed:checked) .refund{padding:8px 12px}
+.pay-second>.frm{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pay-second>.frm>.field>label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-height:780px){
+  .gr-meter em{display:none}
+  .gr-id small{display:none}
+  .gr-doc{min-height:46px;padding:4px 12px}
+  .gr-dl small{font-size:12px}
+  .gr-works .gr-work:nth-of-type(2){display:none}
+  .gr-maint .set-card{gap:8px;padding:10px 12px}
+}
+.pad-clear{width:32px;padding:0;justify-content:center}
+.pad-clear .ico{width:16px;height:16px}

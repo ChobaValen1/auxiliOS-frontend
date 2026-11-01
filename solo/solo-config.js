@@ -228,33 +228,68 @@ function serviceState(t){const next=Number(t?.next_service_km),km=Number(t?.km);
 function truckWarnings(t){if(!t)return [];const out=[];DUE.forEach(([k,l])=>{const st=dueState(t[k]);if(st&&st.k!=='ok')out.push({...st,what:l,key:k});});
   const sv=serviceState(t);if(sv&&sv.k!=='ok')out.push({...sv,what:'Service',key:'service'});return out.sort((a,b)=>(a.k==='bad'?0:1)-(b.k==='bad'?0:1)||a.left-b.left);}
 window.SoloGrua={dueState,serviceState,truckWarnings,DUE};
+/* Mi grúa en tres secciones, como las apps de mantenimiento de vehículos (Carrio, Fleetio, LubeLogger):
+   1) Información: la «ficha» de la grúa con su patente; 2) Documentación: cada vencimiento con cuenta regresiva por color
+   (se toca y se cambia la fecha, se guarda solo); 3) Mantenimiento: km que se suman solos, próximo service y últimos arreglos. */
+const MAINT=['Taller','Repuestos','Cubiertas'];
+const DUE_ICON={insurance_due:'shield-check',vtv_due:'clipboard-check',permit_due:'file-check'};
+const kmTxt=v=>v!=null&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString('es-AR')+' km':'—';
+const leftTxt=n=>n<0?'Vencido':n===0?'Hoy':n<=60?n+(n===1?' día':' días'):Math.round(n/30.4)+' meses';
 views.grua=async function(){
-  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Mi grúa</h1></div><div id="gr">${UI().SKELETON}</div>`,'mas');
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Mi grúa</h1></div><div id="gr" class="gr fill">${UI().SKELETON}</div>`,'mas');
   $('back').onclick=()=>go('mas');
-  const {data:t,error}=await C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
+  const [{data:t0,error},{data:works}]=await Promise.all([C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle(),
+    C.db.from('solo_expenses').select('id,category,notes,amount,spent_on').in('category',MAINT).order('spent_on',{ascending:false}).limit(2)]);
   const box=$('gr');if(!box)return;if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
-  box.innerHTML=`<form id="gr-f" class="gr-form" novalidate>
-      <section class="set-group"><h2 class="set-label">Datos · la patente sale en cada remito</h2><div class="frm">
-        <div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
-        <div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
-        <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div>
-        <div class="field"><label for="g-km">Km<small>se suman solos</small></label><span class="fx post"><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"><i>km</i></span></div></div></section>
-      <section class="set-group"><h2 class="set-label">Vencimientos · te avisamos 15 días antes</h2><div class="frm">
-        ${DUE.map(([k,l])=>`<div class="field"><label for="g-${k}">${l}<small id="st-${k}"></small></label>${UI().dateField('g-'+k,{value:t?.[k]||'',quick:'future'})}</div>`).join('')}
-        <div class="field"><label for="g-next">Próximo service<small id="st-service"></small></label><span class="fx post"><input id="g-next" inputmode="numeric" placeholder="0" value="${t?.next_service_km!=null?Number(t.next_service_km):''}"><i>km</i></span></div>
-      </div></section>
-      <button class="btn pri block" type="submit">${icon('check')} Guardar</button></form>`;
-  const paint=()=>{const cur={km:$('g-km').value.trim()?num($('g-km').value):null,next_service_km:$('g-next').value.trim()?num($('g-next').value):null};
-    DUE.forEach(([k])=>{const st=dueState($('g-'+k).value),el=$('st-'+k);el.textContent=st?st.txt:'Sin fecha';el.className=st?'due-'+st.k:'';});
-    const sv=serviceState(cur),el=$('st-service');el.textContent=sv?sv.txt:'Sin cargar';el.className=sv?'due-'+sv.k:'';};
-  ['g-km','g-next',...DUE.map(([k])=>'g-'+k)].forEach(id=>{$(id).addEventListener('input',paint);$(id).addEventListener('change',paint);});paint();
-  $('gr-f').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
-    try{const km=$('g-km').value.trim()?num($('g-km').value):null,next=$('g-next').value.trim()?num($('g-next').value):null;
-      if(next!=null&&km!=null&&next<km-50000)return toast('Revisá el km del próximo service: es mucho menor que el actual.');
-      const patch={plate:UI().plateFmt?UI().plateFmt($('g-plate').value):$('g-plate').value.trim().toUpperCase(),brand:$('g-brand').value.trim()||null,model:$('g-model').value.trim()||null,km,next_service_km:next};
-      DUE.forEach(([k])=>{patch[k]=$('g-'+k).value||null;});
-      const q=t?C.db.from('solo_trucks').update(patch).eq('id',t.id):C.db.from('solo_trucks').insert(patch);
-      const {error}=await q;if(error)return toast(errText(error));UI().success();toast('Grúa guardada');go('mas');
-    }finally{UI().setBusy(f,false);}});
+  let t=t0;
+  async function save(patch,msg){const q=t?C.db.from('solo_trucks').update(patch).eq('id',t.id):C.db.from('solo_trucks').insert(patch);
+    const {data,error}=await q.select('*').single();if(error){toast(errText(error));return false;}t=data||{...t,...patch};paint();UI().haptic(6);if(msg)toast(msg);return true;}
+  function paint(){
+    const warns=truckWarnings(t),bad=warns.some(w=>w.k==='bad'),name=[t?.brand,t?.model].filter(Boolean).join(' ');
+    const sv=serviceState(t),next=Number(t?.next_service_km)||0;
+    box.innerHTML=`
+      <section class="gr-sec"><div class="gr-head"><h2 class="set-label">Información de la grúa</h2><button class="link" type="button" id="gr-edit-info">${icon('pencil')} ${t?'Editar':'Cargar'}</button></div>
+        <button class="gr-hero" type="button" id="gr-info" aria-label="Editar información de la grúa">
+          <span class="plate" aria-label="Patente"><i>ARGENTINA</i><b>${esc(t?.plate||'AA 000 AA')}</b></span>
+          <span class="gr-id"><b class="ell">${esc(name||'Marca y modelo')}</b><small>${t?.plate?'La patente sale en cada remito':'Cargá la patente para tus remitos'}</small></span>
+          <span class="gr-pill ${!t?'none':warns.length?(bad?'bad':'wait'):'ok'}">${!t?'Sin cargar':warns.length?(warns.length===1?'1 aviso':warns.length+' avisos'):'Al día'}</span>
+        </button></section>
+      <section class="gr-sec"><div class="gr-head"><h2 class="set-label">Documentación de la grúa</h2><small class="gr-note">Te avisamos 15 días antes</small></div>
+        <div class="set-card">${DUE.map(([k,l])=>{const st=dueState(t?.[k]);return `<button class="gr-doc" type="button" data-dfield="gd-${k}" aria-label="Vencimiento de ${esc(l)}">
+            <span class="set-ico">${icon(DUE_ICON[k])}</span><span class="gr-dl"><b>${esc(l)}</b><small>${st?(st.left<0?'Venció el ':'Vence el ')+dmy(t[k]):'Tocá para cargar el vencimiento'}</small></span>
+            <span class="gr-chip ${st?st.k:'none'}">${st?leftTxt(st.left):'Cargar'}</span></button>`;}).join('')}</div>
+        ${DUE.map(([k])=>`<input type="hidden" id="gd-${k}" data-due="${k}" value="${esc(t?.[k]||'')}" data-quick="future">`).join('')}</section>
+      <section class="gr-sec gr-maint"><div class="gr-head"><h2 class="set-label">Mantenimiento de la grúa</h2><button class="link" type="button" id="gr-edit-svc">${icon('pencil')} Service</button></div>
+        <div class="set-card">
+          <div class="gr-meters"><div class="gr-meter"><small>Km actuales</small><b class="num">${kmTxt(t?.km)}</b><em>Se suman solos con cada remito</em></div>
+            <div class="gr-meter ${sv?sv.k:'none'}"><small>Próximo service</small><b class="num">${sv&&sv.left!=null?(sv.left<=0?'Pasado':'Faltan '+kmTxt(sv.left)):next?kmTxt(next):'—'}</b><em>${next?'A los '+kmTxt(next):'Tocá «Service» para cargarlo'}</em></div></div>
+          ${/* La barra muestra cuánto se acerca el service dentro de los últimos 10.000 km. */""}${next&&Number.isFinite(Number(t?.km))&&t?.km!=null?`<div class="gr-bar ${sv?.k||'ok'}" role="img" aria-label="${esc(sv?.txt||'')}"><i style="width:${Math.max(4,Math.min(100,100-(Math.max(0,sv.left)/10000)*100)).toFixed(0)}%"></i></div>`:''}
+          <div class="gr-works"><span class="gr-wt">Últimos arreglos</span>${(works||[]).length?works.map(w=>`<button class="gr-work" type="button" data-exp="${w.id}"><span class="gr-wc">${esc(w.category)}</span><span class="ell">${esc(w.notes||'Sin detalle')}</span><span class="gr-wd">${dmy(w.spent_on).slice(0,5)}</span><b class="num">${money(w.amount)}</b></button>`).join('')
+            :`<p class="gr-empty">Los gastos de taller, repuestos y cubiertas aparecen acá.</p>`}
+            <button class="btn ghost block gr-add" type="button" id="gr-add">${icon('wrench')} Cargar un arreglo</button></div>
+        </div></section>`;
+    $('gr-info').onclick=$('gr-edit-info').onclick=infoSheet;$('gr-edit-svc').onclick=svcSheet;$('gr-add').onclick=()=>go('gastos-nuevo');
+    box.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>go('gastos-ver-'+b.dataset.exp));
+    box.querySelectorAll('[data-due]').forEach(inp=>inp.addEventListener('change',()=>{const k=inp.dataset.due,l=DUE.find(d=>d[0]===k)[1];
+      save({[k]:inp.value||null},inp.value?l+' guardado':l+' sin fecha');}));}
+  function infoSheet(){const sh=S().sheet('Información de la grúa',`<form class="cf-form" novalidate><div class="frm">
+      <div class="field"><label for="g-plate">Patente<small>sale en cada remito</small></label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
+      <div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
+      <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div>
+      <div class="field"><label for="g-km">Km actuales<small>después se suman solos</small></label><span class="fx post"><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"><i>km</i></span></div></div>
+      <button class="btn pri block" type="button" id="g-ok">${icon('check')} Guardar</button></form>`);
+    const f=sh.el.querySelector('form');setTimeout(()=>f.querySelector('#g-plate').focus(),120);
+    f.querySelector('#g-ok').onclick=async e=>{if(!UI().validateForm(f))return;const b=e.currentTarget;b.disabled=true;
+      const ok=await save({plate:UI().plateFmt?UI().plateFmt(f.querySelector('#g-plate').value):f.querySelector('#g-plate').value.trim().toUpperCase(),brand:f.querySelector('#g-brand').value.trim()||null,
+        model:f.querySelector('#g-model').value.trim()||null,km:f.querySelector('#g-km').value.trim()?num(f.querySelector('#g-km').value):null},'Grúa guardada');
+      b.disabled=false;if(ok){UI().success();sh.close();}};}
+  function svcSheet(){const sh=S().sheet('Próximo service',`<form class="cf-form" novalidate><p class="sub">Poné a qué kilometraje te toca el próximo service. Te avisamos 1.000 km antes.</p><div class="frm">
+      <div class="field"><label for="g-next">Próximo service<small>hoy: ${esc(kmTxt(t?.km))}</small></label><span class="fx post"><input id="g-next" inputmode="numeric" placeholder="0" value="${t?.next_service_km!=null?Number(t.next_service_km):''}"><i>km</i></span></div></div>
+      <button class="btn pri block" type="button" id="g-ok">${icon('check')} Guardar</button></form>`);
+    const f=sh.el.querySelector('form');setTimeout(()=>f.querySelector('#g-next').focus(),120);
+    f.querySelector('#g-ok').onclick=async e=>{if(!UI().validateForm(f))return;const v=f.querySelector('#g-next').value.trim(),next=v?num(v):null,km=Number(t?.km);
+      if(next!=null&&Number.isFinite(km)&&t?.km!=null&&next<km-50000)return toast('Revisá el km del próximo service: es mucho menor que el actual.');
+      const b=e.currentTarget;b.disabled=true;const ok=await save({next_service_km:next},'Service guardado');b.disabled=false;if(ok){UI().success();sh.close();}};}
+  paint();
 };
 })();

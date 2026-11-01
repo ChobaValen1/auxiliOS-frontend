@@ -12,8 +12,10 @@ const localDT=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-
 function rateFor(rates,clientId,typeId,when){const day=isoDate(when||new Date());return (rates||[]).filter(r=>r.client_id===clientId&&r.service_type_id===typeId&&r.valid_from<=day).sort((a,b)=>a.valid_from<b.valid_from?1:-1)[0]||null;}
 function priceOf(rate,km){if(!rate)return {base:0,kmAmount:0};const extra=Math.max(0,(Number(km)||0)-Number(rate.included_km||0));return {base:Number(rate.base_amount)||0,kmAmount:Math.round(extra*Number(rate.per_km||0))};}
 
-/* ── Servicios por día: arranca en Hoy; en días pasados solo se consulta (lo nuevo siempre va con la fecha de hoy) ── */
+/* ── Servicios por día: arranca en Hoy; el servicio nuevo toma el día que está elegido en el filtro ── */
 const dayStart=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d);};
+// Al salir de un remito se vuelve al día de ese servicio en el filtro.
+const svDay=s=>{const d=isoDate(new Date(s.service_date));return d<isoDate(new Date())?'servicios-'+d:'servicios';};
 const dayLabel2=iso=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5));if(iso===t)return 'Hoy';if(iso===y)return 'Ayer';
   const d=dayStart(iso),wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','').replace(/^./,c=>c.toUpperCase());
   return wd+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
@@ -29,9 +31,9 @@ views.servicios=async function(day){
     <p class="hint" id="sv-sum"></p>
     <div id="list" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>
     ${isToday?`<button class="btn pri block" type="button" id="add">${icon('plus')} Nuevo servicio</button>`
-      :`<div class="sv-past"><p class="hint">Estás viendo un día anterior. Los servicios nuevos se cargan con la fecha de hoy.</p><button class="btn block" type="button" id="to-today">${icon('calendar')} Volver a hoy</button></div>`}`,'servicios');
+      :`<div class="sv-past"><button class="btn ghost" type="button" id="to-today">${icon('calendar')} Hoy</button><button class="btn pri" type="button" id="add">${icon('plus')} ${dayLabel2(sel)==='Ayer'?'Servicio de ayer':'Servicio del '+esc(dayLabel2(sel).replace(/^\S+ /,''))}</button></div>`}`,'servicios');
   const $=x=>document.getElementById(x);
-  $('add')?.addEventListener('click',()=>go('nuevo'));$('to-today')?.addEventListener('click',()=>go('servicios'));
+  $('add')?.addEventListener('click',()=>go(isToday?'nuevo':'nuevo-'+sel));$('to-today')?.addEventListener('click',()=>go('servicios'));
   app().querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>go(b.dataset.d===today?'servicios':'servicios-'+b.dataset.d));
   $('sv-pick').addEventListener('change',e=>{const v=e.target.value;if(v)go(v>=today?'servicios':'servicios-'+v);});
   requestAnimationFrame(()=>{const on=app().querySelector('.sv-day.on');on?.scrollIntoView({inline:'center',block:'nearest'});});
@@ -64,7 +66,10 @@ views.servicios=async function(day){
 const app=()=>document.getElementById('app');
 
 /* ── Nuevo servicio por pasos: Prestadora | Particular → a quién → qué servicio (→ precio) ── */
-views.nuevo=async function(){
+views.nuevo=async function(dayArg){
+  // El día lo pone el filtro de Servicios: hoy, o el día anterior que se estaba mirando (con la hora actual, que se ajusta en el remito).
+  const today=isoDate(new Date()),day=/^\d{4}-\d{2}-\d{2}$/.test(dayArg||'')&&dayArg<today?dayArg:null;
+  const when=()=>{if(!day)return new Date();const n=new Date(),d=dayStart(day);d.setHours(n.getHours(),n.getMinutes(),0,0);return d;};
   shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="nv-back" aria-label="Volver">${icon('arrow-left')}</button>
       <div class="grow"><h1 id="nv-t">Nuevo servicio</h1><p class="hint" id="nv-sub">Paso 1 de 3</p></div></div>
     <div class="steps" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
@@ -79,11 +84,11 @@ views.nuevo=async function(){
   const st={kind:null,client:null,type:null},hist=[];
   const rateCount=id=>new Set((rates||[]).filter(r=>r.client_id===id).map(r=>r.service_type_id)).size;
   function frame(n,title,html,dir){
-    $('nv-t').textContent=title;$('nv-sub').textContent='Paso '+n+' de 3'+(st.client?' · '+st.client.name:'');
+    $('nv-t').textContent=title;$('nv-sub').textContent='Paso '+n+' de 3'+(day?' · '+dayLabel2(day):'')+(st.client?' · '+st.client.name:'');
     app().querySelectorAll('.steps i').forEach((b,i)=>b.classList.toggle('on',i<n));
     box.innerHTML=`<div class="rm-panel ${dir<0?'slide-r':'slide-l'}">${html}</div>`;}
   const goStep=(fn,dir=1)=>{if(dir>0&&cur)hist.push(cur);cur=fn;fn(dir);};let cur=null;
-  $('nv-back').onclick=()=>{const prev=hist.pop();if(prev){cur=prev;prev(-1);}else go('servicios');};
+  $('nv-back').onclick=()=>{const prev=hist.pop();if(prev){cur=prev;prev(-1);}else go(day?'servicios-'+day:'servicios');};
 
   function stepKind(dir){st.kind=null;st.client=null;
     frame(1,'¿Para quién es?',`<div class="choice">
@@ -100,7 +105,7 @@ views.nuevo=async function(){
     box.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{st.client=prest.find(c=>c.id===b.dataset.id);UI().haptic(8);goStep(stepType);});
     $('nv-add').onclick=()=>go('clientes-nueva');}
   function stepType(dir){st.type=null;const n=st.kind==='prestadora'?3:2;
-    frame(n,'¿Qué servicio?',(types||[]).length?`<div class="pick-grid">${types.map(t=>{const r=st.kind==='prestadora'?rateFor(rates,st.client.id,t.id,new Date()):null;
+    frame(n,'¿Qué servicio?',(types||[]).length?`<div class="pick-grid">${types.map(t=>{const r=st.kind==='prestadora'?rateFor(rates,st.client.id,t.id,when()):null;
       return `<button class="pick" type="button" data-t="${t.id}"><b class="ell2">${esc(t.name)}</b>${st.kind!=='prestadora'?'<span>Precio a acordar</span>':r?`<span class="num">Base ${money(r.base_amount)}</span><em class="ok">${Number(r.included_km)||0} km incluidos</em>`:'<em class="wait">Sin tarifa</em>'}</button>`;}).join('')}</div>`
       :`<div class="empty">Todavía no hay tipos de servicio.<button class="btn pri" type="button" id="nv-types">Cargar tipos</button></div>`,dir);
     $('nv-types')?.addEventListener('click',()=>go('cliente-'+st.client.id));
@@ -114,7 +119,7 @@ views.nuevo=async function(){
     $('svc').onsubmit=e=>{e.preventDefault();create(num($('n-manual').value));};}
   async function create(base,btn){if(btn){btn.disabled=true;btn.classList.add('busy');}
     const {data,error}=await C.db.from('solo_services').insert({client_id:st.client.id,service_type_id:st.type?.id||null,truck_id:trucks?.[0]?.id||null,
-      service_date:new Date().toISOString(),base_amount:base,total:base}).select('id').single();
+      service_date:when().toISOString(),base_amount:base,total:base}).select('id').single();
     if(error){if(btn){btn.disabled=false;btn.classList.remove('busy');}const er=$('n-err');if(er){er.textContent=errText(error);er.hidden=false;}else toast(errText(error));return;}
     UI().success();go('servicio-'+data.id);}
   goStep(stepKind);
@@ -125,10 +130,10 @@ const UI=()=>window.SoloUI||{SKELETON:'',validateForm:()=>true,success(){},hapti
 const STEPS=['Servicio','Socio','Adicionales','Evidencia','Firma'];
 const SLOTS=[['frente','Frente del vehículo'],['lateral','Lateral'],['danos','Daños o estado adicional'],['odometro','Odómetro'],['extra1','Foto extra 1'],['extra2','Foto extra 2']];
 // Mismas conformidades que el remito del chofer en Flota; en pantalla va el nombre corto y el texto completo queda de ayuda.
-const CONF=[['conf_service','Conformidad con el servicio','El socio confirma que el servicio fue prestado correctamente',true,'Servicio conforme'],
-  ['conf_charges','Aceptación de cargos variables','Acepta peajes, excedentes y otros cargos detallados',true,'Acepta los cargos'],
-  ['no_damage','Sin daños reportados','El vehículo fue entregado sin incidentes ni daños adicionales',true,'Sin daños'],
-  ['conf_tow','Conformidad de arrastre','Autorizo a arrastrar mi vehículo bajo mi exclusiva responsabilidad',false,'Arrastre']];
+const CONF=[['conf_service','Conformidad con el servicio','El socio confirma que el servicio fue prestado correctamente',true,'Servicio conforme','Se prestó bien'],
+  ['conf_charges','Aceptación de cargos variables','Acepta peajes, excedentes y otros cargos detallados',true,'Acepta los cargos','Peajes y adicionales'],
+  ['no_damage','Sin daños reportados','El vehículo fue entregado sin incidentes ni daños adicionales',true,'Sin daños','Entregado como estaba'],
+  ['conf_tow','Conformidad de arrastre','Autorizo a arrastrar mi vehículo bajo mi exclusiva responsabilidad',false,'Arrastre','Autoriza el arrastre']];
 const PAY_ICON={cash:'banknote',transfer:'building-2',card:'credit-card',mercado_pago:'wallet',other:'ellipsis'};
 const extraOf=(s,name)=>Number((s.extras||[]).find(x=>x.name===name)?.amount)||0;
 
@@ -160,7 +165,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
         <!-- El N.º de remito lo pone el sistema: no se escribe. Un campo por fila, de arriba hacia abajo. -->
         <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
-          <div class="frm"><div class="field"><label for="r-day">Fecha y hora</label>${UI().dateField('r-day',{value:localDT(new Date(s.service_date)).slice(0,10),max:isoDate(new Date()),quick:'past',time:{id:'r-time',value:localDT(new Date(s.service_date)).slice(11)}})}</div>
+          <div class="frm"><div class="field"><label for="r-time">Hora<small>${esc(dayLabel2(localDT(new Date(s.service_date)).slice(0,10)))} · el día sale del filtro</small></label><input id="r-time" type="time" value="${localDT(new Date(s.service_date)).slice(11,16)}"></div>
             ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
           <input type="hidden" id="r-date" value="${localDT(new Date(s.service_date))}"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('car')} Vehículo</span>
@@ -180,10 +185,9 @@ function wizard(box,s,cl,tp,tk,rates,step){
             <div class="field"><label for="r-cemail">Email</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div></div>
       </section>
       <section class="rm-panel card" data-step="3" aria-label="Paso 3: Adicionales" hidden>
-        <button class="add-sum" type="button" id="r-addsum" hidden>${icon('plus')}<span>Adicionales</span><b class="num"></b><em>Editar</em></button>
-        <div class="rm-group" id="r-addgrp"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
-          <div class="frm">${[['r-tolls','Peajes',extraOf(s,'Peajes')],['r-exc','Excedente km',extraOf(s,'Excedente')],['r-wait','Espera<small>o maniobras</small>',extraOf(s,'Espera')],['r-other','Otros',Number(s.other_amount)]]
-            .map(([id,l,v])=>`<div class="field"><label for="${id}">${l}</label><span class="fx pre"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></div>`).join('')}</div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
+          <div class="add-grid">${[['r-tolls','Peajes','route',extraOf(s,'Peajes')],['r-exc','Excedente km','gauge',extraOf(s,'Excedente')],['r-wait','Espera / maniobras','clock',extraOf(s,'Espera')],['r-other','Otros','ellipsis',Number(s.other_amount)]]
+            .map(([id,l,ic,v])=>`<label class="add-tile" for="${id}"><span class="add-name">${icon(ic)}${l}</span><span class="add-in"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></label>`).join('')}</div></div>
         ${particular?'':`<label class="refund" for="r-refund"><input type="checkbox" id="r-refund" ${(s.tolls||[]).some(x=>x&&x.refund)?'checked':''}><span class="conf-box">${icon('check')}</span><span><b>${esc(cl?.name||'La prestadora')} me reintegra los peajes</b><small>No los paga el socio: se suman a lo que le facturás a la prestadora</small></span></label>`}
         <div id="r-total" class="total-card"></div>
         <div class="rm-group" id="r-pay"><span class="rm-glabel">${icon('wallet')} <span id="r-pay-title">Cobro</span> <small id="r-pay-hint"></small></span>
@@ -207,15 +211,13 @@ function wizard(box,s,cl,tp,tk,rates,step){
         <div class="frm"><div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado…" value="${esc(s.notes||'')}"></div></div>
       </section>
       <section class="rm-panel card sign-panel" data-step="5" aria-label="Paso 5: Firma" hidden>
-        <div class="sig-state" id="r-sig-state" role="status" aria-live="polite"></div>
-        <div class="conf-area">
-          <div class="conf-grid">${CONF.map(([k,t,d,req,short])=>`<label class="conf" title="${esc(t+': '+d)}"><input type="checkbox" id="r-${k}" ${req?'checked data-req="1"':''}><span class="conf-box">${icon('check')}</span><span class="conf-t">${short}${req?'':' <small>opcional</small>'}</span></label>`).join('')}</div>
-          <label class="conf wide"><input type="checkbox" id="r-absent"><span class="conf-box">${icon('check')}</span><span class="conf-t">Socio ausente (firma el chofer)</span></label>
-        </div>
+        <div class="conf-grid">${CONF.map(([k,t,d,req,short,sub])=>`<label class="conf" title="${esc(t+': '+d)}"><input type="checkbox" id="r-${k}" ${req?'checked data-req="1"':''}><span class="conf-box">${icon('check')}</span><span class="conf-t"><b>${short}${req?'':' <em>· opcional</em>'}</b><small>${sub}</small></span></label>`).join('')}</div>
         <div class="pad-wrap">
-          <div class="pad-head"><span class="pad-title" id="r-sig-title">Firma del socio</span><span class="pad-status" id="pad-status"><i></i><span>Sin firma</span></span><button class="pad-clear" type="button" id="clr">${icon('trash-2')} Limpiar</button></div>
+          <div class="pad-head"><span class="pad-title"><span class="pad-status" id="pad-status" role="status"><i></i><span class="sr-only">Sin firma</span></span><span id="r-sig-title">Firma del socio</span></span>
+            <label class="pad-absent" title="Si el socio no está, firma el chofer"><input type="checkbox" id="r-absent"><span class="conf-box">${icon('check')}</span>Socio ausente</label>
+            <button class="pad-clear" type="button" id="clr" aria-label="Limpiar firma" title="Limpiar firma">${icon('trash-2')}</button></div>
           <canvas id="pad" tabindex="0" width="600" height="300" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span>
-          <div class="pad-foot frm"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
+          <div class="pad-foot"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
         </div>
         <p id="r-sig-err" class="err" hidden></p>
       </section>
@@ -247,9 +249,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
   $('r-refund')?.addEventListener('change',()=>{paintTotal();UI().haptic(6);});
   // ── Medio de pago con botones (el valor queda en r-p1m / r-p2m) ──
-  let addsOpen=false;
   function payUI(){const m1=$('r-p1m').value,mixed=$('r-mixed').checked&&!!m1,m2=$('r-p2m').value;
-    const showAdds=!mixed||addsOpen;$('r-addgrp').hidden=!showAdds;$('r-addsum').hidden=showAdds;if(!showAdds)$('r-addsum').querySelector('b').textContent=money(totals().extras);
     $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-checked',String(!!m1&&b.dataset.m===m1)));
     $('r-mixed').checked=mixed;$('r-p2').hidden=!mixed;$('r-p1chips').classList.toggle('small',mixed);$('r-mixed-add').hidden=mixed;$('r-mixed-add').disabled=!m1;
     $('r-p1lbl').textContent=(PAY[m1]||'').toLowerCase();$('r-p2lbl').textContent=(PAY[m2]||'el segundo medio').toLowerCase();
@@ -257,13 +257,12 @@ function wizard(box,s,cl,tp,tk,rates,step){
   $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p1m').value=b.dataset.m;UI().haptic(6);
     if(b.dataset.m===$('r-p2m').value)$('r-p2m').value='';payUI();$('r-pay-err').hidden=true;});
   $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);});
-  $('r-addsum').onclick=()=>{addsOpen=true;payUI();setTimeout(()=>$('r-tolls').focus({preventScroll:false}),40);};
   $('r-mixed-add').onclick=()=>{if(!$('r-p1m').value)return;$('r-mixed').checked=true;payUI();};
   $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p1a').value='';$('r-p2a').value='';payUI();};
 
-  // ── Fecha del servicio (campo de fecha único) + hora: se juntan en r-date ──
-  const setWhen=()=>{const d=$('r-day').value||$('r-date').value.slice(0,10),t=$('r-time').value||'00:00';$('r-date').value=d+'T'+t;$('r-date').dispatchEvent(new Event('input'));};
-  $('r-time').addEventListener('change',setWhen);$('r-day').addEventListener('change',setWhen);
+  // ── Fecha del servicio: el día es el del filtro de Servicios (no se cambia acá); solo se elige la hora ──
+  const setWhen=()=>{const t=$('r-time').value;if(!t)return;$('r-date').value=$('r-date').value.slice(0,10)+'T'+t;$('r-date').dispatchEvent(new Event('input'));};
+  $('r-time').addEventListener('change',setWhen);$('r-time').addEventListener('input',setWhen);
 
   // ── Validación de cada paso (misma lógica que Flota) ──
   function validate(n){const panel=box.querySelector(`.rm-panel[data-step="${n}"]`);
@@ -279,8 +278,8 @@ function wizard(box,s,cl,tp,tk,rates,step){
     if(n===5){const er=$('r-sig-err');er.hidden=true;const absent=$('r-absent').checked;
       const missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked);
       // Mismos avisos que en Flota: primero las conformidades, después la firma.
-      if(!absent&&missing.length){er.textContent='Faltan confirmaciones: '+missing.map(c=>c[1].toLowerCase()).join(', ')+'.';er.hidden=false;sigState(true);UI().haptic([20,40,20]);return false;}
-      if(!sigDirty){er.textContent=absent?'Falta la firma del chofer.':'Falta la firma del socio.';er.hidden=false;$('pad').classList.add('pad-err');sigState(true);UI().haptic([20,40,20]);return false;}}
+      if(!absent&&missing.length){er.textContent='Faltan confirmaciones: '+missing.map(c=>c[1].toLowerCase()).join(', ')+'.';er.hidden=false;sigState();UI().haptic([20,40,20]);return false;}
+      if(!sigDirty){er.textContent=absent?'Falta la firma del chofer.':'Falta la firma del socio.';er.hidden=false;$('pad').classList.add('pad-err');sigState();UI().haptic([20,40,20]);return false;}}
     return true;}
   function patchFor(n){const t=totals();
     if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order')?($('r-order').value.trim()||null):null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
@@ -316,7 +315,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
     sessionStorageSet('rm-step-'+s.id,'');toast('Remito descartado');go('inicio');};
   $('r-later').onclick=async()=>{const b=$('r-later');if(b.disabled)return;
     if(current===1&&!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;
-    b.disabled=true;try{if(await save(current)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}}finally{b.disabled=false;}};
+    b.disabled=true;try{if(await save(current)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go(svDay(s));}}finally{b.disabled=false;}};
   $('r-next').onclick=async()=>{const b=$('r-next');if(b.disabled)return;if(!validate(current))return;b.disabled=true;
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
 
@@ -347,16 +346,12 @@ function wizard(box,s,cl,tp,tk,rates,step){
     toast(files.length>free.length?`Se cargaron ${ok} fotos. No hay lugar para ${files.length-free.length} más.`:`Se ${ok===1?'cargó 1 foto':'cargaron '+ok+' fotos'}.`);});
 
   // ── Paso 5: conformidades y firma con el dedo, con el estado siempre a la vista ──
-  function sigState(strong){const absent=$('r-absent').checked,missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked),name=$('r-sn').value.trim();
-    const st=!absent&&missing.length?['warn','circle-alert','Faltan conformidades',missing.map(c=>c[4].toLowerCase()).join(', ')]
-      :!sigDirty?['warn','signature',absent?'Falta la firma del chofer':'Falta la firma del socio','Que firme en el recuadro blanco']
-      :name.length<2?['warn','pencil','Falta la aclaración','Nombre de quien firma']
-      :['ok','circle-check','Listo para finalizar',absent?'Firma el chofer · socio ausente':'Firmado por '+name];
-    const el=$('r-sig-state');el.dataset.state=st[0];el.classList.toggle('strong',!!strong&&st[0]!=='ok');
-    el.innerHTML=`${icon(st[1])}<span><b>${esc(st[2])}</b><small>${esc(st[3])}</small></span>`;
+  // Sin cartel de estado: el punto del recuadro se pone verde con la firma y «Finalizar» se resalta cuando está todo.
+  function sigState(){const absent=$('r-absent').checked,missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked),name=$('r-sn').value.trim();
+    const ok=(absent||!missing.length)&&sigDirty&&name.length>=2;
     $('pad-status').dataset.on=String(sigDirty);$('pad-status').querySelector('span').textContent=sigDirty?'Firma registrada':'Sin firma';
     $('r-sig-title').textContent=absent?'Firma del chofer':'Firma del socio';
-    $('r-next').classList.toggle('ready',st[0]==='ok');}
+    $('r-next').classList.toggle('ready',ok);}
   box.querySelectorAll('.conf input').forEach(x=>x.addEventListener('change',()=>{UI().haptic(6);$('r-sig-err').hidden=true;sigState();}));
   ['r-sn','r-sd'].forEach(x=>$(x).addEventListener('input',()=>sigState()));
   $('r-absent').addEventListener('change',()=>{if($('r-absent').checked){$('r-sn').value=C.profile.full_name;$('r-sd').value='';}else{$('r-sn').value=s.customer_name||'';$('r-sd').value=s.customer_doc||'';}sigState();});
@@ -406,7 +401,7 @@ function doneView(box,s,cl,tp,tk){
       <div class="split"><button class="btn" type="button" id="see">${icon('file-text')} Ver remito</button><button class="btn" type="button" id="fin">${icon('check')} Listo</button></div></div>`;
   document.getElementById('share').onclick=()=>sendSheet(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
   document.getElementById('see').onclick=()=>views.servicio(s.id);
-  document.getElementById('fin').onclick=()=>go('servicios');
+  document.getElementById('fin').onclick=()=>go(svDay(s));
 }
 function rateForAt(rates,clientId,typeId,when){return rateFor(rates,clientId,typeId,when);}
 
@@ -446,7 +441,7 @@ function signedView(box,s,cl,tp,tk,id){
     </div>
     ${cancelled?'':`<button class="btn pri block" type="button" id="share">${icon('send')} Enviar remito</button>`}`;
   const $=x=>document.getElementById(x);
-  $('rm-x').onclick=()=>go('servicios');
+  $('rm-x').onclick=()=>go(svDay(s));
   (async()=>{const paths=s.photos||[];if(!paths.length){$('ph').innerHTML='<p class="hint">Sin fotos.</p>';return;}const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);
     if($('ph'))$('ph').innerHTML=(data||[]).map(u=>`<img src="${esc(u.signedUrl)}" alt="Foto del vehículo">`).join('');})();
   if(s.signature_path)C.db.storage.from('solo_files').createSignedUrl(s.signature_path,3600).then(({data})=>{if(data&&$('sig-img'))$('sig-img').src=data.signedUrl;});
