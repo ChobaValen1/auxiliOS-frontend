@@ -98,7 +98,7 @@ test('Excel: Estado es FINALIZADO, ACTIVADO MOVIDA o ACTIVADO ORIGEN y no hay co
   assert.equal(state({driver_activated:false,billing_status:'pending'}),'FINALIZADO');
   assert.equal(state({driver_activated:true,activation_kind:'movement'}),'ACTIVADO MOVIDA');
   assert.equal(state({driver_activated:true,activation_kind:'origin'}),'ACTIVADO ORIGEN');
-  for(const id of ['activated','activation_kind','activation_billing','base_price','service_number','logistics'])assert.equal(cols.has(id),false,`sobra la columna ${id}`);
+  for(const id of ['activated','activation_kind','activation_billing','base_price','service_number','logistics','copay','holiday'])assert.equal(cols.has(id),false,`sobra la columna ${id}`);
   assert.ok(cols.has('activation_km'));
 });
 
@@ -120,4 +120,30 @@ test('Servicios y Facturación muestran los km con la regla de la prestadora',()
   assert.match(sql,/security definer/);
   assert.match(sql,/'administracion','operador','supervision','facturacion'/);
   assert.match(sql,/revoke all on function public\.list_company_km_rounding_v1\(\) from public,anon/);
+});
+
+test('selector del Excel: columnas agrupadas por tema y orden dentro de cada grupo',()=>{
+  const fs2=require('node:fs'),vm2=require('node:vm');
+  const window={AuxiliosAddress:address,AuxiliosKmRounding:kmRounding,localStorage:{getItem:()=>null,setItem(){}}};
+  const el=()=>({appendChild(){},remove(){}});
+  vm2.runInNewContext(fs2.readFileSync(path.join(root,'operator-billing-export.js'),'utf8'),{window,document:{readyState:'complete',getElementById:()=>null,createElement:el,head:{appendChild(){}},body:{appendChild(){}},querySelector:()=>null,addEventListener(){}},console,Intl,Date,Math,Number,String,Set,Map,JSON,Object,encodeURIComponent});
+  const E=window.OperatorBillingExcel,ids=E.serviceColumns.map(c=>c.id),plain=x=>JSON.parse(JSON.stringify(x));
+  assert.deepEqual(plain(E.SERVICE_GROUPS.map(g=>g[1])),['Servicio','Vehículo','Recorrido','Kilómetros','Importes','Otros']);
+  // Un orden guardado que mezcla grupos se muestra (y se exporta) grupo por grupo.
+  const grouped=E.groupedIds('service',['notes','plate','order','total_km','origin_street','total_price','date']);
+  assert.deepEqual(plain(grouped),['order','date','plate','origin_street','total_km','total_price','notes']);
+  // Mover dentro del grupo no toca las columnas de otros grupos.
+  const order=['order','plate','date','asphalt_km','time','gravel_km'];
+  assert.equal(E.moveInGroup('service',order,'time',0),true);
+  assert.deepEqual(order,['time','plate','order','asphalt_km','date','gravel_km']);
+  assert.equal(E.moveInGroup('service',order,'gravel_km',5),false,'no sale de su grupo');
+  assert.equal(E.moveInGroup('service',order,'asphalt_km',1),true);
+  assert.deepEqual(order,['time','plate','order','gravel_km','date','asphalt_km']);
+  // Peajes no tiene grupos: el orden es la lista completa.
+  assert.deepEqual(plain(E.groupedIds('toll',['b','a'])),['b','a']);
+  // Todas las columnas del catálogo tienen grupo explícito salvo las de Otros.
+  const src=fs2.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
+  for(const id of ids)if(!['toggles','notes','toll_names'].includes(id))assert.ok(src.includes(`'${id}'`)&&E.groupedIds('service',[id]).length===1,id);
+  assert.match(src,/ordenar dentro de cada grupo; el Excel sale en este mismo orden/);
+  assert.match(src,/data-obx-sub-on="1"/);
 });
