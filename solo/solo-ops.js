@@ -200,8 +200,10 @@ function wizard(box,s,cl,tp,tk,rates,step){
           <p id="r-pay-err" class="err" hidden></p></div>
       </section>
       <section class="rm-panel card" data-step="4" aria-label="Paso 4: Evidencia" hidden>
-        <span class="rm-glabel">${icon('camera')} Fotos del vehículo <small>antes de cargarlo</small></span>
-        <div class="slots">${SLOTS.map(([k,l])=>`<label class="slot" data-slot="${k}"><input type="file" accept="image/*" capture="environment" hidden data-slot-in="${k}"><span class="slot-img"></span><span class="slot-label">${l}</span></label>`).join('')}</div>
+        <div class="row slots-head"><span class="rm-glabel">${icon('camera')} Fotos del vehículo <small>antes de cargarlo</small></span>
+          <label class="btn ghost slots-many" for="r-many">${icon('upload')} Subir varias<input type="file" id="r-many" accept="image/*" multiple hidden></label></div>
+        <!-- Sin «capture»: el celular deja elegir entre sacar la foto o adjuntarla desde la galería. -->
+        <div class="slots">${SLOTS.map(([k,l])=>`<label class="slot" data-slot="${k}"><input type="file" accept="image/*" hidden data-slot-in="${k}"><span class="slot-img"></span><span class="slot-label">${l}</span></label>`).join('')}</div>
         <div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado del vehículo…" value="${esc(s.notes||'')}"></div>
       </section>
       <section class="rm-panel card sign-panel" data-step="5" aria-label="Paso 5: Firma" hidden>
@@ -330,13 +332,25 @@ function wizard(box,s,cl,tp,tk,rates,step){
   async function paintSlots(){const paths=s.photos||[];const urls={...localPrev};
     if(paths.length){const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);(data||[]).forEach((u,i)=>{const k=(paths[i].match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1];if(k&&u?.signedUrl&&!localPrev[k])urls[k]=u.signedUrl;});}
     box.querySelectorAll('.slot').forEach(sl=>{const u=urls[sl.dataset.slot];sl.classList.toggle('has',!!u);sl.querySelector('.slot-img').style.backgroundImage=u?`url("${u}")`:'';});}
-  box.querySelectorAll('[data-slot-in]').forEach(inp=>inp.addEventListener('change',async()=>{const f=inp.files[0];if(!f)return;const k=inp.dataset.slotIn,sl=inp.closest('.slot');sl.classList.add('loading');
-    if(localPrev[k])URL.revokeObjectURL(localPrev[k]);localPrev[k]=URL.createObjectURL(f);
+  // Sube una foto a su posición (reemplaza la anterior de esa posición).
+  async function uploadSlot(k,f){const sl=box.querySelector(`.slot[data-slot="${k}"]`);sl.classList.add('loading');
+    if(localPrev[k])URL.revokeObjectURL(localPrev[k]);localPrev[k]=URL.createObjectURL(f);paintLocal(k);
     const path=uid+'/services/'+s.id+'/'+k+'-'+Date.now()+'.jpg';const {error}=await C.db.storage.from('solo_files').upload(path,await shrink(f),{contentType:'image/jpeg'});
-    if(error){sl.classList.remove('loading');return toast(errText(error));}
+    if(error){sl.classList.remove('loading');toast(errText(error));return false;}
     const paths=(s.photos||[]).filter(p=>!new RegExp('/'+k+'-\\d+\\.jpg$').test(p)).concat(path);
-    const up=await C.db.from('solo_services').update({photos:paths}).eq('id',s.id);sl.classList.remove('loading');if(up.error)return toast(errText(up.error));
-    s.photos=paths;paintSlots();UI().success();}));
+    const up=await C.db.from('solo_services').update({photos:paths}).eq('id',s.id);sl.classList.remove('loading');if(up.error){toast(errText(up.error));return false;}
+    s.photos=paths;return true;}
+  const paintLocal=k=>{const sl=box.querySelector(`.slot[data-slot="${k}"]`);sl.classList.add('has');sl.querySelector('.slot-img').style.backgroundImage=`url("${localPrev[k]}")`;};
+  const filled=()=>new Set([...(s.photos||[]).map(p=>(p.match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1]),...Object.keys(localPrev)].filter(Boolean));
+  box.querySelectorAll('[data-slot-in]').forEach(inp=>inp.addEventListener('change',async()=>{const f=inp.files[0];inp.value='';if(!f)return;
+    if(await uploadSlot(inp.dataset.slotIn,f)){paintSlots();UI().success();}}));
+  // Varias de la galería: van a los lugares vacíos, en orden.
+  $('r-many').addEventListener('change',async e=>{const files=[...e.target.files].filter(f=>/^image\//.test(f.type));e.target.value='';if(!files.length)return;
+    const free=SLOTS.map(([k])=>k).filter(k=>!filled().has(k)),use=files.slice(0,free.length);
+    if(!free.length)return toast('Ya están las 6 fotos. Tocá una para cambiarla.');
+    let ok=0;for(let i=0;i<use.length;i++)if(await uploadSlot(free[i],use[i]))ok++;
+    paintSlots();if(ok)UI().success();
+    toast(files.length>free.length?`Se cargaron ${ok} fotos. No hay lugar para ${files.length-free.length} más.`:`Se ${ok===1?'cargó 1 foto':'cargaron '+ok+' fotos'}.`);});
 
   // ── Paso 5: conformidades y firma con el dedo, con el estado siempre a la vista ──
   function sigState(strong){const absent=$('r-absent').checked,missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked),name=$('r-sn').value.trim();
@@ -758,7 +772,7 @@ async function gastoVer(id){
       <div class="field"><label for="gv-note">Detalle</label><input id="gv-note" data-v="text" value="${esc(x.notes||'')}" placeholder="Sin detalle" disabled></div>
       <div class="field"><label>Foto del ticket</label>
         <div class="gv-ticket"><button class="gv-thumb" type="button" id="gv-thumb" ${x.receipt_path?'':'hidden'} aria-label="Ver foto del ticket"></button><span class="hint" id="gv-noticket" ${x.receipt_path?'hidden':''}>Sin foto del ticket</span>
-          <label class="btn gv-change" id="gv-change" hidden>${icon('camera')} <span>${x.receipt_path?'Cambiar foto':'Agregar foto'}</span><input type="file" accept="image/*" capture="environment" hidden id="gv-file"></label></div></div>
+          <label class="btn gv-change" id="gv-change" hidden>${icon('camera')} <span>${x.receipt_path?'Cambiar foto':'Agregar foto'}</span><input type="file" accept="image/*" hidden id="gv-file"></label></div></div>
       <p class="hint">Cargado el ${esc(new Date(x.created_at||x.spent_on).toLocaleDateString('es-AR'))}</p>
       <p id="gv-err" class="err" hidden></p></form>
     <div class="rm-footer" id="gv-actions"></div>`;
@@ -809,7 +823,7 @@ async function gastoNuevo(kind){
         ${fixed?`<button class="gx-chip" type="button" id="gx-period">${icon('calendar-clock')}<span>12 meses</span></button>`:''}
         <button class="gx-chip grow" type="button" id="gx-note">${icon('pencil')}<span class="ell">Detalle</span></button>
       </div>
-      <label class="gx-ticket2" id="e-ticket"><span class="gx-ticket-thumb" id="e-ticket-img">${icon('camera')}</span><span class="gx-ticket-t"><b id="e-ticket-t">Sacar foto del ticket</b><small id="e-ticket-s">Opcional · queda guardada con el gasto</small></span>${icon('plus','trail')}<input type="file" accept="image/*" capture="environment" hidden id="e-file"></label>
+      <label class="gx-ticket2" id="e-ticket"><span class="gx-ticket-thumb" id="e-ticket-img">${icon('camera')}</span><span class="gx-ticket-t"><b id="e-ticket-t">Foto del ticket</b><small id="e-ticket-s">Opcional · sacala o elegila de la galería</small></span>${icon('plus','trail')}<input type="file" accept="image/*" hidden id="e-file"></label>
       <input type="date" id="e-date" class="sr" tabindex="-1" aria-hidden="true" value="${date}"><input type="hidden" id="e-period" value="12"><input type="hidden" id="e-note" value="">
       <p id="e-err" class="err" hidden></p>
       <div class="gx-pad" role="group" aria-label="Teclado del monto">

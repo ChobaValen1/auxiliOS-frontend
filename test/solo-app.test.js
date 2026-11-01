@@ -119,7 +119,7 @@ test('Solo: nuevo gasto con teclado propio, repetir, detalle que sugiere categor
 });
 test('Solo: gasto con «Elegir categoría» en modal, ticket claro y ficha que se edita solo con «Modificar» y confirma cambios y borrado',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
-  assert.match(ops,/Elegir categoría/);assert.match(ops,/function pickCategory/);assert.match(ops,/Sacar foto del ticket/);
+  assert.match(ops,/Elegir categoría/);assert.match(ops,/function pickCategory/);assert.match(ops,/Foto del ticket/);
   assert.match(ops,/function gastoVer/);assert.match(ops,/data-open="\$\{x\.id\}"/);assert.match(ops,/go\('gastos-ver-'\+b\.dataset\.open\)/);
   const v=ops.slice(ops.indexOf('async function gastoVer'),ops.indexOf('async function gastoNuevo'));
   assert.match(v,/disabled>/,'la ficha arranca solo para ver');assert.match(v,/Modificar/);
@@ -250,4 +250,11 @@ test('Solo: vencimientos de la grúa con aviso y peajes que reintegra la prestad
   assert.match(fa,/SoloGrua\?\.truckWarnings\(truck\)/,'avisos en Inicio');assert.match(js,/SoloGrua\?\.truckWarnings\(tk\.data\)/,'aviso en la fila de Más');
   assert.match(ops,/id="r-refund"/);assert.match(ops,/const owed=t=>particular\?t\.total:t\.extras-\(t\.refund\?t\.tolls:0\)/);assert.match(ops,/refund:true/);
   assert.match(ops,/\['Peajes',tollRefund\?0:ex\('Peajes'\)\]/,'el PDF del socio no muestra los peajes que reintegra la prestadora');
+});
+test('Solo: km de la grúa automáticos al firmar y fotos desde la cámara o la galería',()=>{
+  const m=fs.readFileSync('migrations/20261101140000_solo_km_grua_automatico_v1.sql','utf8'),ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(m,/new\.status='signed' and old\.status is distinct from 'signed' then delta:=coalesce\(new\.km,0\)/);assert.match(m,/old\.status='signed' and new\.status='cancelled' then delta:=-coalesce\(old\.km,0\)/);
+  assert.match(m,/after update of status on public\.solo_services/);assert.match(m,/security definer set search_path=''/);
+  assert.doesNotMatch(ops,/capture="environment"/,'se puede elegir de la galería');assert.match(ops,/id="r-many" accept="image\/\*" multiple/);assert.match(ops,/async function uploadSlot\(k,f\)/);
+  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/Km · se suman solos/);
 });

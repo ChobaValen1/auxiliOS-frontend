@@ -235,7 +235,7 @@ views.grua=async function(){
   box.innerHTML=`<form id="gr-f" class="gr-form" novalidate>
       <section class="set-group"><h2 class="set-label">Datos · la patente sale en cada remito</h2><div class="card gr-card">
         <div class="grid2"><div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
-          <div class="field"><label for="g-km">Km actuales</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div></div>
+          <div class="field"><label for="g-km">Km · se suman solos</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div></div>
         <div class="grid2"><div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
           <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div></div></div></section>
       <section class="set-group"><h2 class="set-label">Vencimientos · te avisamos 15 días antes</h2><div class="set-card">

@@ -895,3 +895,9 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .total-refund .ico{width:16px;height:16px;color:var(--ax-accent);flex:none}
 .total-refund span{flex:1;min-width:0}
 .refund:has(input:checked) .conf-box .ico{opacity:1;transform:none}
+/* Paso 4: subir varias fotos de la galería */
+.slots-head{align-items:center;gap:8px}
+.slots-many{min-height:34px;padding:0 10px;font-size:13px;gap:6px;flex:none;cursor:pointer}
+.slots-many .ico{width:16px;height:16px}
+.slots-head .rm-glabel{white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.slots-head .rm-glabel small{display:none}
