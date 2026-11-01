@@ -1,6 +1,6 @@
 # AuxiliOS Solo · Frase de venta y creativos para Meta Ads
 
-Versión 1 · noviembre 2026. Documento de trabajo: se completa con los resultados de cada prueba.
+Versión 2 · noviembre 2026 (frase centrada en el control de la grúa y la plata). Documento de trabajo: se completa con los resultados de cada prueba.
 
 ---
 
@@ -8,33 +8,31 @@ Versión 1 · noviembre 2026. Documento de trabajo: se completa con los resultad
 
 **El gruero que trabaja solo** (monogruero): dueño de una grúa, la maneja él, trabaja para una o varias prestadoras de asistencia y además toma particulares.
 
-- **Qué le duele:** remitos de papel que se pierden o se mojan, prestadoras que pagan tarde o rechazan remitos, no saber cuánto le deben ni cuánto le queda a fin de mes, vencimientos que se le pasan.
+- **Qué le duele (en orden):** no saber si está ganando o perdiendo plata; no saber cuánto facturó ni cuánto le debe cada prestadora; gastos que se le van sin registrar (gasoil, cubiertas, seguro, cuota); papeles que se pierden; vencimientos que se le pasan.
 - **Cómo es:** está todo el día en la calle, usa WhatsApp para todo, mira Facebook e Instagram en los ratos de espera. No le gustan las cosas complicadas ni “las apps de empresa”.
 - **Cómo habla:** directo, sin vueltas. “Socio” (el cliente de la asistencia), “prestadora”, “remito”, “servicio”, “arrastre”, “excedente”.
 
 ## 2. Frase de venta
 
-**Frase principal (recomendada):**
+**Frase principal:**
 
-> **El remito en el celular. La plata, a la vista.**
+> **El control de tu grúa, en una app.**
 
 **Bajada:**
 
-> Hacé el remito con fotos y firma en 2 minutos, mandalo por WhatsApp y sabé cuánto te debe cada prestadora.
+> Anotá tus servicios por prestadora, cargá tus gastos, hacé remitos digitales y sabé de una vez si estás ganando o perdiendo plata.
 
-**Por qué esta:** junta los dos dolores más fuertes en dos frases cortas: el papel (operativo) y la plata (económico). Se entiende en 2 segundos, que es lo que dura la atención en un anuncio.
+**Por qué esta:** el gruero solo es un negocio, y lo que más le duele es no saber si le está yendo bien. “Control” resume todo lo que hace la app (servicios, gastos, facturación, remitos, grúa) y la bajada lo baja a tierra con la pregunta que lo engancha: **¿ganás o perdés plata?**
 
 **Alternativas para probar en los anuncios:**
 
 | Frase | Ángulo | Cuándo usarla |
 |---|---|---|
-| Dejá el papel en la guantera. | Papel | Cierre de video, imagen simple |
-| Sabé cuánto te debe cada prestadora. | Plata | Anuncios de cobro |
-| Remito con fotos y firma en 2 minutos. | Velocidad | Demo en video |
-| Si el socio reclama, las fotos te cubren. | Respaldo | Anuncios de daños o reclamos |
-| Tu grúa, tus números, en el celular. | General | Anuncio de marca |
-
-> Ojo con “2 minutos”: medilo con los primeros usuarios. Si tardan más, cambiamos el número.
+| ¿Estás ganando o perdiendo plata con la grúa? | Plata | Gancho de video, la más fuerte |
+| Sabé cuánto te queda después del gasoil. | Gastos | Carrusel de números |
+| Sabé cuánto te debe cada prestadora. | Facturación | Anuncios de cobro |
+| Dejá de hacer cuentas en el cuaderno. | Orden | Cierre de video, imagen simple |
+| Remitos digitales con fotos y firma. | Remito | Demo en video |
 
 ## 3. Ángulos y creativos
 
@@ -48,6 +46,28 @@ Formato de cada creativo:
 Los videos van en **9:16** (Reels/Historias), de 15 a 30 segundos, con subtítulos siempre: la mayoría los mira sin sonido.
 
 ---
+
+### Ángulo P · ¿Ganás o perdés plata? (el principal)
+
+**Idea:** la pregunta que ningún gruero puede contestar con seguridad.
+
+- **P1 · Video selfie o a cámara:** un gruero al lado de la grúa.
+  - **Gancho:** “¿Cuánta plata te quedó el mes pasado con la grúa? ¿Seguro?”
+  - **Texto:** Facturás, cargás gasoil, pagás cubiertas, seguro y la cuota… y a fin de mes no sabés si ganaste. Con AuxiliOS Solo anotás servicios y gastos en el celular y ves cuánto te queda. Probala gratis.
+  - **Título:** El control de tu grúa, en una app
+- **P2 · Carrusel de 3 tarjetas (capturas):** “Facturé $ 1.474.000” → “Gasté $ 1.342.100” → “Me quedan $ 131.900”.
+  - **Texto:** Facturar mucho no es ganar mucho. Mirá tus números de verdad.
+  - **Título:** ¿Cuánto te queda después del gasoil?
+- **P3 · Imagen 4:5:** la pantalla de Inicio con “Me queda” resaltado y el texto “¿Vos sabés este número?”.
+
+### Ángulo Q · Todo en un lugar (control)
+
+**Idea:** hoy todo está en papeles, WhatsApp, un cuaderno y la cabeza. La app lo junta.
+
+- **Q1 · Video de pantalla rápido (15 s):** Servicios → Facturación por prestadora → Gastos → Mi grúa, con un texto por pantalla: “Tus servicios”, “Lo que te debe cada prestadora”, “En qué gastás”, “Tu grúa al día”.
+  - **Gancho:** “Cuaderno, talonario, WhatsApp, Excel… ¿o una sola app?”
+  - **Título:** Todo el negocio de tu grúa, en un solo lugar
+- **Q2 · Antes y después:** a la izquierda, cuaderno, tickets y talonario; a la derecha, el celular con la app.
 
 ### Ángulo A · El papel se pierde (dolor)
 
@@ -143,7 +163,7 @@ En cuanto un gruero real la use una semana: video selfie de 20 segundos contando
 - **Objetivo:** Clientes potenciales o Ventas, optimizando el evento **Registro completado**. Los primeros días, mientras el píxel junta datos, se puede optimizar por clics en el enlace.
 - **Público:** Argentina, abierto (sin intereses) o con intereses como grúas, auxilio mecánico, remolque, transporte o camiones. Probar los dos. En este rubro el creativo filtra más que la segmentación.
 - **Ubicaciones:** Reels, Historias y feed de Facebook e Instagram.
-- **Prueba inicial:** 1 campaña, 1 o 2 conjuntos, 4 a 6 anuncios con ángulos distintos (A1, B1, C1, D1 y H1). Correrla 7 días sin tocarla. Después se apagan los peores y se duplican los mejores.
+- **Prueba inicial:** 1 campaña, 1 o 2 conjuntos, 4 a 6 anuncios con ángulos distintos (P1, P2, Q1, B1, D1 y H1). Correrla 7 días sin tocarla. Después se apagan los peores y se duplican los mejores.
 - **Enlace:** `https://<dominio>/gruero?utm_source=meta&utm_medium=paid&utm_campaign=solo_lanzamiento&utm_content=<angulo>` (por ejemplo, `utm_content=b1-video`). La app guarda de qué anuncio vino cada cuenta.
 
 **Qué mirar:**
@@ -163,6 +183,7 @@ Con el celular alcanza. Mejor real que perfecto.
 - [ ] Grúa de día y de noche, con balizas (planos de 3 segundos).
 - [ ] Manos firmando en la pantalla (para D1 y C1).
 - [ ] Talonario de papel mojado o arrugado (A1, A2).
-- [ ] Grabación de pantalla de un remito completo (C1), del Inicio (B1) y de Mi grúa (G1).
+- [ ] Grabación de pantalla de un remito completo (C1), del Inicio (P2, B1), de Facturación y Gastos (Q1) y de Mi grúa (G1).
+- [ ] Cuaderno con cuentas, tickets y talonario arriba de la mesa (Q2).
 - [ ] Celular sin señal (F1).
 - [ ] Un gruero real hablando a cámara (I), apenas haya uno.
