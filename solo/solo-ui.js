@@ -142,20 +142,49 @@ function paintDate(id){const inp=document.getElementById(id),b=document.querySel
   const tm=inp.dataset.time?document.getElementById(inp.dataset.time)?.value:'';b.classList.toggle('empty',!inp.value);b.querySelector('.df-v').textContent=inp.value?dmyFull(inp.value)+(tm?' · '+tm:''):'Elegir fecha';b.querySelector('.df-r').textContent=relDay(inp.value);b.disabled=inp.disabled;}
 function setDate(id,iso){const inp=document.getElementById(id);if(!inp)return;inp.value=iso||'';paintDate(id);
   inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));if(iso)check(inp,{force:false});}
+// Calendario propio dentro del modal (reemplaza el campo de fecha nativo, que no respetaba el diseño ni el ancho de la tarjeta).
+// Semana de lunes a domingo, siempre 6 filas para que el modal no salte; tocando el mes se elige mes y año.
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const ym=(y,m)=>y+'-'+String(m).padStart(2,'0');
+function calendar(host,{value,min,max,today,onPick}){
+  const ic=n=>window.SoloCore?.icon?window.SoloCore.icon(n):'';
+  const base=value||(max&&today>max?max:min&&today<min?min:today);let view=base.slice(0,7),mode='days',sel=value;
+  const okDay=d=>(!min||d>=min)&&(!max||d<=max),okMonth=k=>(!min||k>=min.slice(0,7))&&(!max||k<=max.slice(0,7));
+  function draw(){const [y,m]=view.split('-').map(Number);let title,body,prev,next;
+    if(mode==='days'){const start=(new Date(y,m-1,1).getDay()+6)%7,n=new Date(y,m,0).getDate(),cells=[];
+      for(let k=0;k<start;k++)cells.push('<span></span>');
+      for(let d=1;d<=n;d++){const iso=ym(y,m)+'-'+String(d).padStart(2,'0');
+        cells.push(`<button type="button" class="cal-d${iso===today?' today':''}" data-day="${iso}" aria-pressed="${iso===sel}" aria-label="${d} de ${MESES[m-1].toLowerCase()} de ${y}"${okDay(iso)?'':' disabled'}>${d}</button>`);}
+      while(cells.length<42)cells.push('<span></span>');
+      title=MESES[m-1]+' '+y;prev=okMonth(ym(m===1?y-1:y,m===1?12:m-1));next=okMonth(ym(m===12?y+1:y,m===12?1:m+1));
+      body=`<div class="cal-wd" aria-hidden="true">${['L','M','M','J','V','S','D'].map(x=>`<span>${x}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div>`;}
+    else{title=String(y);prev=!min||y-1>=Number(min.slice(0,4));next=!max||y+1<=Number(max.slice(0,4));
+      body=`<div class="cal-months">${MESES.map((l,k)=>{const key=ym(y,k+1);return `<button type="button" class="cal-m${key===view?' on':''}${key===today.slice(0,7)?' today':''}" data-month="${key}"${okMonth(key)?'':' disabled'}>${l.slice(0,3)}</button>`;}).join('')}</div>`;}
+    host.innerHTML=`<div class="cal-head"><button type="button" class="cal-nav" data-nav="-1" aria-label="${mode==='days'?'Mes anterior':'Año anterior'}"${prev?'':' disabled'}>${ic('chevron-left')}</button>
+      <button type="button" class="cal-title" data-mode aria-label="${mode==='days'?'Elegir mes y año':'Volver a los días'}">${title}${ic('chevron-down')}</button>
+      <button type="button" class="cal-nav" data-nav="1" aria-label="${mode==='days'?'Mes siguiente':'Año siguiente'}"${next?'':' disabled'}>${ic('chevron-right')}</button></div>${body}`;
+    host.classList.toggle('months',mode!=='days');}
+  host.addEventListener('click',ev=>{const x=ev.target.closest('button');if(!x||x.disabled)return;const [y,m]=view.split('-').map(Number);
+    if(x.dataset.nav){const s=Number(x.dataset.nav);if(mode==='days'){const d=new Date(y,m-1+s,1);view=ym(d.getFullYear(),d.getMonth()+1);}else view=ym(y+s,m);draw();haptic(4);}
+    else if('mode' in x.dataset){mode=mode==='days'?'months':'days';draw();}
+    else if(x.dataset.month){view=x.dataset.month;mode='days';draw();haptic(4);}
+    else if(x.dataset.day){sel=x.dataset.day;draw();onPick(sel);}});
+  draw();
+  return {set(d){sel=d;if(d)view=d.slice(0,7);mode='days';draw();}};}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-dfield]');if(!b||b.disabled)return;e.preventDefault();
   const id=b.dataset.dfield,inp=document.getElementById(id);if(!inp||inp.disabled)return;const S=window.SoloSheets;if(!S)return;
   const t=isoToday(),min=inp.dataset.min||'',max=inp.dataset.max||'',cur=inp.value,lbl=b.closest('.field')?.querySelector('label')?.childNodes[0]?.textContent?.trim()||b.getAttribute('aria-label')||'Fecha';
   const opts=(QUICK[inp.dataset.quick]||(()=>[]))(t).filter(([d])=>(!min||d>=min)&&(!max||d<=max));
   const sh=S.sheet(lbl,`${opts.length?`<div class="gx-opts${opts.length===3?' three':''}">${opts.map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${cur===d}">${l}<small>${dmyFull(d)}</small></button>`).join('')}</div>`:''}
-    <div class="field"><label for="${id}-other">${opts.length?'Otra fecha':'Fecha'}</label><input id="${id}-other" type="date" value="${cur}"${min?` min="${min}"`:''}${max?` max="${max}"`:''}></div>
+    <div class="cal" id="${id}-cal"></div>
     ${inp.dataset.time?`<div class="field"><label for="${id}-hh">Hora</label><input id="${id}-hh" type="time" value="${document.getElementById(inp.dataset.time)?.value||''}"></div><button class="btn pri block" type="button" data-ok>Listo</button>`:''}
     ${cur&&!inp.dataset.req&&!inp.dataset.time?`<button class="link danger" type="button" data-clear>Quitar fecha</button>`:''}`);
   const withTime=!!inp.dataset.time;let chosen=cur;
   const apply=d=>{if(withTime){const t=sh.el.querySelector(`#${id}-hh`).value;const ti=document.getElementById(inp.dataset.time);if(t&&ti){ti.value=t;ti.dispatchEvent(new Event('change',{bubbles:true}));}}setDate(id,d);sh.close();haptic(6);};
-  const pick=d=>{if(!withTime)return apply(d);chosen=d;sh.el.querySelectorAll('[data-d]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.d===d)));const o=sh.el.querySelector(`#${id}-other`);if(o)o.value=d;};
+  const pick=d=>{if(!withTime)return apply(d);chosen=d;sh.el.querySelectorAll('[data-d]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.d===d)));};
+  const cal=calendar(sh.el.querySelector(`#${id}-cal`),{value:cur,min,max,today:t,onPick:pick});
   sh.el.querySelector('[data-ok]')?.addEventListener('click',()=>apply(chosen||cur));
-  sh.el.querySelectorAll('[data-d]').forEach(x=>x.onclick=()=>pick(x.dataset.d));
-  sh.el.querySelector(`#${id}-other`).addEventListener('change',ev=>{const v=ev.target.value;if(v&&(!min||v>=min)&&(!max||v<=max))pick(v);});
+  sh.el.querySelectorAll('[data-d]').forEach(x=>x.onclick=()=>{if(withTime)cal.set(x.dataset.d);pick(x.dataset.d);});
   sh.el.querySelector('[data-clear]')?.addEventListener('click',()=>pick(''));});
 window.SoloUI={RULES,BY_ID,check,validateForm,setBusy,countUp,haptic,success,plateFmt,parseNum,moneyFmt,cuitOk,SKELETON,dateField,setDate,paintDate,relDay};
 })();

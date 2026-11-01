@@ -271,7 +271,9 @@ test('Solo: km de la grúa automáticos al firmar y fotos desde la cámara o la 
 test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas siempre con el mismo campo',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),cf=fs.readFileSync('solo/solo-config.js','utf8'),ui=fs.readFileSync('solo/solo-ui.js','utf8');
   for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/class="grid2"/,'sin campos de a dos en '+n);
-  for(const [n,src] of [['ops',ops],['config',cf],['solo',js]])assert.doesNotMatch(src,/<input[^>]*type="date"(?![^>]*-other)/,'sin fechas nativas sueltas en '+n);
+  for(const [n,src] of [['ops',ops],['config',cf],['solo',js],['ui',ui]])assert.doesNotMatch(src,/type="date"/,'sin campos de fecha nativos en '+n);
+  assert.doesNotMatch(ui,/Otra fecha/,'el modal de fecha usa el calendario propio');assert.match(ui,/function calendar\(host,/);assert.match(ui,/while\(cells\.length<42\)/,'siempre 6 filas');
+  assert.match(ui,/\(new Date\(y,m-1,1\)\.getDay\(\)\+6\)%7/,'la semana arranca el lunes');assert.match(css,/\.cal-grid\{|\.cal-wd,\.cal-grid\{display:grid;grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(ops,/class="pay-row"|class="svc-row/,'sin grillas de campos en el remito');
   assert.match(ops,/<div class="add-grid">/,'los adicionales siguen en mosaico (pedido del usuario)');
   assert.match(ui,/function dateField\(id,/);assert.match(ui,/function relDay\(iso\)/);assert.match(ui,/data-dfield/);

@@ -25,7 +25,7 @@ views.servicios=async function(day){
   const strip=[...Array(14)].map((_,i)=>isoDate(new Date(dayStart(today).getTime()-(13-i)*864e5)));
   if(!strip.includes(sel))strip.unshift(sel);
   shell(`<div class="top"><h1 class="grow">${esc(dayLabel2(sel))}${!isToday&&sel.slice(0,4)!==today.slice(0,4)?` <small class="sv-date">${sel.slice(0,4)}</small>`:''}</h1>
-      <button class="btn ghost icon-btn sv-cal" type="button" data-dfield="sv-pick" aria-label="Elegir otro día">${icon('calendar')}</button><input type="hidden" id="sv-pick" value="${sel}" data-max="${today}" data-quick="past"></div>
+      <button class="btn ghost icon-btn sv-cal" type="button" data-dfield="sv-pick" aria-label="Elegir otro día">${icon('calendar')}</button><input type="hidden" id="sv-pick" value="${sel}" data-max="${today}" data-quick="past" data-req="1"></div>
     <div class="sv-strip" id="sv-strip" role="tablist" aria-label="Días">${strip.map(d=>{const dd=dayStart(d);return `<button type="button" role="tab" class="sv-day ${d===sel?'on':''}" data-d="${d}" aria-selected="${d===sel}" aria-label="${esc(dayLabel2(d))}"><small>${d===today?'Hoy':dd.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','')}</small><b>${dd.getDate()}</b><i></i></button>`;}).join('')}</div>
     <div id="sv-pend"></div>
     <p class="hint" id="sv-sum"></p>
