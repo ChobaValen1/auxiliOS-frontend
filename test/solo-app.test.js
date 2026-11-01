@@ -283,3 +283,13 @@ test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas
   for(const id of ["'e-date'","'gv-date'","'rt-from'"])assert.ok(ops.includes('dateField('+id)||cf.includes('dateField('+id),'fecha con el campo único: '+id);
   assert.match(css,/--fld-h:/);assert.match(css,/\.frm>\.field\{display:grid;grid-template-columns:minmax\(0,1fr\);gap:4px/,'nombre arriba y campo debajo, de a uno');
 });
+
+test('Solo: página de presentación para los anuncios (gruero.html) y medición de Meta',()=>{
+  const l=fs.readFileSync('gruero.html','utf8'),px=fs.readFileSync('ui/meta-pixel.js','utf8'),v=fs.readFileSync('vercel.json','utf8'),t=fs.readFileSync('terminos-solo.html','utf8');
+  assert.match(l,/El remito en el celular\. <em>La plata, a la vista\.<\/em>/);assert.match(l,/data-cta="hero"/);assert.match(l,/a\.href=a\.getAttribute\('href'\)\+qs/,'los botones llevan la campaña a la app');
+  assert.match(l,/if\(!wa\)\{a\.hidden=true/,'sin número de soporte no se muestra WhatsApp');assert.match(l,/og:image/);assert.doesNotMatch(l,/AIza|sk-[A-Za-z0-9]/,'sin llaves en la página');
+  assert.ok(v.indexOf('"/gruero"')>0&&v.indexOf('"/gruero"')<v.indexOf('"/(.*)"'),'la ruta /gruero va antes de la general');
+  assert.match(px,/if\(!id\)return/,'el píxel solo se carga si está configurado');assert.match(px,/utm_source/);assert.match(js,/AxPixel\?\.track\('CompleteRegistration'\)/);
+  assert.match(t,/píxel de Meta/,'la política de privacidad lo explica');
+  for(const f of ['firma.jpg','inicio.jpg','grua.jpg','og.jpg'])assert.ok(fs.statSync('assets/solo-landing/'+f).size<200000,f);
+});

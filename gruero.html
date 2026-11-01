@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e12">
+<title>AuxiliOS Solo · El remito en el celular para el gruero</title>
+<meta name="description" content="Hacé el remito con fotos y firma en el celular, mandalo por WhatsApp y sabé cuánto te debe cada prestadora. Para el gruero que trabaja solo. Gratis en la etapa de prueba.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="El remito en el celular. La plata, a la vista.">
+<meta property="og:description" content="Remitos con fotos y firma, cobros por prestadora y tu grúa al día. Para el gruero que trabaja solo.">
+<meta property="og:image" content="/assets/solo-landing/og.jpg">
+<meta property="og:locale" content="es_AR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/ui/tokens.css?v=solo-v623-20261101">
+<style>
+/* Página de presentación de AuxiliOS Solo (a donde llegan los anuncios). Pensada primero para el celular. */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--ax-bg);color:var(--ax-text);font:16px/1.5 var(--ax-font);-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 18px}
+.brand{font:400 26px/1 var(--ax-font-brand);letter-spacing:.04em;text-decoration:none}.brand b{color:var(--ax-accent);font-weight:400}.brand span{font-size:13px;letter-spacing:.22em;color:var(--ax-text-3);margin-left:4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:14px;border:1px solid transparent;font:700 16px var(--ax-font);text-decoration:none;cursor:pointer;transition:transform 120ms ease,background 160ms ease}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.btn.pri{background:var(--ax-accent);color:var(--ax-accent-fg,#111)}
+.btn.pri:hover{background:var(--ax-accent-hover,var(--ax-accent))}
+.btn.ghost{background:var(--ax-surface-2);border-color:var(--ax-border-strong);color:var(--ax-text)}
+.btn svg{width:20px;height:20px;flex:none}
+.btn.sm{min-height:40px;padding:0 14px;font-size:14px;border-radius:12px}
+/* Barra de arriba */
+.nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--ax-bg) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ax-border)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;padding-top:env(safe-area-inset-top,0px)}
+/* Portada */
+.hero{position:relative;overflow:hidden;padding:34px 0 10px}
+.hero::before{content:"";position:absolute;inset:-20% -40% auto;height:520px;background:radial-gradient(50% 50% at 50% 40%,color-mix(in srgb,var(--ax-accent) 22%,transparent),transparent 70%);pointer-events:none}
+.hero .wrap{position:relative;display:grid;gap:28px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:var(--ax-accent-soft);color:var(--ax-accent);font-size:13px;font-weight:700;letter-spacing:.02em}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--ax-accent)}
+h1{font:400 clamp(46px,12.5vw,84px)/.95 var(--ax-font-brand);letter-spacing:.01em;margin:16px 0 14px}
+h1 em{font-style:normal;color:var(--ax-accent)}
+.lead{font-size:clamp(17px,4.4vw,20px);color:var(--ax-text-2);margin:0 0 22px;max-width:34em}
+.lead b{color:var(--ax-text)}
+.ctas{display:grid;gap:10px}
+.micro{display:flex;flex-wrap:wrap;gap:6px 14px;margin:14px 0 0;padding:0;list-style:none;color:var(--ax-text-3);font-size:13.5px}
+.micro li{display:inline-flex;align-items:center;gap:6px}
+.micro svg{width:15px;height:15px;color:var(--ax-ok)}
+/* Celular */
+.phone{position:relative;width:min(300px,78vw);margin:0 auto;border-radius:42px;padding:10px;background:linear-gradient(160deg,#2a2e37,#121419);box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08)}
+.phone img{border-radius:32px;width:100%;height:auto;aspect-ratio:390/844;object-fit:cover;object-position:top}
+.hero-phone{position:relative}
+.badge-float{position:absolute;left:-6px;bottom:18%;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;background:var(--ax-surface-2);border:1px solid var(--ax-border-strong);box-shadow:var(--ax-shadow-pop,0 10px 30px rgba(0,0,0,.4));font-size:13px;font-weight:600;max-width:200px}
+.badge-float svg{width:22px;height:22px;color:var(--ax-ok);flex:none}
+.badge-float.r{left:auto;right:-6px;bottom:auto;top:16%}
+.badge-float.r svg{color:var(--ax-accent)}
+/* Secciones */
+section{padding:56px 0}
+.sec-k{color:var(--ax-accent);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin:0 0 8px}
+h2{font:400 clamp(34px,8.6vw,52px)/1 var(--ax-font-brand);letter-spacing:.01em;margin:0 0 14px}
+.sec-sub{color:var(--ax-text-2);margin:0 0 26px;max-width:36em}
+/* Dolores */
+.pains{display:grid;gap:10px}
+.pain{display:flex;gap:12px;align-items:flex-start;padding:16px;border-radius:16px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.pain svg{width:22px;height:22px;flex:none;color:var(--ax-danger);margin-top:2px}
+.pain b{display:block;font-size:16px}
+.pain span{color:var(--ax-text-2);font-size:14.5px}
+/* Funciones */
+.feat{display:grid;gap:24px;align-items:center;padding:22px;border-radius:24px;background:var(--ax-surface-2);border:1px solid var(--ax-border);margin-bottom:16px;overflow:hidden}
+.feat h3{font-size:22px;line-height:1.2;margin:8px 0 8px}
+.feat p{color:var(--ax-text-2);margin:0 0 12px}
+.feat ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.feat li{display:flex;gap:8px;font-size:15px}
+.feat li svg{width:18px;height:18px;flex:none;color:var(--ax-accent);margin-top:2px}
+.feat .phone{width:min(250px,66vw)}
+.tag{display:inline-block;padding:4px 10px;border-radius:99px;background:var(--ax-accent-soft);color:var(--ax-accent);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini{padding:16px;border-radius:18px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.mini svg{width:24px;height:24px;color:var(--ax-accent)}
+.mini b{display:block;margin:8px 0 2px;font-size:15.5px}
+.mini span{color:var(--ax-text-2);font-size:13.5px;line-height:1.4;display:block}
+/* Pasos */
+.steps{display:grid;gap:12px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{position:relative;display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:center;padding:16px;border-radius:16px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.steps li::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--ax-accent);color:var(--ax-accent-fg,#111);font:400 24px/1 var(--ax-font-brand)}
+.steps b{display:block}
+.steps span{color:var(--ax-text-2);font-size:14.5px}
+/* Precio */
+.price{position:relative;padding:28px 22px;border-radius:24px;border:1px solid var(--ax-accent);background:radial-gradient(120% 120% at 100% 0%,color-mix(in srgb,var(--ax-accent) 18%,transparent),transparent 55%),var(--ax-surface-2);text-align:center}
+.price .big{font:400 clamp(60px,16vw,92px)/1 var(--ax-font-brand);color:var(--ax-accent);margin:6px 0}
+.price p{color:var(--ax-text-2);margin:0 auto 18px;max-width:30em}
+/* Preguntas */
+.faq{display:grid;gap:10px}
+details{border-radius:16px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px;font-weight:600;cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:22px;line-height:1;color:var(--ax-accent);transition:transform 160ms ease}
+details[open] summary::after{transform:rotate(45deg)}
+summary:focus-visible{outline:none;box-shadow:var(--ax-focus);border-radius:16px}
+details p{margin:0;padding:0 16px 16px;color:var(--ax-text-2)}
+/* Cierre */
+.final{text-align:center;padding:60px 0 120px}
+.final .ctas{max-width:420px;margin:0 auto}
+@media (min-width:860px){.final .ctas{max-width:none;justify-content:center}}
+footer{border-top:1px solid var(--ax-border);padding:22px 0 calc(96px + env(safe-area-inset-bottom,0px));color:var(--ax-text-3);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between}
+footer a{color:var(--ax-text-2)}
+/* Botón fijo en el celular */
+.sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--ax-bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--ax-border);transform:translateY(110%);transition:transform 220ms var(--ax-ease-out,ease)}
+.sticky-cta.on{transform:none}
+.sticky-cta .btn.pri{flex:1}
+.sticky-cta .btn.wa{width:52px;padding:0;background:#1faa53;color:#fff}
+/* Pantallas grandes */
+@media (min-width:860px){
+  .hero{padding:64px 0 30px}
+  .hero .wrap{grid-template-columns:1.1fr .9fr;gap:40px}
+  .ctas{grid-auto-flow:column;justify-content:start}
+  .pains{grid-template-columns:repeat(3,1fr)}
+  .feat{grid-template-columns:1fr 1fr;padding:36px}
+  .feat.rev .feat-img{order:-1}
+  .mini-grid{grid-template-columns:repeat(4,1fr)}
+  .steps{grid-template-columns:repeat(3,1fr)}
+  .sticky-cta{display:none}
+  footer{padding-bottom:28px}
+}
+</style>
+<script src="/runtime-config.js?v=solo-v623-20261101" defer></script>
+<script src="/ui/meta-pixel.js?v=solo-v623-20261101" defer></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2Zm5.8 14.03c-.25.69-1.44 1.32-1.98 1.36-.51.05-.99.24-3.33-.69-2.82-1.11-4.6-3.99-4.74-4.18-.14-.18-1.13-1.5-1.13-2.87s.72-2.04.97-2.32c.26-.28.56-.35.75-.35h.53c.17 0 .4-.06.63.48.25.58.83 2.01.9 2.16.08.14.12.31.03.5-.09.18-.14.3-.28.46-.14.16-.29.36-.42.48-.14.14-.28.29-.12.57.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.17-.19.7-.81.89-1.09.18-.28.37-.23.62-.14.25.09 1.6.76 1.88.9.27.14.46.21.53.32.07.12.07.67-.18 1.36Z"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 17-2.16-.43a4 4 0 0 0-2.84.47L12 19.5l-1.5-2-2 1.5"/><path d="M3 21c3-1 5-4 6-7 1-3 3-9 6-9s1 6-2 9"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01M8.5 16.4a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.7M22 8.8a15 15 0 0 0-11.3-3.8M5 12.9a10 10 0 0 1 5.2-2.7M19 12.9a10 10 0 0 0-1.6-1.2M2 2l20 20"/></symbol>
+  <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M15 18H9M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+</svg>
+
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#top" aria-label="AuxiliOS Solo">AUXILI<b>OS</b> <span>SOLO</span></a>
+  <a class="btn ghost sm" href="/solo.html" data-cta="nav">Entrar</a>
+</div></header>
+
+<main id="top">
+  <section class="hero"><div class="wrap">
+    <div>
+      <span class="eyebrow"><i></i>Para el gruero que trabaja solo</span>
+      <h1>El remito en el celular. <em>La plata, a la vista.</em></h1>
+      <p class="lead">Hacé el remito con <b>fotos y firma en 2 minutos</b>, mandalo por WhatsApp y sabé <b>cuánto te debe cada prestadora</b>. Sin papeles que se mojan ni cuentas en un cuaderno.</p>
+      <div class="ctas">
+        <a class="btn pri" href="/solo.html" data-cta="hero">Probala gratis <svg><use href="#i-arrow"/></svg></a>
+        <a class="btn ghost" href="#" data-wa="hero"><svg><use href="#i-wa"/></svg> Preguntar por WhatsApp</a>
+      </div>
+      <ul class="micro">
+        <li><svg><use href="#i-check"/></svg>Gratis en la etapa de prueba</li>
+        <li><svg><use href="#i-check"/></svg>Sin tarjeta</li>
+        <li><svg><use href="#i-check"/></svg>Funciona sin señal</li>
+      </ul>
+    </div>
+    <div class="hero-phone">
+      <div class="phone"><img src="/assets/solo-landing/firma.jpg" width="390" height="844" alt="Pantalla de firma del remito en AuxiliOS Solo: el socio firma con el dedo y se marcan las conformidades" fetchpriority="high"></div>
+      <div class="badge-float r"><svg><use href="#i-sign"/></svg>Firma con el dedo, en el lugar</div>
+      <div class="badge-float"><svg><use href="#i-check"/></svg>Remito N.º 12 enviado por WhatsApp</div>
+    </div>
+  </div></section>
+
+  <section id="dolor"><div class="wrap">
+    <p class="sec-k">¿Te suena?</p>
+    <h2>El trabajo lo hacés. El problema es todo lo demás.</h2>
+    <div class="pains">
+      <div class="pain"><svg><use href="#i-x"/></svg><div><b>El remito de papel se pierde</b><span>Se moja, se rompe o queda en la guantera, y sin remito no cobrás.</span></div></div>
+      <div class="pain"><svg><use href="#i-x"/></svg><div><b>No sabés cuánto te deben</b><span>Cada prestadora paga a distintos días y las cuentas quedan en un cuaderno o en la cabeza.</span></div></div>
+      <div class="pain"><svg><use href="#i-x"/></svg><div><b>A fin de mes no sabés si ganaste</b><span>Gasoil, taller, cubiertas, seguro… entre una cosa y otra, la plata se va.</span></div></div>
+    </div>
+  </div></section>
+
+  <section id="como"><div class="wrap">
+    <p class="sec-k">Qué hace</p>
+    <h2>Todo tu trabajo, en una app pensada para la grúa.</h2>
+    <p class="sec-sub">Pensada para usar con una mano, de noche y con poca señal.</p>
+
+    <article class="feat">
+      <div>
+        <span class="tag">Remito digital</span>
+        <h3>Remito con fotos y firma en 2 minutos</h3>
+        <p>Cargás patente, recorrido y adicionales, sacás las fotos del vehículo y el socio firma en la pantalla.</p>
+        <ul>
+          <li><svg><use href="#i-check"/></svg>PDF prolijo con tus datos, tu logo y tu CUIT</li>
+          <li><svg><use href="#i-check"/></svg>Se lo mandás al socio por WhatsApp o por mail</li>
+          <li><svg><use href="#i-check"/></svg>Código QR para comprobar que es original</li>
+        </ul>
+      </div>
+      <div class="feat-img"><div class="phone"><img src="/assets/solo-landing/firma.jpg" width="390" height="844" alt="Remito con conformidades y firma del socio" loading="lazy"></div></div>
+    </article>
+
+    <article class="feat rev">
+      <div>
+        <span class="tag">Tus números</span>
+        <h3>Cuánto facturaste, cuánto te deben y cuánto te queda</h3>
+        <p>Cada remito firmado se suma solo. Ves lo que le tenés que facturar a cada prestadora y lo que falta cobrar.</p>
+        <ul>
+          <li><svg><use href="#i-check"/></svg>Tarifas por prestadora y tipo de servicio</li>
+          <li><svg><use href="#i-check"/></svg>Gastos con foto del ticket</li>
+          <li><svg><use href="#i-check"/></svg>Te avisa qué remitos falta facturar</li>
+        </ul>
+      </div>
+      <div class="feat-img"><div class="phone"><img src="/assets/solo-landing/inicio.jpg" width="390" height="844" alt="Inicio de AuxiliOS Solo con lo facturado, lo gastado y lo que queda del mes" loading="lazy"></div></div>
+    </article>
+
+    <article class="feat">
+      <div>
+        <span class="tag">Tu grúa</span>
+        <h3>Seguro, VTV y service, sin que se te pasen</h3>
+        <p>Cargás los vencimientos una vez y te avisamos 15 días antes. Los km se suman solos con cada remito.</p>
+        <ul>
+          <li><svg><use href="#i-check"/></svg>Cuenta regresiva por color</li>
+          <li><svg><use href="#i-check"/></svg>Aviso del próximo service por km</li>
+          <li><svg><use href="#i-check"/></svg>Historial de arreglos de la grúa</li>
+        </ul>
+      </div>
+      <div class="feat-img"><div class="phone"><img src="/assets/solo-landing/grua.jpg" width="390" height="844" alt="Mi grúa: patente, vencimientos y mantenimiento" loading="lazy"></div></div>
+    </article>
+
+    <div class="mini-grid">
+      <div class="mini"><svg><use href="#i-wifi"/></svg><b>Anda sin señal</b><span>Lo que cargás se guarda y se sube cuando vuelve la conexión.</span></div>
+      <div class="mini"><svg><use href="#i-cam"/></svg><b>Fotos del vehículo</b><span>Frente, lateral, daños y odómetro, desde la cámara o la galería.</span></div>
+      <div class="mini"><svg><use href="#i-qr"/></svg><b>Remito verificable</b><span>Con el QR se comprueba que nadie lo modificó.</span></div>
+      <div class="mini"><svg><use href="#i-send"/></svg><b>Se manda en un toque</b><span>WhatsApp o mail, con el teléfono que ya cargaste.</span></div>
+    </div>
+  </div></section>
+
+  <section id="empezar"><div class="wrap">
+    <p class="sec-k">Cómo empezar</p>
+    <h2>En 5 minutos estás haciendo tu primer remito.</h2>
+    <ol class="steps">
+      <li><div><b>Creá tu cuenta</b><span>Con tu email o con Google. Un minuto.</span></div></li>
+      <li><div><b>Cargá tu grúa y tu prestadora</b><span>La patente y con quién trabajás. Las tarifas, cuando quieras.</span></div></li>
+      <li><div><b>Hacé tu primer remito</b><span>Fotos, firma y listo. Se lo mandás al socio al toque.</span></div></li>
+    </ol>
+  </div></section>
+
+  <section id="precio"><div class="wrap">
+    <div class="price">
+      <p class="sec-k">Precio</p>
+      <div class="big">Gratis</div>
+      <p>Durante la etapa de prueba no pagás nada. Si más adelante pasa a ser pago, te avisamos con 30 días de anticipación y decidís si seguís.</p>
+      <a class="btn pri" href="/solo.html" data-cta="precio">Crear mi cuenta gratis <svg><use href="#i-arrow"/></svg></a>
+    </div>
+  </div></section>
+
+  <section id="preguntas"><div class="wrap">
+    <p class="sec-k">Preguntas</p>
+    <h2>Lo que nos preguntan los grueros.</h2>
+    <div class="faq">
+      <details><summary>¿Tengo que instalar algo?</summary><p>No hace falta bajarla de ninguna tienda. Se abre desde el navegador del celular y la podés agregar a la pantalla de inicio para usarla como cualquier app. Anda en Android y en iPhone.</p></details>
+      <details><summary>¿Qué pasa si no tengo señal?</summary><p>Seguís cargando igual. Lo que hacés queda guardado en el celular y se sube solo cuando vuelve la conexión.</p></details>
+      <details><summary>¿La prestadora acepta este remito?</summary><p>Es un comprobante del servicio con fotos, firma del socio y un código QR que demuestra que es original. Mostraselo a tu prestadora; si te piden algún dato más, avisanos y lo sumamos.</p></details>
+      <details><summary>¿Reemplaza la factura?</summary><p>No. El remito es el comprobante del servicio y la conformidad del socio. La factura la seguís haciendo como siempre, pero la app te dice cuánto le tenés que facturar a cada prestadora.</p></details>
+      <details><summary>¿Mis datos están seguros?</summary><p>Cada cuenta ve solo sus datos. Las fotos y firmas se guardan en una carpeta privada. No vendemos tus datos ni los usamos para publicidad.</p></details>
+      <details><summary>¿Cuánto cuesta?</summary><p>Hoy es gratis. Si en el futuro pasa a ser pago, te avisamos con 30 días de anticipación, con el precio, y decidís si seguís.</p></details>
+    </div>
+  </div></section>
+
+  <section class="final"><div class="wrap">
+    <h2>Dejá el papel en la guantera.</h2>
+    <p class="sec-sub" style="margin:0 auto 22px">Probala en tu próximo servicio. Si no te sirve, no perdiste nada.</p>
+    <div class="ctas">
+      <a class="btn pri" href="/solo.html" data-cta="final">Probala gratis <svg><use href="#i-arrow"/></svg></a>
+      <a class="btn ghost" href="#" data-wa="final"><svg><use href="#i-wa"/></svg> Preguntar por WhatsApp</a>
+    </div>
+  </div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>AuxiliOS Solo · Hecho en Argentina</span>
+  <span><a href="/terminos-solo.html">Términos y privacidad</a></span>
+</div></footer>
+
+<div class="sticky-cta" id="sticky" aria-hidden="true">
+  <a class="btn pri" href="/solo.html" data-cta="sticky" tabindex="-1">Probala gratis</a>
+  <a class="btn wa" href="#" data-wa="sticky" aria-label="Preguntar por WhatsApp" tabindex="-1"><svg><use href="#i-wa"/></svg></a>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  function ready(fn){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fn);else fn();}
+  ready(function(){
+    var RT=window.AUXILIOS_RUNTIME||{},P=window.AxPixel;
+    // El píxel de Meta (si está configurado) registra la visita.
+    if(P&&P.enabled)P.boot();
+    // Los botones de «Probala gratis» llevan los datos de la campaña a la app.
+    var qs=location.search;
+    document.querySelectorAll('[data-cta]').forEach(function(a){if(qs)a.href=a.getAttribute('href')+qs;
+      a.addEventListener('click',function(){if(P)P.track('Lead',{content_name:'probar_gratis',content_category:a.dataset.cta});});});
+    // WhatsApp de soporte con mensaje armado; si la instalación no tiene número, se ocultan.
+    var wa=String(RT.supportWhatsapp||'').replace(/\D/g,'');
+    document.querySelectorAll('[data-wa]').forEach(function(a){
+      if(!wa){a.hidden=true;a.style.display='none';return;}
+      a.href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hola, vi AuxiliOS Solo y quiero saber más.');a.target='_blank';a.rel='noopener';
+      a.addEventListener('click',function(){if(P)P.track('Contact',{content_category:a.dataset.wa});});});
+    // Botón fijo abajo cuando ya no se ve el de la portada.
+    var st=document.getElementById('sticky'),hero=document.querySelector('.hero .ctas');
+    if('IntersectionObserver' in window&&st&&hero){new IntersectionObserver(function(e){var on=!e[0].isIntersecting;st.classList.toggle('on',on);st.setAttribute('aria-hidden',String(!on));
+      st.querySelectorAll('a').forEach(function(x){x.tabIndex=on?0:-1;});}).observe(hero);}
+  });
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
   "rewrites": [
     { "source": "/r/:token", "destination": "/remito.html" },
     { "source": "/v/:code", "destination": "/solo-verificar.html" },
+    { "source": "/gruero", "destination": "/gruero.html" },
     { "source": "/(.*)", "destination": "/Index.html" }
   ]
 }

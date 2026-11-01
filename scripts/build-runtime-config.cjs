@@ -16,7 +16,10 @@ function configuration(env){
   const wa=String(env.AUXILIOS_SUPPORT_WHATSAPP||'').replace(/\D/g,''),mail=String(env.AUXILIOS_SUPPORT_EMAIL||'').trim();
   if(wa&&!/^\d{10,15}$/.test(wa))throw new Error('AUXILIOS_SUPPORT_WHATSAPP tiene que ser el número con código de país (10 a 15 números)');
   if(mail&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(mail))throw new Error('AUXILIOS_SUPPORT_EMAIL no es un email válido');
-  return{edition,supabaseUrl:url,supabaseKey:key,apiBaseUrl:api,...(wa?{supportWhatsapp:wa}:{}),...(mail?{supportEmail:mail}:{})};
+  // Píxel de Meta (opcional) para medir los anuncios: solo números.
+  const px=String(env.AUXILIOS_META_PIXEL_ID||'').trim();
+  if(px&&!/^\d{10,20}$/.test(px))throw new Error('AUXILIOS_META_PIXEL_ID tiene que ser el número del píxel (10 a 20 números)');
+  return{edition,supabaseUrl:url,supabaseKey:key,apiBaseUrl:api,...(wa?{supportWhatsapp:wa}:{}),...(mail?{supportEmail:mail}:{}),...(px?{metaPixelId:px}:{})};
 }
 function render(c){return '/* Generado al publicar por scripts/build-runtime-config.cjs. */\nwindow.AUXILIOS_RUNTIME = Object.freeze('+JSON.stringify(c,null,2)+');\n';}
 if(require.main===module){

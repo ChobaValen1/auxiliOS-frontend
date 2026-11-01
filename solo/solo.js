@@ -223,7 +223,9 @@ function renderOnboarding(step){
       if(withClient){const name=document.getElementById('o-client').value.trim();if(name.length<2)throw new Error('Escribí el nombre de la prestadora o tocá «Lo cargo después».');
         const {data,error}=await db.from('solo_clients').insert({name,payment_days:Math.round(num(document.getElementById('o-days').value))||30}).select('id').single();if(error)throw error;clientId=data.id;}
       const {data:p,error}=await db.from('solo_profiles').insert({full_name:onb.name,business_name:onb.biz||null,phone:onb.phone||null}).select('*').single();if(error)throw error;
-      profile=p;toast('¡Listo! Tu cuenta está armada.');go(clientId?'cliente-'+clientId:'inicio');
+      profile=p;toast('¡Listo! Tu cuenta está armada.');
+      // De qué anuncio o campaña vino (si vino de uno) y aviso de registro al píxel de Meta, si está configurado.
+      try{const src=window.AxPixel?.source?.();if(src&&!user?.user_metadata?.source)db.auth.updateUser({data:{source:src}}).catch(()=>{});window.AxPixel?.track('CompleteRegistration');}catch(_){}go(clientId?'cliente-'+clientId:'inicio');
     }catch(x){fail(x);}
   };
   document.getElementById('onb').onsubmit=async e=>{

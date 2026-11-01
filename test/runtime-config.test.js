@@ -24,3 +24,9 @@ test('instalación: datos de soporte opcionales y validados',()=>{
   assert.equal(c.supportWhatsapp,'5491123456789');assert.equal(c.supportEmail,'ayuda@auxilios.com.ar');
   assert.throws(()=>configuration({...ok,AUXILIOS_SUPPORT_WHATSAPP:'123'}),/WHATSAPP/);assert.throws(()=>configuration({...ok,AUXILIOS_SUPPORT_EMAIL:'x@'}),/EMAIL/);
 });
+test('instalación: píxel de Meta opcional, solo números',()=>{
+  const ok={AUXILIOS_EDITION:'monogruero',AUXILIOS_SUPABASE_URL:'https://abc123.supabase.co',AUXILIOS_SUPABASE_KEY:'sb_publishable_abc'};
+  assert.equal(configuration(ok).metaPixelId,undefined);
+  assert.equal(configuration({...ok,AUXILIOS_META_PIXEL_ID:'1234567890123'}).metaPixelId,'1234567890123');
+  assert.throws(()=>configuration({...ok,AUXILIOS_META_PIXEL_ID:'abc'}),/PIXEL/);
+});
