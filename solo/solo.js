@@ -323,9 +323,10 @@ async function renderMas(){
     await db.auth.signOut();if(window.SoloOffline)await window.SoloOffline.clear();location.hash='';};
   // Datos a la derecha de cada fila y logo propio en el perfil (se completan sin frenar la pantalla).
   const set=(id,t)=>{const el=app.querySelector(`[data-v="${id}"]`);if(el)el.textContent=t;};
-  const [cl,tp,tk]=await Promise.all([db.from('solo_clients').select('id,kind,active'),db.from('solo_service_types').select('id,active'),db.from('solo_trucks').select('plate').order('created_at').limit(1).maybeSingle()]);
+  const [cl,tp,tk]=await Promise.all([db.from('solo_clients').select('id,kind,active'),db.from('solo_service_types').select('id,active'),db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle()]);
   const nCli=(cl.data||[]).filter(c=>c.kind!=='particular'&&c.active!==false).length,nTip=(tp.data||[]).filter(t=>t.active!==false).length;
-  set('v-cli',nCli?nCli+(nCli===1?' activa':' activas'):'Sin cargar');set('v-tip',nTip?String(nTip):'');set('v-gru',tk.data?.plate||'Sin cargar');
+  set('v-cli',nCli?nCli+(nCli===1?' activa':' activas'):'Sin cargar');set('v-tip',nTip?String(nTip):'');const w=(window.SoloGrua?.truckWarnings(tk.data)||[])[0];set('v-gru',w?w.what+': '+w.txt.toLowerCase():tk.data?.plate||'Sin cargar');
+  if(w)app.querySelector('[data-v="v-gru"]')?.classList.add('set-v-'+w.k);
   if(P.logo_path){const {data}=await db.storage.from('solo_files').createSignedUrl(P.logo_path,3600);const av=document.getElementById('mas-av');
     if(av&&data?.signedUrl){av.classList.add('own');av.innerHTML=`<img src="${data.signedUrl}" alt="">`;}}
 }

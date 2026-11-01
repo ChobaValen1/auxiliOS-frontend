@@ -239,3 +239,15 @@ test('Solo: Más ordenado como ajustes profesionales (perfil, grupos, cerrar ses
   const cf=fs.readFileSync('solo/solo-config.js','utf8');assert.match(cf,/views\.grua=/);assert.match(cf,/from\('solo_trucks'\)\.update\(patch\)/);assert.match(cf,/go\(tiposFrom\)/);
   assert.match(fs.readFileSync('solo/solo-ui.js','utf8'),/'g-plate':'plate!'/);assert.match(css,/\.set-row\+\.set-row::before/);
 });
+test('Solo: vencimientos de la grúa con aviso y peajes que reintegra la prestadora',()=>{
+  const cf=fs.readFileSync('solo/solo-config.js','utf8'),fa=fs.readFileSync('solo/solo-facturacion.js','utf8'),ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  const m=fs.readFileSync('migrations/20261101120000_solo_grua_vencimientos_v1.sql','utf8');for(const c of ['insurance_due','vtv_due','permit_due','next_service_km'])assert.match(m,new RegExp('add column if not exists '+c));
+  const fn=new Function('isoDate','dmy',cf.slice(cf.indexOf('const DUE='),cf.indexOf('window.SoloGrua'))+';return {dueState,serviceState,truckWarnings};')(d=>d.toISOString().slice(0,10),x=>x);
+  const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  assert.equal(fn.dueState(iso(30)).k,'ok');assert.equal(fn.dueState(iso(10)).k,'wait');assert.equal(fn.dueState(iso(-2)).k,'bad');assert.equal(fn.dueState(''),null);
+  assert.equal(fn.serviceState({km:99500,next_service_km:100000}).k,'wait');assert.equal(fn.serviceState({km:101000,next_service_km:100000}).k,'bad');
+  assert.equal(fn.truckWarnings({insurance_due:iso(5),vtv_due:iso(200)}).length,1);
+  assert.match(fa,/SoloGrua\?\.truckWarnings\(truck\)/,'avisos en Inicio');assert.match(js,/SoloGrua\?\.truckWarnings\(tk\.data\)/,'aviso en la fila de Más');
+  assert.match(ops,/id="r-refund"/);assert.match(ops,/const owed=t=>particular\?t\.total:t\.extras-\(t\.refund\?t\.tolls:0\)/);assert.match(ops,/refund:true/);
+  assert.match(ops,/\['Peajes',tollRefund\?0:ex\('Peajes'\)\]/,'el PDF del socio no muestra los peajes que reintegra la prestadora');
+});

@@ -184,6 +184,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
         <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
           <div class="add-grid">${[['r-tolls','Peajes','route',extraOf(s,'Peajes')],['r-exc','Excedente km','gauge',extraOf(s,'Excedente')],['r-wait','Espera / maniobras','clock',extraOf(s,'Espera')],['r-other','Otros','ellipsis',Number(s.other_amount)]]
             .map(([id,l,ic,v])=>`<label class="add-tile" for="${id}"><span class="add-name">${icon(ic)}${l}</span><span class="add-in"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></label>`).join('')}</div></div>
+        ${particular?'':`<label class="refund" for="r-refund"><input type="checkbox" id="r-refund" ${(s.tolls||[]).some(x=>x&&x.refund)?'checked':''}><span class="conf-box">${icon('check')}</span><span><b>${esc(cl?.name||'La prestadora')} me reintegra los peajes</b><small>No los paga el socio: se suman a lo que le facturás a la prestadora</small></span></label>`}
         <div id="r-total" class="total-card"></div>
         <div class="rm-group" id="r-pay"><span class="rm-glabel">${icon('wallet')} <span id="r-pay-title">Cobro</span> <small id="r-pay-hint"></small></span>
           <input type="hidden" id="r-p1m" value="${esc(s.payment_1_method||'')}">
@@ -223,22 +224,26 @@ function wizard(box,s,cl,tp,tk,rates,step){
   const rate=()=>particular?null:rateForAt(rates,s.client_id,s.service_type_id,new Date($('r-date').value||s.service_date));
   function totals(){const km=num($('r-km').value),r=rate(),p=particular?{base:Number(s.base_amount)||0,kmAmount:0}:priceOf(r,km);
     const tolls=num($('r-tolls').value),exc=num($('r-exc').value),wait=num($('r-wait').value),other=num($('r-other').value);
-    return {km,r,base:p.base,kmAmount:p.kmAmount,tolls,exc,wait,other,extras:tolls+exc+wait+other,total:p.base+p.kmAmount+tolls+exc+wait+other};}
+    const refund=!particular&&!!$('r-refund')?.checked&&tolls>0;
+    return {km,r,base:p.base,kmAmount:p.kmAmount,tolls,exc,wait,other,refund,extras:tolls+exc+wait+other,total:p.base+p.kmAmount+tolls+exc+wait+other};}
   // Con prestadora: base + km se le facturan a la empresa (plazo de pago y tarifa); los adicionales los paga el socio acá.
   // Con particular: paga todo en el lugar.
-  const owed=t=>particular?t.total:t.extras;
+  // Si la prestadora reintegra los peajes, no los paga el socio: quedan en lo que se le factura a la empresa.
+  const owed=t=>particular?t.total:t.extras-(t.refund?t.tolls:0);
   function paintTotal(){const t=totals();
-    const parts=[['Peajes',t.tolls],['Excedente km',t.exc],['Espera',t.wait],['Otros',t.other]].filter(x=>x[1]);
+    const parts=[['Peajes',t.refund?0:t.tolls],['Excedente km',t.exc],['Espera',t.wait],['Otros',t.other]].filter(x=>x[1]);
     $('r-total').innerHTML=particular
       ?`<div class="total-main"><span>Total a cobrar</span><b class="num total-pop">${money(t.total)}</b></div>
         <div class="total-parts"><span>Acordado <b class="num">${money(t.base)}</b></span>${parts.map(([l,v])=>`<i>+</i><span>${l} <b class="num">${money(v)}</b></span>`).join('')}</div>`
-      :`<div class="total-main"><span>${icon('user')} Paga el socio</span><b class="num total-pop">${money(t.extras)}</b></div>
-        <div class="total-parts">${parts.length?parts.map(([l,v])=>`<span>${l} <b class="num">${money(v)}</b></span>`).join('<i>+</i>'):'<span>Sin adicionales: el socio no paga nada en el lugar.</span>'}</div>`;
+      :`<div class="total-main"><span>${icon('user')} Paga el socio</span><b class="num total-pop">${money(owed(t))}</b></div>
+        <div class="total-parts">${parts.length?parts.map(([l,v])=>`<span>${l} <b class="num">${money(v)}</b></span>`).join('<i>+</i>'):'<span>Sin adicionales: el socio no paga nada en el lugar.</span>'}</div>
+        ${t.refund?`<div class="total-refund">${icon('building-2')}<span>Peajes que reintegra ${esc(cl?.name||'la prestadora')}</span><b class="num">${money(t.tolls)}</b></div>`:''}`;
     const o=owed(t);$('r-pay').hidden=o<=0;
     $('r-pay-title').textContent=particular?'Cómo pagó el cliente':'Cómo pagó el socio';$('r-pay-hint').textContent=o>0?money(o):'';
     if(o<=0){$('r-p1m').value='';$('r-mixed').checked=false;$('r-p2m').value='';}
     payUI();}
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
+  $('r-refund')?.addEventListener('change',()=>{paintTotal();UI().haptic(6);});
   // ── Medio de pago con botones (el valor queda en r-p1m / r-p2m) ──
   function payUI(){const m1=$('r-p1m').value,mixed=$('r-mixed').checked&&!!m1,m2=$('r-p2m').value;
     $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-checked',String(!!m1&&b.dataset.m===m1)));
@@ -284,7 +289,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
   function patchFor(n){const t=totals();
     if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order')?($('r-order').value.trim()||null):null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
     if(n===2)return {customer_name:$('r-cname').value.trim()||null,customer_doc:$('r-cdoc').value.trim()||null,customer_phone:$('r-cphone').value.trim()||null,customer_email:$('r-cemail').value.trim()||null};
-    if(n===3){const o=owed(t),m1=o>0?($('r-p1m').value||null):null,mixed=!!m1&&$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls}]:[],
+    if(n===3){const o=owed(t),m1=o>0?($('r-p1m').value||null):null,mixed=!!m1&&$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls,...(t.refund?{refund:true}:{})}]:[],
       other_amount:t.other,extras_amount:t.extras,base_amount:t.base,km_amount:t.kmAmount,total:t.total,payment_1_method:m1,payment_1_amount:m1?(mixed?num($('r-p1a').value):o):null,
       payment_2_method:mixed?$('r-p2m').value:null,payment_2_amount:mixed?num($('r-p2a').value):null};}
     if(n===4)return {notes:$('r-obs').value.trim()||null};
@@ -383,7 +388,7 @@ function doneView(box,s,cl,tp,tk){
       <p class="hint">${s.remito_number?'Remito N.º '+s.remito_number:'El N.º de remito llega al subirse (sin señal)'} · ${esc(tp?.name||'Servicio')}</p>
       <div class="card tight done-card" aria-label="Desglose del servicio">
         ${line(particular?'Precio acordado':'Base',money(s.base_amount))}${kmEx}
-        ${ex('Peajes')?line('Peajes',money(ex('Peajes'))):''}${ex('Excedente')?line('Excedente km',money(ex('Excedente'))):''}${ex('Espera')?line('Espera / maniobras',money(ex('Espera'))):''}${Number(s.other_amount)?line('Otros',money(s.other_amount)):''}
+        ${ex('Peajes')?line((s.tolls||[]).some(x=>x&&x.refund)?'Peajes · los reintegra la prestadora':'Peajes',money(ex('Peajes'))):''}${ex('Excedente')?line('Excedente km',money(ex('Excedente'))):''}${ex('Espera')?line('Espera / maniobras',money(ex('Espera'))):''}${Number(s.other_amount)?line('Otros',money(s.other_amount)):''}
         ${line('Total del servicio',money(s.total),'dl-total')}
         ${here?line((particular?'Pagó el cliente':'Pagó el socio')+(pays?' · '+esc(pays):''),money(here),'dl-paid'):''}
         ${particular?'':line('A facturar a '+esc(cl?.name||'la prestadora'),money(Math.max(0,Number(s.total)-here)),'dl-bill')}
@@ -523,7 +528,8 @@ async function remitoPdf(s,cl,tp,tk){
 
   // Importes: particular ve todo; con prestadora solo lo que pagó el socio.
   const ex=n=>Number((s.extras||[]).find(x=>x.name===n)?.amount)||0;
-  const extras=[['Peajes',ex('Peajes')],['Excedente de km',ex('Excedente')],['Espera / maniobras',ex('Espera')],['Otros',Number(s.other_amount)||0]].filter(x=>x[1]);
+  const tollRefund=!particular&&(s.tolls||[]).some(x=>x&&x.refund);
+  const extras=[['Peajes',tollRefund?0:ex('Peajes')],['Excedente de km',ex('Excedente')],['Espera / maniobras',ex('Espera')],['Otros',Number(s.other_amount)||0]].filter(x=>x[1]);
   const rows=particular?[['Precio acordado',Number(s.base_amount)||0],...extras]:extras;
   const paid=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);
   const pays=s.payment_1_method?(PAY[s.payment_1_method]||'')+(s.payment_2_method?' '+money(s.payment_1_amount)+' + '+(PAY[s.payment_2_method]||'')+' '+money(s.payment_2_amount):''):'';
@@ -843,7 +849,9 @@ async function gastoNuevo(kind){
     const tot=monthRows.reduce((a,x)=>a+Number(x.amount),0),ofCat=cat?monthRows.filter(x=>x.category===cat):[];
     el.innerHTML=`<div><span>${fixed?'Fijos cargados en '+mName:'Gastos del día en '+mName}</span><b class="num">${money(tot)}</b></div>`+(cat?`<div><span>${esc(cat)}</span><b class="num">${money(ofCat.reduce((a,x)=>a+Number(x.amount),0))}</b><small>${ofCat.length?ofCat.length+' '+(ofCat.length===1?'vez':'veces'):'primera vez este mes'}</small></div>`:'');};
   const setCat=c=>{cat=c;paintCtx();const b=$('gx-catbtn');b.classList.toggle('on',!!c);b.querySelector('.ex-ico').innerHTML=c?catIcon(c):icon('list-checks');b.querySelector('b').textContent=c||'Elegir categoría';};
-  $('gx-catbtn').onclick=async()=>{const c=await pickCategory(kind,cat);if(c){setCat(c);UI().haptic(6);}};
+  // Peaje: es gasto lo que pagaste vos; si te lo devuelve la prestadora o lo paga el socio, se cobra desde el remito.
+  $('gx-catbtn').onclick=async()=>{const c=await pickCategory(kind,cat);if(c){setCat(c);UI().haptic(6);
+    if(c==='Peajes')toast('Cargá lo que pagaste. Si te lo devuelve la prestadora, marcalo en el remito para facturárselo.');}};
   // ── Fecha: Hoy / Ayer / otra ──
   const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().slice(0,2).join('/');
   const setDate=d=>{date=d;$('e-date').value=d;$('gx-date').querySelector('span').textContent=(fixed?'Pagado ':'')+dayTxt(d).toLowerCase().replace(/^./,c=>fixed?c:c.toUpperCase());};

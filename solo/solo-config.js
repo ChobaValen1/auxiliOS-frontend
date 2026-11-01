@@ -216,21 +216,42 @@ views.perfil=async function(){
     }finally{UI().setBusy(f,false);}});
 };
 
-/* ── Mi grúa: patente (sale en cada remito), marca, modelo y km ── */
+/* ── Mi grúa: datos (la patente sale en cada remito) y vencimientos con aviso ── */
+// Estado de cada vencimiento: lo usan Mi grúa, la fila de Más y los avisos de Inicio.
+const DUE=[['insurance_due','Seguro'],['vtv_due','VTV'],['permit_due','Habilitación']];
+function dueState(iso){if(!iso)return null;const t=new Date(isoDate(new Date())+'T00:00:00'),d=new Date(iso+'T00:00:00'),left=Math.round((d-t)/864e5);
+  return {left,k:left<0?'bad':left<=15?'wait':'ok',txt:left<0?`Vencido hace ${-left} día${left===-1?'':'s'}`:left===0?'Vence hoy':left<=15?`Vence en ${left} día${left===1?'':'s'}`:'Al día · '+dmy(iso)};}
+function serviceState(t){const next=Number(t?.next_service_km),km=Number(t?.km);if(!next)return null;if(!Number.isFinite(km))return {k:'ok',left:null,txt:'Próximo a los '+next.toLocaleString('es-AR')+' km'};
+  const left=Math.round(next-km);return {left,k:left<=0?'bad':left<=1000?'wait':'ok',txt:left<=0?`Service pasado por ${(-left).toLocaleString('es-AR')} km`:`Service en ${left.toLocaleString('es-AR')} km`};}
+// Lo más urgente de la grúa, para mostrar en una sola línea.
+function truckWarnings(t){if(!t)return [];const out=[];DUE.forEach(([k,l])=>{const st=dueState(t[k]);if(st&&st.k!=='ok')out.push({...st,what:l,key:k});});
+  const sv=serviceState(t);if(sv&&sv.k!=='ok')out.push({...sv,what:'Service',key:'service'});return out.sort((a,b)=>(a.k==='bad'?0:1)-(b.k==='bad'?0:1)||a.left-b.left);}
+window.SoloGrua={dueState,serviceState,truckWarnings,DUE};
 views.grua=async function(){
-  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Mi grúa</h1></div>
-    <p class="sub">La patente sale en el encabezado de cada remito.</p><div id="gr">${UI().SKELETON}</div>`,'mas');
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Mi grúa</h1></div><div id="gr">${UI().SKELETON}</div>`,'mas');
   $('back').onclick=()=>go('mas');
   const {data:t,error}=await C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
   const box=$('gr');if(!box)return;if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
-  box.innerHTML=`<form id="gr-f" class="card pf-form" novalidate>
-      <div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
-      <div class="grid2"><div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
-        <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div></div>
-      <div class="field"><label for="g-km">Km actuales</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div>
+  box.innerHTML=`<form id="gr-f" class="gr-form" novalidate>
+      <section class="set-group"><h2 class="set-label">Datos · la patente sale en cada remito</h2><div class="card gr-card">
+        <div class="grid2"><div class="field"><label for="g-plate">Patente</label><input id="g-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(t?.plate||'')}"></div>
+          <div class="field"><label for="g-km">Km actuales</label><input id="g-km" inputmode="numeric" placeholder="0" value="${t?.km!=null?Number(t.km):''}"></div></div>
+        <div class="grid2"><div class="field"><label for="g-brand">Marca</label><input id="g-brand" placeholder="Iveco" value="${esc(t?.brand||'')}"></div>
+          <div class="field"><label for="g-model">Modelo</label><input id="g-model" placeholder="Daily" value="${esc(t?.model||'')}"></div></div></div></section>
+      <section class="set-group"><h2 class="set-label">Vencimientos · te avisamos 15 días antes</h2><div class="set-card">
+        ${DUE.map(([k,l])=>`<label class="due-row" for="g-${k}"><span class="due-l"><b>${l}</b><small id="st-${k}"></small></span><input type="date" id="g-${k}" value="${esc(t?.[k]||'')}"></label>`).join('')}
+        <label class="due-row" for="g-next"><span class="due-l"><b>Próximo service</b><small id="st-service"></small></span><span class="due-km"><input id="g-next" inputmode="numeric" placeholder="km" value="${t?.next_service_km!=null?Number(t.next_service_km):''}"><i>km</i></span></label>
+      </div></section>
       <button class="btn pri block" type="submit">${icon('check')} Guardar</button></form>`;
+  const paint=()=>{const cur={km:$('g-km').value.trim()?num($('g-km').value):null,next_service_km:$('g-next').value.trim()?num($('g-next').value):null};
+    DUE.forEach(([k])=>{const st=dueState($('g-'+k).value),el=$('st-'+k);el.textContent=st?st.txt:'Sin fecha';el.className=st?'due-'+st.k:'';});
+    const sv=serviceState(cur),el=$('st-service');el.textContent=sv?sv.txt:'Sin cargar';el.className=sv?'due-'+sv.k:'';};
+  ['g-km','g-next',...DUE.map(([k])=>'g-'+k)].forEach(id=>{$(id).addEventListener('input',paint);$(id).addEventListener('change',paint);});paint();
   $('gr-f').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
-    try{const patch={plate:UI().plateFmt?UI().plateFmt($('g-plate').value):$('g-plate').value.trim().toUpperCase(),brand:$('g-brand').value.trim()||null,model:$('g-model').value.trim()||null,km:$('g-km').value.trim()?num($('g-km').value):null};
+    try{const km=$('g-km').value.trim()?num($('g-km').value):null,next=$('g-next').value.trim()?num($('g-next').value):null;
+      if(next!=null&&km!=null&&next<km-50000)return toast('Revisá el km del próximo service: es mucho menor que el actual.');
+      const patch={plate:UI().plateFmt?UI().plateFmt($('g-plate').value):$('g-plate').value.trim().toUpperCase(),brand:$('g-brand').value.trim()||null,model:$('g-model').value.trim()||null,km,next_service_km:next};
+      DUE.forEach(([k])=>{patch[k]=$('g-'+k).value||null;});
       const q=t?C.db.from('solo_trucks').update(patch).eq('id',t.id):C.db.from('solo_trucks').insert(patch);
       const {error}=await q;if(error)return toast(errText(error));UI().success();toast('Grúa guardada');go('mas');
     }finally{UI().setBusy(f,false);}});

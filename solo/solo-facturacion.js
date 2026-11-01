@@ -51,9 +51,9 @@ const minis=(g,label='A facturar')=>`<div class="mini"><span>${label}</span><b c
 
 /* ── Avisos para Inicio: pagos vencidos, que vencen pronto y remitos de meses anteriores sin facturar ── */
 async function alerts(){
-  const [{data:rows,error},{data:clients},{data:fixed}]=await Promise.all([
+  const [{data:rows,error},{data:clients},{data:fixed},{data:truck}]=await Promise.all([
     C.db.from('solo_services').select('*').eq('status','signed').is('paid_at',null),C.db.from('solo_clients').select('*'),
-    C.db.from('solo_expenses').select('*').eq('kind','fixed')]);
+    C.db.from('solo_expenses').select('*').eq('kind','fixed'),C.db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle()]);
   if(error)return [];
   const t=today(),soon=addDays(t,3),monthStart=isoDate(new Date(new Date().getFullYear(),new Date().getMonth(),1)),by={};
   (rows||[]).forEach(s=>{const c=(clients||[]).find(x=>x.id===s.client_id);if(!c||c.kind==='particular')return;
@@ -73,6 +73,10 @@ async function alerts(){
     if(!lastBy[x.category]||end>lastBy[x.category].end)lastBy[x.category]={x,end};});
   Object.values(lastBy).forEach(({x,end})=>{const left=-days(end);if(left>10||left<-20)return;
     out.push({k:left<0?'bad':'wait',rank:1.5,amount:Number(x.amount),go:'gastos-fijo',title:`Renová ${x.category.toLowerCase()}${x.notes?' · '+x.notes:''}`,sub:left<0?`Venció el ${dmy(end)}`:left===0?'Vence hoy':`Vence el ${dmy(end)} · en ${left} día${left===1?'':'s'}`});});
+  // Vencimientos de la grúa (seguro, VTV, habilitación) 15 días antes, y el service cuando faltan 1.000 km.
+  (window.SoloGrua?.truckWarnings(truck)||[]).forEach(w=>out.push({k:w.k,rank:w.k==='bad'?0.5:1.2,amount:0,go:'grua',
+    title:w.key==='service'?(w.k==='bad'?'Hacé el service de la grúa':'Se acerca el service de la grúa'):`${w.k==='bad'?'Venció':'Renová'} ${w.what==='Habilitación'?'la habilitación':w.what==='Seguro'?'el seguro':'la VTV'} de la grúa`,
+    sub:w.txt+(truck?.plate?' · '+truck.plate:'')}));
   return out.sort((a,b)=>a.rank-b.rank||b.amount-a.amount);
 }
 window.SoloAlerts={load:alerts,billOf};
