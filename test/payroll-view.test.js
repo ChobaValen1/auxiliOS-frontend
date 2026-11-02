@@ -75,3 +75,10 @@ test('servicios sin viaje: se pegan a la jornada del día y se avisa al aprobar 
   const os=fs.readFileSync('operator-services.js','utf8');assert.match(os,/if\(exception\)await warnJourneyMatch\(id\)/);assert.match(os,/service_journey_match_v1/);
   assert.match(fs.readFileSync('payroll-view.js','utf8'),/en un día sin jornada del chofer/);
 });
+test('CBU/CVU y alias del chofer: validación igual en la app y en la base, y van al Excel de transferencias',()=>{
+  const src=fs.readFileSync('sigma.js','utf8').match(/function _cbuValido\(cbu\) \{[\s\S]*?\n\}/)[0];const ctx={};vm.runInNewContext(src,ctx);
+  assert.equal(ctx._cbuValido('0170099220000012345678'),true);assert.equal(ctx._cbuValido('0170099220000012345679'),false);assert.equal(ctx._cbuValido('017009922000001234567'),false);
+  const m=fs.readFileSync('migrations/20261102220000_payroll_cbu_alias_v1.sql','utf8');assert.match(m,/w1 int\[\]:=array\[7,1,3,9,7,1,3\]/);assert.match(m,/alias_cbu ~ '\^\[a-z0-9\.-\]\{6,20\}\$'/);
+  assert.match(fs.readFileSync('Index.html','utf8'),/id="esq-cbu"/);assert.match(fs.readFileSync('payroll-export-v1.js','utf8'),/f\.cbu \|\| \(falta \? '— falta cargar —'/);
+  assert.match(fs.readFileSync('supabase.js','utf8'),/if \(cbu !== undefined\) payload\.cbu = cbu \|\| null;/);
+});

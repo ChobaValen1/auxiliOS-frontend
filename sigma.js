@@ -13191,6 +13191,8 @@ function _abrirEsquemaModal(driverId) {
   _esquemaEditDriverId = driverId;
   document.getElementById('esq-chofer').textContent = u.full_name + (u.legajo ? ' · #' + u.legajo : '');
   openModal('modal-esquema-edit');
+  document.getElementById('esq-cbu').value = u.settings?.cbu || '';
+  document.getElementById('esq-alias').value = u.settings?.alias_cbu || '';
   PayrollMatrix.setCommissionCatalog(_commissionCatalog);
   PayrollMatrix.open(u.settings?.compensation_matrix, {
     sueldo_basico: u.sueldo_basico, valor_km: u.valor_km,
@@ -13366,6 +13368,19 @@ async function _guardarEsquemaMasivo() {
   _cargarEsquemaTab();
 }
 
+// CBU/CVU: 22 dígitos con sus dos dígitos verificadores. Alias: 6 a 20 letras, números, punto o guion.
+function _cbuValido(cbu) {
+  if (!/^\d{22}$/.test(cbu)) return false;
+  const dv = (digits, weights) => (10 - digits.split('').reduce((s, d, i) => s + Number(d) * weights[i], 0) % 10) % 10;
+  return dv(cbu.slice(0, 7), [7,1,3,9,7,1,3]) === Number(cbu[7]) && dv(cbu.slice(8, 21), [3,9,7,1,3,9,7,1,3,9,7,1,3]) === Number(cbu[21]);
+}
+function _leerDatosPagoEsquema() {
+  const cbu = String(document.getElementById('esq-cbu')?.value || '').replace(/[\s.-]/g, '');
+  const alias = String(document.getElementById('esq-alias')?.value || '').trim().toLowerCase();
+  if (cbu && !_cbuValido(cbu)) throw new Error('El CBU/CVU no es válido: tienen que ser 22 números. Revisalo.');
+  if (alias && !/^[a-z0-9.-]{6,20}$/.test(alias)) throw new Error('El alias tiene que tener entre 6 y 20 letras, números, puntos o guiones.');
+  return { cbu: cbu || null, alias_cbu: alias || null };
+}
 async function _guardarEsquema() {
   const driverId = _esquemaEditDriverId;
   if (!driverId) { toast('Falta chofer', 'error'); return; }
@@ -13378,6 +13393,7 @@ async function _guardarEsquema() {
     bono_presentismo: Number(document.getElementById('esq-bono-pres').value)  || 0,
     compensation_matrix: matrix,
   };
+  try { Object.assign(payload, _leerDatosPagoEsquema()); } catch (error) { toast(error.message, 'error'); return; }
   if ([payload.sueldo_basico, payload.valor_km, payload.valor_servicio, payload.bono_presentismo].some(n => n < 0)) {
     toast('Los valores no pueden ser negativos', 'error'); return;
   }

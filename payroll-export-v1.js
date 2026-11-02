@@ -116,7 +116,7 @@
     const T = wb.addWorksheet('Transferencias', { views: [{ state: 'frozen', ySplit: 1 }] });
     T.columns = [{ header: 'Chofer', width: 24 }, { header: 'Legajo', width: 9 }, { header: 'DNI', width: 12 }, { header: 'CBU / CVU', width: 26 }, { header: 'Alias', width: 16 }, { header: 'Neto a transferir', width: 18 }, { header: 'Referencia', width: 22 }, { header: 'Estado', width: 12 }];
     th(T.getRow(1));
-    for (const f of filas) { if (num(f.neto) <= 0) continue; const row = T.addRow([f.full_name, f.legajo || '', f.dni || '', '— falta cargar —', '', num(f.neto), 'Sueldo ' + periodLabel(period), ESTADOS[f.estado] || f.estado]); row.getCell(6).numFmt = MONEY; row.getCell(4).font = { italic: true, color: { argb: GRAY } }; }
+    for (const f of filas) { if (num(f.neto) <= 0) continue; const falta = !f.cbu && !f.alias_cbu; const row = T.addRow([f.full_name, f.legajo || '', f.dni || '', f.cbu || (falta ? '— falta cargar —' : ''), f.alias_cbu || '', num(f.neto), 'Sueldo ' + periodLabel(period), ESTADOS[f.estado] || f.estado]); row.getCell(6).numFmt = MONEY; row.getCell(4).numFmt = '@'; if (falta) row.getCell(4).font = { italic: true, color: { argb: RED } }; }
     const tt = T.addRow(['TOTAL', '', '', '', '', { formula: `SUM(F2:F${T.rowCount})` }]); tt.font = { bold: true }; tt.getCell(6).numFmt = MONEY;
     // 5 · Jornadas: desglose por día (km, servicios, ventas, comisión y efectivo esperado)
     const J = wb.addWorksheet('Jornadas', { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -146,7 +146,9 @@
     const drivers = rev.filas.map(f => f.driver_id);
     const [lines, novs, desg, emp, dnis] = await Promise.all([linesFor(filas.map(f => f.liquidacion_id)), novedades(period), desgloseMes(period), company(),
       drivers.length ? _db.from('users').select('user_id,dni').in('user_id', drivers) : Promise.resolve({ data: [] })]);
-    const dni = new Map((dnis.data || []).map(u => [u.user_id, u.dni])); rev.filas.forEach(f => { f.dni = dni.get(f.driver_id) || ''; });
+    const bank = drivers.length ? await _db.from('payroll_settings').select('user_id,cbu,alias_cbu').in('user_id', drivers) : { data: [] };
+    const dni = new Map((dnis.data || []).map(u => [u.user_id, u.dni])), pay = new Map((bank.data || []).map(s => [s.user_id, s]));
+    rev.filas.forEach(f => { f.dni = dni.get(f.driver_id) || ''; f.cbu = pay.get(f.driver_id)?.cbu || ''; f.alias_cbu = pay.get(f.driver_id)?.alias_cbu || ''; });
     return { period, rev, lines, novs, desg, emp };
   }
   function saveBlob(blob, filename) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); if (typeof window.confirmarDescarga === 'function') window.confirmarDescarga(filename, 'Sueldos'); }
