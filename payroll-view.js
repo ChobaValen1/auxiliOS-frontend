@@ -13,10 +13,61 @@
     const label = document.getElementById('pv-month');
     if(label && input?.value) label.textContent = new Date(input.value+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
   }
+  // Novedades del mes (las carga Administración) y recibo por líneas (lo arma la base).
+  const NOV_TIPOS={bono:['Bono','haber'],horas_extra:['Horas extra','haber'],viatico:['Viático','haber'],adelanto:['Adelanto','descuento'],vale:['Vale','descuento'],descuento:['Descuento','descuento']};
+  function linesHtml(lines,total){
+    const part=(cat,title)=>{const list=lines.filter(x=>x.categoria===cat);if(!list.length)return'';return '<div class="pv-lines-group"><small class="pv-lines-title">'+title+'</small>'+list.map(x=>{const q=x.cantidad!=null&&x.valor!=null?fmt(x.cantidad)+' × '+cash(x.valor):x.detalle||'';return '<div class="pv-payline"><span>'+esc(x.concepto)+(x.origen==='novedad'?' <em class="pv-tag">novedad</em>':'')+(q?'<small class="pv-formula">'+esc(q)+'</small>':'')+'</span><b>'+(cat==='descuento'?'−':'')+cash(x.importe)+'</b></div>';}).join('')+'<div class="pv-payline pv-subtotal"><span>Total '+title.toLowerCase()+'</span><b>'+(cat==='descuento'?'−':'')+cash(list.reduce((n,x)=>n+num(x.importe),0))+'</b></div></div>';};
+    return part('haber','Haberes')+part('descuento','Descuentos')+'<div class="pv-payline pv-total"><b>Total a pagar</b><strong>'+cash(total)+'</strong></div>';
+  }
+  function novedadesHtml(list,editable,estado){
+    const rowsHtml=list.map(n=>{const [label,cat]=NOV_TIPOS[n.tipo]||[n.tipo,'haber'];return '<li><span><b>'+esc(n.concepto)+'</b><small>'+esc(label)+(n.fecha?' · '+date(n.fecha):'')+(n.nota?' · '+esc(n.nota):'')+'</small></span><b class="'+(cat==='descuento'?'pv-neg':'')+'">'+(cat==='descuento'?'−':'+')+cash(n.importe)+'</b>'+(editable?'<button class="pv-nov-del" type="button" data-nov="'+esc(n.novedad_id)+'" aria-label="Borrar '+esc(n.concepto)+'">×</button>':'')+'</li>';}).join('');
+    const form=editable?'<form class="pv-nov-form" id="pv-nov-form" hidden><select class="form-input" id="pv-nov-tipo" aria-label="Tipo">'+Object.entries(NOV_TIPOS).map(([k,[label,cat]])=>'<option value="'+k+'">'+label+(cat==='descuento'?' (resta)':' (suma)')+'</option>').join('')+'</select><input class="form-input" id="pv-nov-concepto" maxlength="80" placeholder="Concepto" aria-label="Concepto" required><input class="form-input" id="pv-nov-importe" inputmode="decimal" placeholder="Importe" aria-label="Importe" required><input class="form-input" id="pv-nov-fecha" type="date" aria-label="Fecha (opcional)"><div class="pv-nov-actions"><button class="btn btn-ghost" type="button" id="pv-nov-cancel">Cancelar</button><button class="btn btn-primary" type="submit" id="pv-nov-save">Guardar</button></div><p id="pv-nov-error" role="alert"></p></form><button class="btn btn-ghost pv-nov-add" type="button" id="pv-nov-add">+ Agregar novedad</button>':(estado!=='pendiente'?'<small class="pv-note">Recibo '+esc(estado)+': para cambiar novedades, volvelo a pendiente.</small>':'');
+    return '<div class="pv-novedades"><h4>Novedades del mes</h4>'+(list.length?'<ul class="pv-nov-list">'+rowsHtml+'</ul>':'<small class="pv-note">Sin adelantos, bonos ni descuentos cargados.</small>')+form+'</div>';
+  }
+  let extrasSeq=0;
+  function canEditNovedades(l){return l.estado==='pendiente'&&(typeof PERFIL_USUARIO!=='undefined'&&PERFIL_USUARIO?.roles?.name==='administracion');}
+  async function extras(l){
+    const seq=++extrasSeq,box=document.getElementById('pv-novedades');
+    try{
+      const [lr,nr]=await Promise.all([_db.from('payroll_lineas').select('orden,categoria,origen,concepto,detalle,cantidad,valor,importe').eq('liquidacion_id',l.liquidacion_id).order('orden'),
+        _db.from('payroll_novedades').select('novedad_id,tipo,concepto,importe,fecha,nota').eq('driver_id',l.driver_id).eq('periodo_yyyymm',l.periodo_yyyymm).order('created_at')]);
+      if(lr.error)throw lr.error;if(nr.error)throw nr.error;
+      if(seq!==extrasSeq||!document.getElementById('pv-lines'))return;
+      if((lr.data||[]).length)document.getElementById('pv-lines').innerHTML=linesHtml(lr.data,l.total);
+      l.novedades=nr.data||[];
+      const editable=canEditNovedades(l);
+      document.getElementById('pv-novedades').innerHTML=novedadesHtml(nr.data||[],editable,l.estado);
+      if(editable)bindNovedades(l);
+    }catch(e){if(seq===extrasSeq&&box?.isConnected)box.innerHTML='<p class="pv-review-warning">No se pudieron cargar las novedades. '+esc(e.message)+'</p>';}
+  }
+  async function refreshLiq(l){
+    const fresh=await _db.from('payroll_liquidaciones').select('total,ajuste_rendiciones,cash_snapshot').eq('liquidacion_id',l.liquidacion_id).single();
+    if(fresh.error)throw fresh.error;Object.assign(l,fresh.data);summary(l);stats();cards();
+  }
+  function bindNovedades(l){
+    const form=document.getElementById('pv-nov-form'),add=document.getElementById('pv-nov-add'),err=document.getElementById('pv-nov-error');
+    add.onclick=()=>{form.hidden=false;add.hidden=true;document.getElementById('pv-nov-concepto').focus();};
+    document.getElementById('pv-nov-tipo').onchange=e=>{const c=document.getElementById('pv-nov-concepto');if(!c.value)c.placeholder=NOV_TIPOS[e.target.value][0];};
+    document.getElementById('pv-nov-cancel').onclick=()=>{form.hidden=true;add.hidden=false;err.textContent='';};
+    form.onsubmit=async e=>{e.preventDefault();const save=document.getElementById('pv-nov-save');
+      try{const tipo=document.getElementById('pv-nov-tipo').value,concepto=document.getElementById('pv-nov-concepto').value.trim()||NOV_TIPOS[tipo][0],importe=monthlyAmount(document.getElementById('pv-nov-importe').value),fecha=document.getElementById('pv-nov-fecha').value||null;
+        if(!importe)throw new Error('Ingresá un importe mayor a cero.');
+        save.disabled=true;save.textContent='Guardando…';
+        const r=await _db.from('payroll_novedades').insert({driver_id:l.driver_id,periodo_yyyymm:l.periodo_yyyymm,tipo,concepto,importe,fecha});if(r.error)throw r.error;
+        await refreshLiq(l);if(typeof toast==='function')toast('Novedad cargada · total '+cash(l.total),'success');
+      }catch(x){err.textContent=x.message;save.disabled=false;save.textContent='Guardar';}};
+    document.querySelectorAll('.pv-nov-del').forEach(b=>b.onclick=async()=>{
+      if(!confirm('¿Borrar esta novedad?'))return;b.disabled=true;
+      try{const r=await _db.from('payroll_novedades').delete().eq('novedad_id',b.dataset.nov);if(r.error)throw r.error;await refreshLiq(l);}
+      catch(x){b.disabled=false;if(typeof toast==='function')toast(x.message,'error');}});
+  }
+  function stats(){
+    const sum=list=>list.reduce((n,l)=>n+num(l.total),0),el=document.getElementById('pl-mes-stats');
+    if(el)el.innerHTML=cell('Total del mes',cash(sum(rows)))+cell('Pendiente de pago',cash(sum(rows.filter(l=>l.estado!=='pagada'))))+cell('Pagado',cash(sum(rows.filter(l=>l.estado==='pagada'))));
+  }
   function render(data) {
     closeDetail(); rows = data; request++; active = null; monthLabel();
-    const sum = list => list.reduce((n,l)=>n+num(l.total),0);
-    document.getElementById('pl-mes-stats').innerHTML = cell('Total del mes',cash(sum(rows)))+cell('Pendiente de pago',cash(sum(rows.filter(l=>l.estado!=='pagada'))))+cell('Pagado',cash(sum(rows.filter(l=>l.estado==='pagada'))));
+    stats();
     document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><button class="btn btn-ghost" onclick="PayrollView.exportMonth('xlsx')">Exportar Excel</button><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select><button class="btn btn-primary pv-generate" onclick="_generarLiquidacionesMes()">Generar liquidaciones</button></div><div id="pv-cards"></div>`;
     const input=document.getElementById('pv-search'), select=document.getElementById('pv-filter');
     input.value=search;select.value=filter;
@@ -28,7 +79,8 @@
   }
   function summary(l){
     const values=[['Sueldo básico',l.sueldo_basico],[l.compensation_snapshot?.km_basis==='billed'?'Km facturados (histórico)':'Kilómetros de jornadas',l.adic_km],['Servicios',l.adic_serv],['Comisiones',l.commission_total],['Bonos mensuales',l.bonus_monthly],['Presentismo',l.bono_presentismo],...(num(l.bonos_objetivos)?[['Objetivos (histórico)',l.bonos_objetivos]]:[]),['Descuento por rendición',-num(l.ajuste_rendiciones)]];
-    document.getElementById('pv-summary').innerHTML=`<h3>${esc(l.chofer_nombre)}</h3><small>Importes guardados en la liquidación</small><div id="pv-commission-check"></div>${values.map(([label,v])=>`<div class="pv-payline"><span>${label}${formula(l,label)}</span><b>${cash(v)}</b></div>`).join('')}<div class="pv-payline pv-total"><b>Total a pagar</b><strong>${cash(l.total)}</strong></div>`;
+    document.getElementById('pv-summary').innerHTML=`<h3>${esc(l.chofer_nombre)}</h3><small>Importes guardados en la liquidación</small><div id="pv-commission-check"></div><div id="pv-lines">${values.map(([label,v])=>`<div class="pv-payline"><span>${label}${formula(l,label)}</span><b>${cash(v)}</b></div>`).join('')}<div class="pv-payline pv-total"><b>Total a pagar</b><strong>${cash(l.total)}</strong></div></div><div id="pv-novedades"></div>`;
+    if(l.liquidacion_id)extras(l);
     document.getElementById('pv-audit-button').onclick=()=>audit(l);
     const approve=document.getElementById('pv-approve'),pay=document.getElementById('pv-pay');
     if(approve)approve.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'aprobada');};
@@ -212,5 +264,5 @@
     }catch(e){toast(e.message,'error');}
   }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow,unlinkedServices};
+  window.PayrollView={linesHtml,novedadesHtml,NOV_TIPOS,openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow,unlinkedServices};
 })();

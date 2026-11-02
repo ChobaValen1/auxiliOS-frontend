@@ -12,3 +12,22 @@ test('cash review distinguishes unrendered cash and recognized expenses',()=>{co
 
 test('monthly amount preserves pending, zero and Argentine currency input',()=>{assert.equal(view.monthlyAmount(''),null);assert.equal(view.monthlyAmount('  '),null);assert.equal(view.monthlyAmount('0'),0);assert.equal(view.monthlyAmount('50.000,50'),50000.5);assert.equal(view.monthlyAmount('42000'),42000);for(const v of ['-1','50.00','NaN','1,234','1e3'])assert.throws(()=>view.monthlyAmount(v));});
 test('cash collected on a private service adds to the expected cash',()=>{const s=view.serviceData({remito_id:1},{tolls:[],excesses:[{customer_payment_method:'cash',total_amount:200}]},{},new Set(),{lines:[{method:'cash',amount:40000},{method:'transfer',amount:25000}]});assert.equal(s.privateCash,40000);assert.equal(s.cash,40200);});
+test('recibo por líneas: haberes, descuentos, novedades marcadas y total',()=>{
+  const html=view.linesHtml([{categoria:'haber',origen:'basico',concepto:'Sueldo básico',importe:300000},{categoria:'haber',origen:'km',concepto:'Kilómetros de jornadas',cantidad:534,valor:95,importe:50730},{categoria:'haber',origen:'novedad',concepto:'Bono <b>',importe:10000},{categoria:'descuento',origen:'novedad',concepto:'Adelanto',importe:5000}],355730);
+  assert.match(html,/Haberes/);assert.match(html,/Descuentos/);assert.match(html,/534 × \$95/);assert.match(html,/novedad/);assert.match(html,/Bono &lt;b&gt;/);assert.match(html,/−\$5\.000/);assert.match(html,/Total a pagar/);assert.match(html,/\$355\.730/);
+  assert.doesNotMatch(view.linesHtml([{categoria:'haber',origen:'basico',concepto:'Sueldo básico',importe:1}],1),/Descuentos/);
+});
+test('novedades: solo editables con recibo pendiente; signo por tipo',()=>{
+  const list=[{novedad_id:'a',tipo:'adelanto',concepto:'Adelanto',importe:5000,fecha:'2026-11-02'},{novedad_id:'b',tipo:'horas_extra',concepto:'Sábado',importe:8000}];
+  const ed=view.novedadesHtml(list,true,'pendiente');assert.match(ed,/−\$5\.000/);assert.match(ed,/\+\$8\.000/);assert.match(ed,/02\/11\/26/);assert.match(ed,/Agregar novedad/);assert.match(ed,/data-nov="a"/);
+  const ro=view.novedadesHtml(list,false,'aprobada');assert.doesNotMatch(ro,/Agregar novedad|data-nov/);assert.match(ro,/volvelo a pendiente/);
+  assert.match(view.novedadesHtml([],false,'pendiente'),/Sin adelantos/);
+  assert.equal(Object.values(view.NOV_TIPOS).filter(([,c])=>c==='descuento').length,3);
+});
+test('migración etapa 2: novedades suman al total guardado, líneas solo de lectura y recibo aprobado congelado',()=>{
+  const m=fs.readFileSync('migrations/20261102160000_payroll_lineas_novedades_v1.sql','utf8');
+  assert.match(m,/grant select on public\.payroll_lineas to authenticated;/);assert.doesNotMatch(m,/grant (insert|update|delete)[^;]*payroll_lineas/);
+  assert.match(m,/payroll_novedades_admin on public\.payroll_novedades for all to authenticated\s+using \(app_private\.current_auxilios_role\(\)='administracion'\)/);
+  assert.match(m,/\+app_private\.payroll_novedades_neto_v1\(new\.driver_id,new\.periodo_yyyymm\)/);
+  assert.match(m,/volvelo a pendiente para cambiar novedades/);assert.match(m,/'total',greatest\(0,v_bruto-v_ajuste\+v_nov\)/);
+});
