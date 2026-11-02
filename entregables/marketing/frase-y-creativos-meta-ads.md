@@ -1,6 +1,6 @@
 # AuxiliOS Solo · Frase de venta y creativos para Meta Ads
 
-Versión 2 · noviembre 2026 (frase centrada en el control de la grúa y la plata). Documento de trabajo: se completa con los resultados de cada prueba.
+Versión 2.1 · noviembre 2026 · los anuncios listos para cargar están en `anuncios-meta-solo-v1.md` (frase centrada en el control de la grúa y la plata). Documento de trabajo: se completa con los resultados de cada prueba.
 
 ---
 
@@ -28,7 +28,7 @@ Versión 2 · noviembre 2026 (frase centrada en el control de la grúa y la plat
 
 | Frase | Ángulo | Cuándo usarla |
 |---|---|---|
-| ¿Estás ganando o perdiendo plata con la grúa? | Plata | Gancho de video, la más fuerte |
+| Facturar mucho no es lo mismo que te quede mucho. | Plata | Gancho de video, la más fuerte |
 | Sabé cuánto te queda después del gasoil. | Gastos | Carrusel de números |
 | Sabé cuánto te debe cada prestadora. | Facturación | Anuncios de cobro |
 | Dejá de hacer cuentas en el cuaderno. | Orden | Cierre de video, imagen simple |
@@ -47,18 +47,18 @@ Los videos van en **9:16** (Reels/Historias), de 15 a 30 segundos, con subtítul
 
 ---
 
-### Ángulo P · ¿Ganás o perdés plata? (el principal)
+### Ángulo P · Lo que queda del mes (el principal)
 
-**Idea:** la pregunta que ningún gruero puede contestar con seguridad.
+**Idea:** cuánto deja la grúa después de los gastos, contado como situación y no como pregunta a la persona (regla de atributos personales de Meta).
 
 - **P1 · Video selfie o a cámara:** un gruero al lado de la grúa.
-  - **Gancho:** “¿Cuánta plata te quedó el mes pasado con la grúa? ¿Seguro?”
+  - **Gancho:** “Gasoil, cubiertas, seguro, cuota… y a fin de mes, ¿cuánto queda?”
   - **Texto:** Facturás, cargás gasoil, pagás cubiertas, seguro y la cuota… y a fin de mes no sabés si ganaste. Con AuxiliOS Solo anotás servicios y gastos en el celular y ves cuánto te queda. Probala gratis.
   - **Título:** El control de tu grúa, en una app
 - **P2 · Carrusel de 3 tarjetas (capturas):** “Facturé $ 1.474.000” → “Gasté $ 1.342.100” → “Me quedan $ 131.900”.
   - **Texto:** Facturar mucho no es ganar mucho. Mirá tus números de verdad.
   - **Título:** ¿Cuánto te queda después del gasoil?
-- **P3 · Imagen 4:5:** la pantalla de Inicio con “Me queda” resaltado y el texto “¿Vos sabés este número?”.
+- **P3 · Imagen 4:5:** la pantalla de Inicio con “Me queda” resaltado y el texto “El número que importa a fin de mes”.
 
 ### Ángulo Q · Todo en un lugar (control)
 
