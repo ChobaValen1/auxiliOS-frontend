@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap">
+<style>*{box-sizing:border-box;margin:0}body{width:1440px;height:960px;background:#0c0e12;color:#eef0f4;font:14px/1.4 'DM Sans';display:grid;grid-template-columns:220px 1fr;overflow:hidden}
+.side{background:#101318;border-right:1px solid #1e222b;padding:20px 16px}.side .b{font:400 28px 'Bebas Neue';letter-spacing:.04em;margin-bottom:24px}.side .b b{color:#f5a623;font-weight:400}
+.nav{display:grid;gap:4px}.nav div{padding:10px 12px;border-radius:10px;color:#9aa0ad}.nav .on{background:rgba(245,166,35,.14);color:#f5a623;font-weight:700}
+main{padding:22px 26px;display:grid;grid-template-rows:auto auto auto 1fr;gap:16px;min-width:0}
+.top{display:flex;align-items:center;gap:14px}.top h1{font-size:24px}.mes{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #262b36;border-radius:10px;font-weight:600}
+.steps{display:flex;gap:0;margin-left:auto}.st{display:flex;align-items:center;gap:8px;padding:8px 14px;color:#6b7180;font-weight:600;font-size:13px}.st i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;border:2px solid #3a3f4b}
+.st.done{color:#34c77b}.st.done i{background:#34c77b;border-color:#34c77b;color:#0c0e12}.st.cur{color:#f5a623}.st.cur i{border-color:#f5a623;background:rgba(245,166,35,.15)}.st+.st:before{content:"";width:26px;height:2px;background:#2a2f3a;margin-right:8px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.k{background:#14171d;border:1px solid #1f232c;border-radius:14px;padding:14px 16px}.k small{color:#8a90a0;font-size:12px;text-transform:uppercase;letter-spacing:.06em}.k b{display:block;font:500 24px 'DM Mono';margin-top:4px}
+.bar{display:flex;align-items:center;gap:10px}.chip{padding:7px 12px;border-radius:99px;border:1px solid #262b36;color:#b9beca;font-size:13px}.chip.on{background:#f5a623;color:#111;border-color:#f5a623;font-weight:700}.chip .n{opacity:.7;margin-left:4px}
+.btn{padding:10px 16px;border-radius:10px;font-weight:700;border:1px solid #262b36;color:#eef0f4;background:#14171d}.btn.pri{background:#f5a623;color:#111;border-color:#f5a623}
+.wrap{display:grid;grid-template-columns:1fr 420px;gap:16px;min-height:0}
+table{width:100%;border-collapse:collapse;background:#14171d;border:1px solid #1f232c;border-radius:14px;overflow:hidden}th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a90a0;padding:11px 12px;border-bottom:1px solid #1f232c;background:#12151a}
+td{padding:11px 12px;border-bottom:1px solid #1b1f27}td.n{text-align:right;font-family:'DM Mono'}tr.sel td{background:rgba(245,166,35,.08)}tr.sel td:first-child{box-shadow:inset 3px 0 0 #f5a623}
+.pill{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700}.ok{background:rgba(52,199,123,.14);color:#34c77b}.wa{background:rgba(245,166,35,.15);color:#f5a623}.bad{background:rgba(239,107,107,.14);color:#ef6b6b}.mu{background:#1e222b;color:#9aa0ad}
+.al{font-size:12px;color:#f5a623}.al.r{color:#ef6b6b}
+.slip{background:#14171d;border:1px solid #1f232c;border-radius:14px;padding:18px;display:grid;gap:12px;align-content:start}.slip h2{font-size:18px}.slip .sub{color:#8a90a0;font-size:13px}
+.sec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a90a0;margin-top:4px}.ln{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px dashed #232833}.ln span{color:#8a90a0;font-size:12px;font-family:'DM Mono'}.ln b{font-family:'DM Mono';font-weight:500}
+.ln.m b{color:#ef6b6b}.tot{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px;border-radius:12px;background:rgba(245,166,35,.1);border:1px solid #f5a623}.tot b{font:500 26px 'DM Mono';color:#f5a623}
+.nov{display:flex;gap:8px}.cmp{font-size:12px;color:#8a90a0}.tag{font-size:11px;color:#8a90a0;border:1px solid #2a2f3a;border-radius:6px;padding:1px 6px;margin-left:6px}</style></head><body>
+<aside class="side"><div class="b">AUXILI<b>OS</b></div><div class="nav"><div>Inicio</div><div>Operaciones</div><div>Remitos</div><div>Flota</div><div>Facturación</div><div class="on">Sueldos</div><div>Configuración</div></div></aside>
+<main>
+ <div class="top"><h1>Sueldos</h1><span class="mes">‹ Noviembre 2026 ›</span>
+  <div class="steps"><span class="st done"><i>✓</i>Calculado</span><span class="st cur"><i>2</i>En revisión</span><span class="st"><i>3</i>Aprobado</span><span class="st"><i>4</i>Pagado</span></div></div>
+ <div class="kpis"><div class="k"><small>Neto a pagar</small><b>$ 7.384.200</b></div><div class="k"><small>Haberes</small><b>$ 7.912.600</b></div><div class="k"><small>Descuentos</small><b style="color:#ef6b6b">$ 528.400</b></div><div class="k"><small>Choferes</small><b>8 <span style="font-size:14px;color:#8a90a0">· 6 listos</span></b></div><div class="k"><small>Vs. octubre</small><b style="color:#34c77b">+4,2 %</b></div></div>
+ <div class="bar"><span class="chip on">Todos <span class="n">8</span></span><span class="chip">Para revisar <span class="n">2</span></span><span class="chip">Listos <span class="n">6</span></span><span class="chip">Aprobados <span class="n">0</span></span><span style="margin-left:auto" class="btn">Recalcular</span><span class="btn">Exportar</span><span class="btn pri">Aprobar 6 listos</span></div>
+ <div class="wrap">
+  <table><thead><tr><th>Chofer</th><th>Días</th><th>Km</th><th>Serv.</th><th style="text-align:right">Haberes</th><th style="text-align:right">Desc.</th><th style="text-align:right">Neto</th><th>Estado</th></tr></thead><tbody>
+   <tr class="sel"><td><b>Martín Ruiz</b><div class="al">⚠ 2 jornadas sin cerrar</div></td><td>21</td><td>3.412</td><td>58</td><td class="n">1.205.400</td><td class="n">120.000</td><td class="n">1.085.400</td><td><span class="pill wa">Revisar</span></td></tr>
+   <tr><td><b>Lucas Benítez</b><div class="al r">⚠ +38 % vs. octubre</div></td><td>23</td><td>4.020</td><td>71</td><td class="n">1.402.300</td><td class="n">0</td><td class="n">1.402.300</td><td><span class="pill wa">Revisar</span></td></tr>
+   <tr><td><b>Diego Sosa</b></td><td>20</td><td>2.950</td><td>49</td><td class="n">980.100</td><td class="n">85.000</td><td class="n">895.100</td><td><span class="pill ok">Listo</span></td></tr>
+   <tr><td><b>Pablo Medina</b></td><td>22</td><td>3.180</td><td>55</td><td class="n">1.050.800</td><td class="n">60.000</td><td class="n">990.800</td><td><span class="pill ok">Listo</span></td></tr>
+   <tr><td><b>Nicolás Acosta</b></td><td>19</td><td>2.640</td><td>44</td><td class="n">890.000</td><td class="n">0</td><td class="n">890.000</td><td><span class="pill ok">Listo</span></td></tr>
+   <tr><td><b>Ezequiel Romero</b></td><td>21</td><td>2.870</td><td>47</td><td class="n">930.400</td><td class="n">143.400</td><td class="n">787.000</td><td><span class="pill ok">Listo</span></td></tr>
+   <tr><td><b>Gustavo Pereyra</b></td><td>18</td><td>2.300</td><td>39</td><td class="n">760.600</td><td class="n">120.000</td><td class="n">640.600</td><td><span class="pill ok">Listo</span></td></tr>
+   <tr><td><b>Hernán Vega</b></td><td>20</td><td>2.710</td><td>45</td><td class="n">693.000</td><td class="n">0</td><td class="n">693.000</td><td><span class="pill ok">Listo</span></td></tr>
+  </tbody></table>
+  <div class="slip"><div><h2>Martín Ruiz · Noviembre 2026</h2><div class="sub">Esquema: básico + km + servicios + presentismo</div></div>
+   <div class="sec">Haberes</div>
+   <div class="ln"><div>Sueldo básico</div><span></span><b>650.000</b></div>
+   <div class="ln"><div>Kilómetros <span class="tag">ver jornadas</span></div><span>3.412 × $ 85</span><b>290.020</b></div>
+   <div class="ln"><div>Servicios <span class="tag">ver servicios</span></div><span>58 × $ 3.200</span><b>185.600</b></div>
+   <div class="ln"><div>Presentismo</div><span>sin incidentes</span><b>60.000</b></div>
+   <div class="ln"><div>Bono · cubrió feriado <span class="tag">novedad</span></div><span></span><b>19.780</b></div>
+   <div class="sec">Descuentos</div>
+   <div class="ln m"><div>Adelanto del 12/11 <span class="tag">novedad</span></div><span></span><b>−100.000</b></div>
+   <div class="ln m"><div>Faltante de efectivo <span class="tag">rendición</span></div><span></span><b>−20.000</b></div>
+   <div class="tot"><span>Neto a pagar</span><b>$ 1.085.400</b></div>
+   <div class="cmp">Octubre: $ 1.041.200 · +4,2 %</div>
+   <div class="nov"><span class="btn">+ Novedad</span><span class="btn">Recibo PDF</span><span class="btn pri" style="margin-left:auto">Marcar listo</span></div></div>
+ </div></main></body></html>
