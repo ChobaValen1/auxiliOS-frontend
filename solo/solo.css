@@ -1,4 +1,4 @@
-/* AuxiliOS Solo · app de celular para el gruero que trabaja solo. Usa los tokens de AuxiliOS (oscuro y ámbar). */
+/* AuxiliOS · app de celular para el gruero que trabaja solo. Usa los tokens de AuxiliOS (oscuro y ámbar). */
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 input[type=checkbox]{accent-color:var(--ax-accent)}

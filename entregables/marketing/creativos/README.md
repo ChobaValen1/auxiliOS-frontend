@@ -1,4 +1,4 @@
-# Creativos · Anuncios de Meta de AuxiliOS Solo (prueba 1)
+# Creativos · Anuncios de Meta de AuxiliOS (prueba 1)
 
 Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Para verlos todos juntos, ordenados por TOFU / MOFU / BOFU, abrí `galeria.html`. El plan del embudo está en `../embudo-tofu-mofu-bofu.md`. Todas las pantallas usan **datos de ejemplo** y así lo aclaran.
 

@@ -1,4 +1,4 @@
-# AuxiliOS Solo · Arranque de la fanpage (Facebook e Instagram)
+# AuxiliOS · Arranque de la fanpage (Facebook e Instagram)
 
 Los primeros 15 días: 9 posteos para el feed (en Instagram arman una grilla de 3×3) y 3 Reels. Mezcla de **contenido útil** (lo que hace que te sigan), **comunidad** (que comenten) y **producto**. Las imágenes están en esta carpeta; las piezas reutilizadas, en `../creativos/`.
 
@@ -10,7 +10,7 @@ Los primeros 15 días: 9 posteos para el feed (en Instagram arman una grilla de 
 |---|---|
 | Foto de perfil | `perfil.jpg` (1080×1080, el logo) |
 | Portada de Facebook | `portada.jpg` (1640×624). En el celular Facebook recorta los costados: revisá que se lea la frase |
-| Nombre | AuxiliOS Solo |
+| Nombre | AuxiliOS |
 | Usuario | @auxiliossolo (o el que esté libre) |
 | Categoría | Aplicación / Software |
 | Botón de la página (Facebook) | **Registrarte** → `https://auxilios-demo.vercel.app/gruero?utm_source=facebook&utm_medium=perfil` |
@@ -24,7 +24,7 @@ Gratis en la etapa de prueba 👇
 Link de la bio: `https://auxilios-demo.vercel.app/gruero?utm_source=instagram&utm_medium=bio`
 
 **Descripción de Facebook:**
-> AuxiliOS Solo es la app para el gruero que trabaja solo. Hacé el remito con fotos y firma en el celular, anotá tus servicios por prestadora con la tarifa que se calcula sola, cargá tus gastos y mirá cuánto te queda en el mes. Funciona sin señal. Gratis en la etapa de prueba.
+> AuxiliOS es la app para el gruero que trabaja solo. Hacé el remito con fotos y firma en el celular, anotá tus servicios por prestadora con la tarifa que se calcula sola, cargá tus gastos y mirá cuánto te queda en el mes. Funciona sin señal. Gratis en la etapa de prueba.
 
 **Historias destacadas** (Instagram): *Cómo funciona* (subí el carrusel m1 en historias) · *Tips* (p2, p4, p7) · *Preguntas* (b2 de `../creativos/`).
 
@@ -51,11 +51,11 @@ Hashtags para todos (al final del texto o en el primer comentario):
 ## Textos
 
 ### Día 1 · Presentación (`p1-hola.jpg`)
-Hola 👋 Somos AuxiliOS Solo, una app hecha para el gruero que trabaja solo.
+Hola 👋 Somos AuxiliOS, una app hecha para el gruero que trabaja solo.
 
 Sabemos cómo es: el servicio lo hacés vos, pero después vienen los remitos, las cuentas con cada prestadora, los gastos y los vencimientos de la grúa. Todo en papel, en un cuaderno o en la cabeza.
 
-Con AuxiliOS Solo tenés todo en el celular:
+Con AuxiliOS tenés todo en el celular:
 ✅ Remitos con fotos y firma del socio
 ✅ Servicios por prestadora, con la tarifa que se calcula sola
 ✅ Gastos y lo que te queda en el mes
@@ -79,7 +79,7 @@ Guardá este posteo 📌 y mandáselo a un colega que siempre se olvida de las f
 Mismo trabajo. Otro fin de mes. 🛻
 
 Sin la app: remitos de papel que se pierden, cuentas en un cuaderno y, a fin de mes, la calculadora.
-Con AuxiliOS Solo: remito con fotos y firma en el celular, cuánto facturarle a cada prestadora y lo que te queda del mes, sin hacer cuentas.
+Con AuxiliOS: remito con fotos y firma en el celular, cuánto facturarle a cada prestadora y lo que te queda del mes, sin hacer cuentas.
 
 ¿De qué lado estás hoy? Contanos 👇
 
@@ -113,10 +113,10 @@ Un servicio de $ 126.000 parece buenísimo. Pero sacale el gasoil, los peajes y 
 
 *(Números de ejemplo: los tuyos pueden ser distintos.)*
 
-¿Vos sabés cuánto te deja cada servicio? Con AuxiliOS Solo cargás servicios y gastos y la app te dice lo que te queda en el mes.
+¿Vos sabés cuánto te deja cada servicio? Con AuxiliOS cargás servicios y gastos y la app te dice lo que te queda en el mes.
 
 ### Día 8 · Carrusel: cómo funciona (`m1-como-funciona-1…4-4x5.jpg`)
-Así funciona AuxiliOS Solo, en 4 pasos 👉
+Así funciona AuxiliOS, en 4 pasos 👉
 
 1. Cargás el servicio: el precio sale solo con la tarifa de tu prestadora.
 2. Sacás las fotos y el socio firma en tu celular.
@@ -129,7 +129,7 @@ Gratis en la etapa de prueba, sin tarjeta. Link en la bio.
 El mismo servicio, dos formas de hacerlo. ¿Cuál es la tuya? 👀
 
 Con papel: lo completás a mano, queda en la guantera y si se pierde, no cobrás.
-Con AuxiliOS Solo: fotos, firma en el celular y el remito al socio por WhatsApp. Queda guardado.
+Con AuxiliOS: fotos, firma en el celular y el remito al socio por WhatsApp. Queda guardado.
 
 ### Día 10 · Checklist (`p4-checklist-grua.jpg`)
 ✅ Checklist: lo que no se te puede vencer.
@@ -141,7 +141,7 @@ Con AuxiliOS Solo: fotos, firma en el celular y el remito al socio por WhatsApp.
 □ Cubiertas (y la de auxilio inflada)
 □ Matafuego cargado
 
-Guardalo 📌 y revisalo una vez por mes. En AuxiliOS Solo cargás las fechas una vez y te avisamos 15 días antes.
+Guardalo 📌 y revisalo una vez por mes. En AuxiliOS cargás las fechas una vez y te avisamos 15 días antes.
 
 ### Día 12 · Tip: remito completo (`p7-remito-completo.jpg`)
 📄 Qué tiene que tener un remito completo:
@@ -160,12 +160,12 @@ Facturar mucho no es lo mismo que te quede mucho. 📉📈
 
 Esto facturaste. Esto se fue. Esto te quedó. Ahora lo sabés.
 
-*(Datos de ejemplo.)* Probá AuxiliOS Solo gratis: link en la bio.
+*(Datos de ejemplo.)* Probá AuxiliOS gratis: link en la bio.
 
 ### Día 14 · Gruero fundador (`a10-fundador-4x5.jpg`)
 🛻 Buscamos grueros fundadores.
 
-Estamos armando AuxiliOS Solo con grueros que laburan solos. Si te sumás ahora:
+Estamos armando AuxiliOS con grueros que laburan solos. Si te sumás ahora:
 ✅ La usás gratis durante la etapa de prueba
 ✅ Sin tarjeta
 ✅ Nos contás qué te falta y lo tenemos en cuenta para lo que sigue

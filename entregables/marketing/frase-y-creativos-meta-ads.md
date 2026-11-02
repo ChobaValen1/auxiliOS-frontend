@@ -1,4 +1,4 @@
-# AuxiliOS Solo · Frase de venta y creativos para Meta Ads
+# AuxiliOS · Frase de venta y creativos para Meta Ads
 
 Versión 2.1 · noviembre 2026 · los anuncios listos para cargar están en `anuncios-meta-solo-v1.md` (frase centrada en el control de la grúa y la plata). Documento de trabajo: se completa con los resultados de cada prueba.
 
@@ -53,7 +53,7 @@ Los videos van en **9:16** (Reels/Historias), de 15 a 30 segundos, con subtítul
 
 - **P1 · Video selfie o a cámara:** un gruero al lado de la grúa.
   - **Gancho:** “Gasoil, cubiertas, seguro, cuota… y a fin de mes, ¿cuánto queda?”
-  - **Texto:** Facturás, cargás gasoil, pagás cubiertas, seguro y la cuota… y a fin de mes no sabés si ganaste. Con AuxiliOS Solo anotás servicios y gastos en el celular y ves cuánto te queda. Probala gratis.
+  - **Texto:** Facturás, cargás gasoil, pagás cubiertas, seguro y la cuota… y a fin de mes no sabés si ganaste. Con AuxiliOS anotás servicios y gastos en el celular y ves cuánto te queda. Probala gratis.
   - **Título:** El control de tu grúa, en una app
 - **P2 · Carrusel de 3 tarjetas (capturas):** “Facturé $ 1.474.000” → “Gasté $ 1.342.100” → “Me quedan $ 131.900”.
   - **Texto:** Facturar mucho no es ganar mucho. Mirá tus números de verdad.
@@ -75,7 +75,7 @@ Los videos van en **9:16** (Reels/Historias), de 15 a 30 segundos, con subtítul
 
 - **A1 · Video (antes y después):** talonario mojado arriba del tablero → corte → el mismo gruero firmando en el celular.
   - **Gancho:** “¿Cuántos remitos perdiste este año?”
-  - **Texto:** Se moja, se rompe, queda en la guantera… y sin remito no cobrás. Con AuxiliOS Solo el remito queda en el celular, con fotos y la firma del socio. Probala gratis.
+  - **Texto:** Se moja, se rompe, queda en la guantera… y sin remito no cobrás. Con AuxiliOS el remito queda en el celular, con fotos y la firma del socio. Probala gratis.
   - **Título:** El remito, siempre a mano
 - **A2 · Imagen 4:5:** foto de un talonario arrugado con el texto “Esto no es un sistema”.
   - **Título:** Dejá el papel en la guantera
@@ -154,7 +154,7 @@ En cuanto un gruero real la use una semana: video selfie de 20 segundos contando
 
 **Antes de prender:**
 
-1. Fanpage de Facebook e Instagram de AuxiliOS Solo, con logo y 3 o 4 publicaciones (para que no parezca vacía).
+1. Fanpage de Facebook e Instagram de AuxiliOS, con logo y 3 o 4 publicaciones (para que no parezca vacía).
 2. Administrador comercial de Meta, cuenta publicitaria y **píxel**. Pasame el número del píxel: lo cargo en Vercel (`AUXILIOS_META_PIXEL_ID`) y empieza a medir visitas, clics en “Probala gratis” y registros (`CompleteRegistration`).
 3. **Dominio propio** (por ejemplo, `auxiliossolo.com.ar`). Meta pide verificar el dominio para medir bien. Una dirección `*.vercel.app` no se puede verificar como propia. El dominio también sirve para los mails con Resend.
 

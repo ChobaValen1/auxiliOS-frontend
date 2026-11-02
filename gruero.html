@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0c0e12">
-<title>AuxiliOS Solo · El control de tu grúa en una app</title>
+<title>AuxiliOS · El control de tu grúa en una app</title>
 <meta name="description" content="Servicios por prestadora, gastos, remitos digitales y lo que facturaste. Sabé si estás ganando o perdiendo plata con tu grúa. Gratis en la etapa de prueba.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="El control de tu grúa, en una app.">
@@ -15,9 +15,9 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/ui/tokens.css?v=solo-v626-20261102">
+<link rel="stylesheet" href="/ui/tokens.css?v=solo-v627-20261102">
 <style>
-/* Página de presentación de AuxiliOS Solo (a donde llegan los anuncios). Pensada primero para el celular. */
+/* Página de presentación de AuxiliOS (a donde llegan los anuncios). Pensada primero para el celular. */
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
@@ -140,8 +140,8 @@ footer a{color:var(--ax-text-2)}
   footer{padding-bottom:28px}
 }
 </style>
-<script src="/runtime-config.js?v=solo-v626-20261102" defer></script>
-<script src="/ui/meta-pixel.js?v=solo-v626-20261102" defer></script>
+<script src="/runtime-config.js?v=solo-v627-20261102" defer></script>
+<script src="/ui/meta-pixel.js?v=solo-v627-20261102" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -159,7 +159,7 @@ footer a{color:var(--ax-text-2)}
 </svg>
 
 <header class="nav"><div class="wrap">
-  <a class="brand" href="#top" aria-label="AuxiliOS Solo">AUXILI<b>OS</b> <span>SOLO</span></a>
+  <a class="brand" href="#top" aria-label="AuxiliOS">AUXILI<b>OS</b></a>
   <a class="btn ghost sm" href="/solo.html" data-cta="nav">Entrar</a>
 </div></header>
 
@@ -180,7 +180,7 @@ footer a{color:var(--ax-text-2)}
       </ul>
     </div>
     <div class="hero-phone">
-      <div class="phone"><img src="/assets/solo-landing/inicio.jpg" width="390" height="844" alt="Inicio de AuxiliOS Solo: lo que facturaste, lo que gastaste y lo que te queda en el mes" fetchpriority="high"></div>
+      <div class="phone"><img src="/assets/solo-landing/inicio.jpg" width="390" height="844" alt="Inicio de AuxiliOS: lo que facturaste, lo que gastaste y lo que te queda en el mes" fetchpriority="high"></div>
       <div class="badge-float r"><svg><use href="#i-money"/></svg>Me queda $ 131.900 este mes</div>
       <div class="badge-float"><svg><use href="#i-check"/></svg>12 servicios · 2 prestadoras</div>
     </div>
@@ -338,7 +338,7 @@ footer a{color:var(--ax-text-2)}
 </main>
 
 <footer><div class="wrap">
-  <span>AuxiliOS Solo · Hecho en Argentina</span>
+  <span>AuxiliOS · Hecho en Argentina</span>
   <span><a href="/terminos-solo.html">Términos y privacidad</a></span>
 </div></footer>
 
@@ -363,7 +363,7 @@ footer a{color:var(--ax-text-2)}
     var wa=String(RT.supportWhatsapp||'').replace(/\D/g,'');
     document.querySelectorAll('[data-wa]').forEach(function(a){
       if(!wa){a.hidden=true;a.style.display='none';return;}
-      a.href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hola, vi AuxiliOS Solo y quiero saber más.');a.target='_blank';a.rel='noopener';
+      a.href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hola, vi AuxiliOS y quiero saber más.');a.target='_blank';a.rel='noopener';
       a.addEventListener('click',function(){if(P)P.track('Contact',{content_category:a.dataset.wa});});});
     // «Lo que viene»: cada toque suma un voto en la base (una vez por función y por celular), con la campaña de la que vino.
     var VK='ax-votos-v1',voted={};try{voted=JSON.parse(localStorage.getItem(VK)||'{}')||{};}catch(e){}

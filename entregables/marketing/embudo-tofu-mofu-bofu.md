@@ -1,4 +1,4 @@
-# AuxiliOS Solo · Embudo de anuncios (TOFU → MOFU → BOFU)
+# AuxiliOS · Embudo de anuncios (TOFU → MOFU → BOFU)
 
 Cómo se ordenan los creativos y a quién se le muestra cada uno. Los textos de cada anuncio están en `anuncios-meta-solo-v1.md` y las piezas en `creativos/` (ver `creativos/galeria.html`).
 
@@ -47,13 +47,13 @@ Cada etapa **excluye** a la siguiente. Los que ya se registraron se excluyen de 
 
 **t1 · 3:00 AM (TOFU)**
 - Ganchos: “3:00 AM. Servicio terminado. ¿Y el remito?” · “Sin remito, no se cobra.” · “El remito mojado no lo cobra nadie.”
-- Texto: *3:00 AM, banquina y lluvia. Terminaste el servicio y el remito quedó en la guantera, mojado. Hay otra forma: con AuxiliOS Solo hacés el remito en el celular, con fotos y la firma del socio, y se lo mandás por WhatsApp. Gratis en la etapa de prueba.*
+- Texto: *3:00 AM, banquina y lluvia. Terminaste el servicio y el remito quedó en la guantera, mojado. Hay otra forma: con AuxiliOS hacés el remito en el celular, con fotos y la firma del socio, y se lo mandás por WhatsApp. Gratis en la etapa de prueba.*
 - Título: Remito digital para grueros · Botón: *Más información* (en TOFU, clics más baratos para llenar los públicos de MOFU y BOFU)
 
 **m1 · Cómo funciona en 4 pasos (MOFU)**
 - Gancho: “Así funciona, en 4 pasos.”
 - Texto: *1) Cargás el servicio y el precio sale solo con la tarifa de tu prestadora. 2) Sacás las fotos y el socio firma en tu celular. 3) Se lo mandás por WhatsApp con un toque. 4) Ves lo que facturaste, lo que gastaste y lo que te queda. Gratis en la etapa de prueba, sin tarjeta.*
-- Título: Así funciona AuxiliOS Solo · Botón: *Registrarte*
+- Título: Así funciona AuxiliOS · Botón: *Registrarte*
 
 **b1 · Empezá en 5 minutos (BOFU)**
 - Gancho: “Empezá en 5 minutos.”
@@ -67,7 +67,7 @@ Cada etapa **excluye** a la siguiente. Los que ya se registraron se excluyen de 
 
 **b3 · Te quedó pendiente (BOFU, remarketing)**
 - Gancho: “Te quedó pendiente. Es un minuto.”
-- Texto: *Tu cuenta gratis de AuxiliOS Solo te espera. Entrá con Google y en un minuto tenés tu grúa cargada. Sin tarjeta.*
+- Texto: *Tu cuenta gratis de AuxiliOS te espera. Entrá con Google y en un minuto tenés tu grúa cargada. Sin tarjeta.*
 - Título: Terminá tu cuenta · Botón: *Registrarte*
 
 **b4 · Te ayudamos a arrancar (BOFU)**

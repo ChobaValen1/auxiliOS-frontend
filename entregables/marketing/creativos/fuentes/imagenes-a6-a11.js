@@ -24,7 +24,7 @@ h1{font:400 112px/.92 'Bebas Neue';letter-spacing:.01em}h1 em{font-style:normal;
 .nb::before{content:"";position:absolute;left:42px;top:0;bottom:0;width:3px;background:#e7a0a0}.nb .q{color:#c0392b}
 .tk{background:#f7f5ef;color:#333;font:500 20px/1.5 'DM Mono';padding:18px 20px;box-shadow:0 16px 40px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% 94%,90% 100%,80% 94%,70% 100%,60% 94%,50% 100%,40% 94%,30% 100%,20% 94%,10% 100%,0 94%)}
 </style>`;
-const brand=`<div class="brand">AUXILI<b>OS</b><span>SOLO</span></div>`;
+const brand=`<div class="brand">AUXILI<b>OS</b></div>`;
 const page=(w,h,body)=>`<!doctype html><html><head><meta charset="utf-8">${css}</head><body style="width:${w}px;height:${h}px"><div class="glow"></div>${body}</body></html>`;
 const head=(f,title,sub)=>f==='s'?`<div style="position:absolute;left:80px;right:80px;top:250px">${brand}<h1 style="margin-top:36px;font-size:124px">${title}</h1>${sub?`<p class="sub" style="margin-top:28px">${sub}</p>`:''}</div>`
   :`<div style="position:absolute;left:70px;right:70px;top:64px">${brand}<h1 style="margin-top:34px">${title}</h1>${sub?`<p class="sub" style="margin-top:22px;max-width:900px">${sub}</p>`:''}</div>`;

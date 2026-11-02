@@ -1,4 +1,4 @@
-// AuxiliOS Solo · capa de UI: validación de formatos, máscaras, estados de carga y motion.
+// AuxiliOS · capa de UI: validación de formatos, máscaras, estados de carga y motion.
 // Se aplica sola sobre las pantallas (por id de campo), así cada pantalla no repite estas reglas.
 (function(){
 'use strict';

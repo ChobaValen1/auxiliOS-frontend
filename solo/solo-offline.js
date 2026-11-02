@@ -1,4 +1,4 @@
-// AuxiliOS Solo · modo sin señal.
+// AuxiliOS · modo sin señal.
 // Toda consulta a la base pasa por acá (fetch propio de supabase-js):
 //  · con señal: va a la base y la respuesta se guarda en una copia local (IndexedDB), tabla por tabla;
 //  · sin señal: las lecturas salen de esa copia y lo que se carga (altas, cambios, borrados, fotos y firma)

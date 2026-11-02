@@ -24,7 +24,7 @@ h1{font:400 112px/.92 'Bebas Neue';letter-spacing:.01em}h1 em{font-style:normal;
 .nb::before{content:"";position:absolute;left:42px;top:0;bottom:0;width:3px;background:#e7a0a0}.nb .q{color:#c0392b}
 .tk{background:#f7f5ef;color:#333;font:500 20px/1.5 'DM Mono';padding:18px 20px;box-shadow:0 16px 40px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% 94%,90% 100%,80% 94%,70% 100%,60% 94%,50% 100%,40% 94%,30% 100%,20% 94%,10% 100%,0 94%)}
 </style>`;
-const brand=`<div class="brand">AUXILI<b>OS</b><span>SOLO</span></div>`;
+const brand=`<div class="brand">AUXILI<b>OS</b></div>`;
 const page=(w,h,body)=>`<!doctype html><html><head><meta charset="utf-8">${css}</head><body style="width:${w}px;height:${h}px"><div class="glow"></div>${body}</body></html>`;
 const head=(f,title,sub)=>f==='s'?`<div style="position:absolute;left:80px;right:80px;top:250px">${brand}<h1 style="margin-top:36px;font-size:124px">${title}</h1>${sub?`<p class="sub" style="margin-top:28px">${sub}</p>`:''}</div>`
   :`<div style="position:absolute;left:70px;right:70px;top:64px">${brand}<h1 style="margin-top:34px">${title}</h1>${sub?`<p class="sub" style="margin-top:22px;max-width:900px">${sub}</p>`:''}</div>`;
@@ -34,7 +34,7 @@ const card=(inner,st='')=>`<div style="background:#181c24;border:2px solid #262b
 const chk=(t,d)=>`<div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:22px"><div style="flex:none;width:52px;height:52px;border-radius:14px;border:3px solid #f5a623;display:grid;place-items:center;color:#f5a623;font:700 30px 'DM Sans'">✓</div><div><div style="font:700 36px 'DM Sans'">${t}</div>${d?`<div style="font-size:28px;color:#9aa0ad;margin-top:4px">${d}</div>`:''}</div></div>`;
 const foot=`<div style="position:absolute;left:70px;right:70px;bottom:46px;display:flex;justify-content:space-between;align-items:center">${brand}<span style="font:700 26px 'DM Sans';color:#8a90a0">Guardalo 📌</span></div>`;
 const C={
- 'p1-hola':()=>`<div style="position:absolute;left:70px;right:70px;top:80px"><img src="${IMG.logo}" style="width:150px;border-radius:34px;box-shadow:0 16px 40px rgba(0,0,0,.5)"><h1 style="margin-top:40px;font-size:128px">Hola, somos <em>AuxiliOS Solo.</em></h1>
+ 'p1-hola':()=>`<div style="position:absolute;left:70px;right:70px;top:80px"><img src="${IMG.logo}" style="width:150px;border-radius:34px;box-shadow:0 16px 40px rgba(0,0,0,.5)"><h1 style="margin-top:40px;font-size:128px">Hola, somos <em>AuxiliOS.</em></h1>
    <p class="sub" style="margin-top:26px;max-width:560px">La app para el gruero que trabaja solo: servicios por prestadora, gastos, remitos con fotos y firma, y lo que te queda del mes.</p></div>
    <div class="phone" style="position:absolute;right:60px;bottom:-200px;width:390px;transform:rotate(-4deg)"><img src="${IMG.inicio}"></div>
    <div style="position:absolute;left:70px;bottom:80px;display:grid;gap:14px">${['Remitos digitales','Servicios por prestadora','Gastos y ganancia','Tu grúa al día'].map(x=>`<span class="pill" style="background:#181c24;border:2px solid #262b36;box-shadow:none;font-size:28px">✓ ${x}</span>`).join('')}</div>`,

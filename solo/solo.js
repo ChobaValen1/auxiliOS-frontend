@@ -1,4 +1,4 @@
-// AuxiliOS Solo · registro e ingreso, alta inicial, Inicio con los tres números y Prestadoras con sus tarifas.
+// AuxiliOS · registro e ingreso, alta inicial, Inicio con los tres números y Prestadoras con sus tarifas.
 // Todo se guarda en las tablas solo_* de la base de la instalación; cada gruero ve solo lo suyo (reglas de la base).
 (function(){
 'use strict';
@@ -101,13 +101,13 @@ function renderAuth(mode){
   // En compu, a la izquierda va qué es la app; en el celular solo el formulario.
   screen(`<div class="view auth auth2">
     <aside class="auth-aside" aria-hidden="true">
-      <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+      <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">Auxili<b>OS</b></div></div>
       <h2>El control de tu grúa, <em>en una app.</em></h2>
       <ul class="auth-points"><li>${icon('check')}Servicios por prestadora, con la tarifa que se calcula sola</li><li>${icon('check')}Gastos y lo que te queda en el mes</li><li>${icon('check')}Remitos con fotos y firma, por WhatsApp</li></ul>
       <div class="auth-shot"><img src="/assets/solo-landing/inicio.jpg" alt="" width="390" height="844" loading="lazy"></div>
     </aside>
     <div class="auth-main">
-    <div class="auth-brand auth-brand-m"><img src="/assets/icons/icon-192.png" alt="" width="44" height="44"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+    <div class="auth-brand auth-brand-m"><img src="/assets/icons/icon-192.png" alt="" width="44" height="44"><div class="brand">Auxili<b>OS</b></div></div>
     ${reset?'':`<div class="auth-tabs" role="tablist" aria-label="Entrar o crear cuenta">
       <button type="button" role="tab" aria-selected="${!signup}" ${signup?'id="a-switch"':'tabindex="-1"'}>Entrar</button>
       <button type="button" role="tab" aria-selected="${signup}" ${signup?'tabindex="-1"':'id="a-switch"'}>Crear cuenta</button></div>`}
@@ -165,10 +165,10 @@ function renderAuth(mode){
 function renderCheckEmail(email,kind,sendNow){
   const reset=kind==='reset';
   screen(`<div class="view auth">
-    <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+    <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">Auxili<b>OS</b></div></div>
     <div class="mail-ico" aria-hidden="true">${icon('circle-check')}</div>
     <h1>Revisá tu email</h1>
-    <p class="sub">Te mandamos un enlace a <b>${esc(email)}</b>. ${reset?'Tocalo para elegir una contraseña nueva.':'Tocalo para confirmar tu cuenta: se abre AuxiliOS Solo y ya entrás.'}</p>
+    <p class="sub">Te mandamos un enlace a <b>${esc(email)}</b>. ${reset?'Tocalo para elegir una contraseña nueva.':'Tocalo para confirmar tu cuenta: se abre AuxiliOS y ya entrás.'}</p>
     <p class="hint">¿No te llegó? Mirá en Spam o Promociones. Puede tardar un par de minutos.</p>
     <p id="a-err" class="err" hidden></p>
     <button class="btn block" type="button" id="resend">Reenviar email</button>
@@ -187,7 +187,7 @@ function renderCheckEmail(email,kind,sendNow){
 // Viene del enlace «nueva contraseña»: la sesión ya está abierta, falta elegir la clave.
 function renderNewPassword(){
   screen(`<div class="view auth">
-    <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+    <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">Auxili<b>OS</b></div></div>
     <h1>Elegí tu contraseña nueva</h1><p class="sub">${esc(user?.email||'')}</p>
     <form id="auth" class="card" novalidate>${passField('a-pass','Contraseña nueva','new-password','Al menos 6 caracteres.')}
       <p id="a-err" class="err" hidden></p><button class="btn pri block" type="submit">Guardar y entrar</button></form>
@@ -220,7 +220,7 @@ function renderOnboarding(step){
       <div class="frm"><div class="field"><label for="o-client">Prestadora</label><input id="o-client" placeholder="Asistencia Ruta S.A."></div>
         <div class="field"><label for="o-days">Te paga a</label><span class="fx post"><input id="o-days" inputmode="numeric" value="30"><i>días</i></span></div></div>`
   }[step];
-  screen(`<form id="onb" class="view" novalidate><div class="brand">AuxiliOS <b>Solo</b></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" hidden></p></div>
+  screen(`<form id="onb" class="view" novalidate><div class="brand">Auxili<b>OS</b></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" hidden></p></div>
     <button class="btn pri block" type="submit">${step<3?'Seguir':'Empezar'}</button>
     ${step===3?'<button class="btn ghost block" type="button" id="o-skip">Lo cargo después</button>':''}</form>`);
   const er=document.getElementById('o-err'),fail=x=>{er.textContent=errText(x);er.hidden=false;};
@@ -280,7 +280,7 @@ async function renderInicio(){
   // Si tiene la cuenta creada y nunca vio el aviso (por ejemplo, la creó en la compu), se le ofrece instalar.
   window.SoloPWA?.offer(1800);
   const first=(profile.full_name||'').split(' ')[0];
-  shell(`<div class="top"><div class="brand">AuxiliOS <b>Solo</b></div><span class="sub">Hola, ${esc(first)}</span></div>
+  shell(`<div class="top"><div class="brand">Auxili<b>OS</b></div><span class="sub">Hola, ${esc(first)}</span></div>
     <div class="month"><button class="btn ghost icon-btn" type="button" id="m-prev" aria-label="Mes anterior">${icon('chevron-left')}</button><h1 id="m-name">${esc(monthName(month))}</h1><button class="btn ghost icon-btn" type="button" id="m-next" aria-label="Mes siguiente">${icon('chevron-right')}</button></div>
     <div id="alerts" class="alerts" aria-live="polite"></div>
     <div id="sum" class="stack" aria-busy="true"><i class="sk kpi-sk"></i><i class="sk kpi-sk tall"></i><i class="sk kpi-sk"></i></div>
@@ -332,7 +332,7 @@ async function renderMas(){
     ${group('Configuración',[row('clientes','building-2','Prestadoras y tarifas',{id:'v-cli'}),row('tipos-mas','list-checks','Tipos de servicio',{id:'v-tip'}),row('grua','truck','Mi grúa',{id:'v-gru'})])}
     ${group('Ayuda',[row('','life-buoy','Ayuda y soporte',{id:'help'}),row('','file-text','Términos y privacidad',{id:'terms'}),...(canInstall?[row('','download','Instalar la app',{id:'inst'})]:[])])}
     <button class="set-logout" type="button" id="logout">${icon('log-out')} Cerrar sesión</button>
-    <p class="set-foot">AuxiliOS Solo · ${esc(appVersion().replace(/^solo-|-\d{8}$/g,'')||'')}</p>`,'mas');
+    <p class="set-foot">AuxiliOS · ${esc(appVersion().replace(/^solo-|-\d{8}$/g,'')||'')}</p>`,'mas');
   document.getElementById('help').onclick=()=>support();
   document.getElementById('terms').onclick=()=>window.open('/terminos-solo.html','_blank','noopener');
   document.getElementById('inst')?.addEventListener('click',()=>window.SoloPWA.open());
@@ -366,14 +366,14 @@ async function support(topic,mail){
   sh.el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{pick=b.dataset.t;sh.el.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
   const pend=window.SoloOffline?await window.SoloOffline.pending().catch(()=>0):0;
   const body=()=>{const who=profile?.full_name||user?.user_metadata?.full_name||'';const acct=user?.email||mail||'';
-    return [`Hola, ${who?'soy '+who+'. ':''}Necesito ayuda con AuxiliOS Solo.`,pick?'Tema: '+pick:'',sh.el.querySelector('#hp-msg').value.trim(),'',
+    return [`Hola, ${who?'soy '+who+'. ':''}Necesito ayuda con AuxiliOS.`,pick?'Tema: '+pick:'',sh.el.querySelector('#hp-msg').value.trim(),'',
       '— Datos para soporte —',acct?'Cuenta: '+acct:'','Versión: '+appVersion(),'Pantalla: '+(location.hash.slice(1)||'inicio'),pend?'Cambios sin subir: '+pend:'',navigator.onLine?'':'Sin conexión',
       'Equipo: '+(navigator.userAgent.match(/(iPhone|iPad|Android[^;)]*|Windows|Mac OS X)/)||['otro'])[0]].filter(x=>x!=='').join('\n');};
   sh.el.querySelector('#hp-wa')?.addEventListener('click',()=>{window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(body()),'_blank','noopener');sh.close();});
-  sh.el.querySelector('#hp-em')?.addEventListener('click',()=>{location.href='mailto:'+em+'?subject='+encodeURIComponent('Ayuda AuxiliOS Solo'+(pick?' · '+pick:''))+'&body='+encodeURIComponent(body());sh.close();});
+  sh.el.querySelector('#hp-em')?.addEventListener('click',()=>{location.href='mailto:'+em+'?subject='+encodeURIComponent('Ayuda AuxiliOS'+(pick?' · '+pick:''))+'&body='+encodeURIComponent(body());sh.close();});
 }
 function renderPronto(v){
-  const txt={servicios:['Servicios','Acá vas a ver los servicios del mes, cargar uno nuevo y hacer su remito con firma.'],gastos:['Gastos','Acá vas a cargar combustible, taller y peajes en dos toques, y tus gastos fijos repartidos por mes.']}[v]||['AuxiliOS Solo',''];
+  const txt={servicios:['Servicios','Acá vas a ver los servicios del mes, cargar uno nuevo y hacer su remito con firma.'],gastos:['Gastos','Acá vas a cargar combustible, taller y peajes en dos toques, y tus gastos fijos repartidos por mes.']}[v]||['AuxiliOS',''];
   shell(`<h1>${txt[0]}</h1><div class="empty"><b>Llega en la próxima entrega</b><span>${txt[1]}</span></div>`,v);
 }
 

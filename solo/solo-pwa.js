@@ -1,4 +1,4 @@
-// AuxiliOS Solo · se instala como app en el celular: aviso la primera vez, instalación en Android y pasos para iPhone.
+// AuxiliOS · se instala como app en el celular: aviso la primera vez, instalación en Android y pasos para iPhone.
 (function(){
 'use strict';
 const KEY='solo-install-v1';
@@ -13,7 +13,7 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
 
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;
   const s=document.getElementById('install');if(s&&!s.hidden)paint(s);});
-addEventListener('appinstalled',()=>{deferred=null;store.set('installed');close();window.SoloCore?.toast('¡Listo! AuxiliOS Solo quedó en tu pantalla de inicio.');});
+addEventListener('appinstalled',()=>{deferred=null;store.set('installed');close();window.SoloCore?.toast('¡Listo! AuxiliOS quedó en tu pantalla de inicio.');});
 
 const icon=n=>`<svg class="ico" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
 function steps(){
@@ -32,7 +32,7 @@ function open(hint){
   if(!s){s=document.createElement('div');s.id='install';s.className='sheet-wrap';s.hidden=true;
     s.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="install-t">
       <div class="sheet-grip" aria-hidden="true"></div>
-      <div class="install-head"><img src="/assets/icons/icon-192.png" alt="" width="56" height="56"><div><h2 id="install-t">Instalá AuxiliOS Solo</h2><p class="hint">Queda como una app en tu celular.</p></div></div>
+      <div class="install-head"><img src="/assets/icons/icon-192.png" alt="" width="56" height="56"><div><h2 id="install-t">Instalá AuxiliOS</h2><p class="hint">Queda como una app en tu celular.</p></div></div>
       <div class="install-body"></div>
       <button class="btn pri block" type="button" id="install-go">${icon('download')} Instalar app</button>
       <button class="btn ghost block" type="button" id="install-no">Ahora no</button></div>`;

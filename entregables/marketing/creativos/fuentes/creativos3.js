@@ -24,7 +24,7 @@ h1{font:400 112px/.92 'Bebas Neue';letter-spacing:.01em}h1 em{font-style:normal;
 .nb::before{content:"";position:absolute;left:42px;top:0;bottom:0;width:3px;background:#e7a0a0}.nb .q{color:#c0392b}
 .tk{background:#f7f5ef;color:#333;font:500 20px/1.5 'DM Mono';padding:18px 20px;box-shadow:0 16px 40px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% 94%,90% 100%,80% 94%,70% 100%,60% 94%,50% 100%,40% 94%,30% 100%,20% 94%,10% 100%,0 94%)}
 </style>`;
-const brand=`<div class="brand">AUXILI<b>OS</b><span>SOLO</span></div>`;
+const brand=`<div class="brand">AUXILI<b>OS</b></div>`;
 const page=(w,h,body)=>`<!doctype html><html><head><meta charset="utf-8">${css}</head><body style="width:${w}px;height:${h}px"><div class="glow"></div>${body}</body></html>`;
 const head=(f,title,sub)=>f==='s'?`<div style="position:absolute;left:80px;right:80px;top:250px">${brand}<h1 style="margin-top:36px;font-size:124px">${title}</h1>${sub?`<p class="sub" style="margin-top:28px">${sub}</p>`:''}</div>`
   :`<div style="position:absolute;left:70px;right:70px;top:64px">${brand}<h1 style="margin-top:34px">${title}</h1>${sub?`<p class="sub" style="margin-top:22px;max-width:900px">${sub}</p>`:''}</div>`;
@@ -45,7 +45,7 @@ const C={
    ${s?'':`<div style="position:absolute;left:70px;top:620px;width:470px;display:grid;gap:18px"><div class="li"><i>✓</i>Gratis en la etapa de prueba</div><div class="li"><i>✓</i>Sin tarjeta</div><div class="li"><i>✓</i>Con Google, sin contraseña</div></div>`}${s?'':ctaF.replace('Probala gratis','Terminar mi cuenta')}`;},
  'b4-te-ayudamos':f=>{const s=f==='s';return head(f,'No estás solo. <em>Te ayudamos a arrancar.</em>',s?'Si te trabás cargando tu grúa o tu primera prestadora, nos escribís por WhatsApp desde la app.':'¿Te trabás? Nos escribís por WhatsApp desde la app.')+
    `<div style="position:absolute;left:${s?200:300}px;right:${s?80:70}px;top:${s?820:480}px" class="wa-out">Hola, ¿cómo cargo la tarifa de mi prestadora?</div>
-   <div style="position:absolute;left:${s?80:70}px;right:${s?200:300}px;top:${s?1010:640}px" class="wa-in"><b>AuxiliOS Solo · Soporte</b>¡Hola! Entrá a Más → Prestadoras, elegila y tocá «Agregar tarifa». Si querés, la cargamos juntos 👍</div>
+   <div style="position:absolute;left:${s?80:70}px;right:${s?200:300}px;top:${s?1010:640}px" class="wa-in"><b>AuxiliOS · Soporte</b>¡Hola! Entrá a Más → Prestadoras, elegila y tocá «Agregar tarifa». Si querés, la cargamos juntos 👍</div>
    <span class="pill" style="position:absolute;background:#12261b;border:2px solid #34c77b;color:#34c77b;${s?'left:80px;top:1420px':'left:70px;top:960px'}">💬 Ayuda por WhatsApp, de una persona</span>
    ${s?'':ctaF}<span class="note">Conversación de ejemplo</span>`;},
  // ── MOFU · carrusel cómo funciona ──

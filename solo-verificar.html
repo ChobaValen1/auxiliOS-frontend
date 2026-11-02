@@ -9,9 +9,9 @@
 <title>Verificar remito · AuxiliOS</title>
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/ui/tokens.css?v=solo-v626-20261102">
+<link rel="stylesheet" href="/ui/tokens.css?v=solo-v627-20261102">
 <style>
-/* Verificación pública de un remito de AuxiliOS Solo: la abre quien escanea el QR del PDF. */
+/* Verificación pública de un remito de AuxiliOS: la abre quien escanea el QR del PDF. */
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--ax-bg);color:var(--ax-text);font:15px/1.45 var(--ax-font)}
 main{max-width:520px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
@@ -38,15 +38,15 @@ input:focus-visible,button:focus-visible{outline:none;box-shadow:var(--ax-focus)
 footer{color:var(--ax-text-3);font-size:12px;text-align:center}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="/runtime-config.js?v=solo-v626-20261102" defer></script>
+<script src="/runtime-config.js?v=solo-v627-20261102" defer></script>
 </head>
 <body>
 <main>
-  <div class="brand">AUXILI<b>OS</b> <span>SOLO</span></div>
+  <div class="brand">AUXILI<b>OS</b></div>
   <section class="card res" id="res" aria-live="polite"><div class="sk"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:50%"></div></section>
   <section class="card"><p class="note" style="margin-bottom:10px">¿Tenés otro remito? Escribí el código de verificación que figura en el PDF.</p>
     <form id="f"><input id="c" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Código" aria-label="Código de verificación"><button type="submit">Verificar</button></form></section>
-  <footer>Remitos digitales emitidos con AuxiliOS Solo</footer>
+  <footer>Remitos digitales emitidos con AuxiliOS</footer>
 </main>
 <script>
 (function(){
