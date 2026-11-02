@@ -69,3 +69,9 @@ test('desglose por día: sin odómetro, con efectivo esperado, ventas y comision
   const m=fs.readFileSync('migrations/20261102200000_payroll_desglose_dias_v1.sql','utf8');
   assert.match(m,/completed_driver_services_v2/);assert.match(m,/coalesce\(l\.cash_snapshot,app_private\.monthly_cash_source_v2/);assert.match(m,/not in \('administracion','supervision'\)/);
 });
+test('servicios sin viaje: se pegan a la jornada del día y se avisa al aprobar la excepción',()=>{
+  const m=fs.readFileSync('migrations/20261102210000_servicios_sin_viaje_jornada_por_fecha_v1.sql','utf8');
+  assert.match(m,/coalesce\(t\.log_id,f\.log_id\) log_id/);assert.match(m,/having count\(\*\)=1/);assert.match(m,/d\.voided_at is null/);assert.match(m,/'journey_match'/);
+  const os=fs.readFileSync('operator-services.js','utf8');assert.match(os,/if\(exception\)await warnJourneyMatch\(id\)/);assert.match(os,/service_journey_match_v1/);
+  assert.match(fs.readFileSync('payroll-view.js','utf8'),/en un día sin jornada del chofer/);
+});

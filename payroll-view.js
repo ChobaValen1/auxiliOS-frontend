@@ -274,7 +274,7 @@
   function unlinkedServices(logs,services){
     const ids=new Set(logs.map(j=>j.log_id)),unlinked=services.filter(s=>!ids.has(s.r.log_id));
     if(!unlinked.length)return'';
-    return '<section class="pv-journey"><h4>Servicios sin jornada en este período ('+unlinked.length+')</h4><p class="pv-note">Cuentan por su finalización. No se asignó una jornada por fecha.</p><div class="pv-scroll"><table class="pv-services"><tbody>'+unlinked.map(serviceRow).join('')+'</tbody></table></div></section>';
+    return '<section class="pv-journey"><h4>Servicios sin jornada en este período ('+unlinked.length+')</h4><p class="pv-note">Finalizados sin remito ni viaje (excepción aprobada) en un día sin jornada del chofer. Cuentan para el sueldo por su fecha de finalización.</p><div class="pv-scroll"><table class="pv-services"><tbody>'+unlinked.map(serviceRow).join('')+'</tbody></table></div></section>';
   }
   function journey(j,services){
     let km=null;try{km=PayrollMatrix.journeyKm(j);}catch{}
