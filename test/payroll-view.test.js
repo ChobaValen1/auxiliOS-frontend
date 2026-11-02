@@ -65,7 +65,7 @@ test('etapa 4: exportaciones de sueldos (letras, Excel con fórmulas, recibo y p
 test('desglose por día: sin odómetro, con efectivo esperado, ventas y comisiones (PDF y Excel)',()=>{
   const src=fs.readFileSync('payroll-export-v1.js','utf8');
   assert.doesNotMatch(src,/Km inicio|Km fin/);assert.match(src,/payroll_desglose_v1/);assert.match(src,/payroll_desglose_mes_v1/);
-  for(const h of ["'Efectivo esperado'","'Comisión'","'Ventas'","addWorksheet('Ventas'","'Ventas y comisiones'"])assert.ok(src.includes(h),h);
+  for(const h of ["'Efectivo esperado'","'Comisión'","'Ventas'","addWorksheet('Comisiones'","'Comisiones'"])assert.ok(src.includes(h),h);
   const m=fs.readFileSync('migrations/20261102200000_payroll_desglose_dias_v1.sql','utf8');
   assert.match(m,/completed_driver_services_v2/);assert.match(m,/coalesce\(l\.cash_snapshot,app_private\.monthly_cash_source_v2/);assert.match(m,/not in \('administracion','supervision'\)/);
 });
@@ -81,4 +81,9 @@ test('CBU/CVU y alias del chofer: validación igual en la app y en la base, y va
   const m=fs.readFileSync('migrations/20261102220000_payroll_cbu_alias_v1.sql','utf8');assert.match(m,/w1 int\[\]:=array\[7,1,3,9,7,1,3\]/);assert.match(m,/alias_cbu ~ '\^\[a-z0-9\.-\]\{6,20\}\$'/);
   assert.match(fs.readFileSync('Index.html','utf8'),/id="esq-cbu"/);assert.match(fs.readFileSync('payroll-export-v1.js','utf8'),/f\.cbu \|\| \(falta \? '— falta cargar —'/);
   assert.match(fs.readFileSync('supabase.js','utf8'),/if \(cbu !== undefined\) payload\.cbu = cbu \|\| null;/);
+});
+test('comisiones del desglose: cada fila dice su tipo y solo las ventas suman como venta',()=>{
+  const m=fs.readFileSync('migrations/20261102230000_payroll_desglose_tipos_v1.sql','utf8');
+  assert.match(m,/when 'sale' then 'venta' when 'tog' then 'marca' when 'capt' then 'captacion'/);assert.match(m,/filter \(where x->>'tipo'='venta'\)/);
+  const src=fs.readFileSync('payroll-export-v1.js','utf8');assert.match(src,/addWorksheet\('Comisiones'/);assert.match(src,/' por servicio'/);assert.match(src,/'1 servicio'/);
 });

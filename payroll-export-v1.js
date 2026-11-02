@@ -47,7 +47,13 @@
   }
   async function desglose(liq) { const r = await _db.rpc('payroll_desglose_v1', { p_liquidacion: liq }); if (r.error) throw r.error; return r.data || { dias: [], ventas: [] }; }
   async function desgloseMes(period) { const r = await _db.rpc('payroll_desglose_mes_v1', { p_period: period }); if (r.error) throw r.error; return r.data || []; }
-  const regla = v => v.modo === 'percent' ? fmt(v.valor) + ' %' : money(v.valor) + ' fijo' + (num(v.cantidad) > 1 ? ' × ' + fmt(v.cantidad) : '');
+  // Cada comisión dice de dónde sale: una venta (batería, cubierta…), una marca del servicio (p. ej. Pinacars),
+  // la captación de un particular o un servicio facturado. Solo las ventas suman en «Ventas».
+  const TIPOS = { venta: 'Venta', marca: 'Marca', captacion: 'Captación', facturado: 'Facturado' };
+  const tipo = v => TIPOS[v.tipo] || 'Venta';
+  const base = v => v.tipo === 'marca' ? '1 servicio' : v.venta == null || !num(v.venta) ? '—' : money(v.venta) + (v.tipo === 'captacion' || v.tipo === 'facturado' ? ' (servicio)' : '');
+  const regla = v => v.modo === 'percent' ? fmt(v.valor) + ' %' : money(v.valor) + (v.tipo === 'marca' ? ' por servicio' : ' fijo') + (num(v.cantidad) > 1 ? ' × ' + fmt(v.cantidad) : '');
+  const soloVentas = list => list.filter(v => (v.tipo || 'venta') === 'venta');
   const diaFecha = d => d.fecha ? ddmmyyyy(d.fecha) : 'Sin fecha';
   async function novedades(period) {
     const r = await _db.from('payroll_novedades').select('driver_id,tipo,concepto,importe,fecha,nota').eq('periodo_yyyymm', period).order('created_at');
@@ -132,13 +138,13 @@
       for (const v of d.ventas || []) V.push([f.full_name, v]);
     }
     J.autoFilter = { from: 'A1', to: 'I' + Math.max(1, J.rowCount) };
-    // 6 · Ventas: una fila por venta con su comisión
-    const VS = wb.addWorksheet('Ventas', { views: [{ state: 'frozen', ySplit: 1 }] });
-    VS.columns = [{ header: 'Chofer', width: 24 }, { header: 'Fecha', width: 12 }, { header: 'Servicio', width: 14 }, { header: 'Concepto / regla', width: 30 }, { header: 'Venta', width: 14 }, { header: 'Regla', width: 18 }, { header: 'Comisión', width: 13 }];
+    // 6 · Comisiones: una fila por comisión, con su tipo (venta, marca, captación, facturado)
+    const VS = wb.addWorksheet('Comisiones', { views: [{ state: 'frozen', ySplit: 1 }] });
+    VS.columns = [{ header: 'Chofer', width: 24 }, { header: 'Fecha', width: 12 }, { header: 'Servicio', width: 20 }, { header: 'Tipo', width: 11 }, { header: 'Concepto', width: 28 }, { header: 'Venta', width: 14 }, { header: 'Base', width: 16 }, { header: 'Regla', width: 20 }, { header: 'Comisión', width: 13 }];
     th(VS.getRow(1));
-    for (const [name, v] of V) { const row = VS.addRow([name, v.fecha ? new Date(v.fecha + 'T12:00:00') : 'Sin fecha', v.servicio || '', v.regla || '', v.venta == null || !num(v.venta) ? null : num(v.venta), regla(v), num(v.comision)]); row.getCell(2).numFmt = 'dd/mm/yyyy'; row.getCell(5).numFmt = MONEY; row.getCell(7).numFmt = MONEY; }
-    if (!V.length) VS.addRow(['Sin ventas con comisión en el mes.']).font = { italic: true, color: { argb: GRAY } };
-    else { const tv = VS.addRow(['TOTAL', '', '', V.length + ' ventas', { formula: `SUM(E2:E${VS.rowCount})` }, '', { formula: `SUM(G2:G${VS.rowCount})` }]); tv.font = { bold: true }; tv.getCell(5).numFmt = MONEY; tv.getCell(7).numFmt = MONEY; VS.autoFilter = { from: 'A1', to: 'G' + (VS.rowCount - 1) }; }
+    for (const [name, v] of V) { const row = VS.addRow([name, v.fecha ? new Date(v.fecha + 'T12:00:00') : 'Sin fecha', v.servicio || '', tipo(v), v.concepto || v.regla || '', (v.tipo || 'venta') === 'venta' && num(v.venta) ? num(v.venta) : null, base(v), regla(v), num(v.comision)]); row.getCell(2).numFmt = 'dd/mm/yyyy'; row.getCell(6).numFmt = MONEY; row.getCell(9).numFmt = MONEY; }
+    if (!V.length) VS.addRow(['Sin comisiones en el mes.']).font = { italic: true, color: { argb: GRAY } };
+    else { const tv = VS.addRow(['TOTAL', '', '', '', V.length + ' comisiones', { formula: `SUM(F2:F${VS.rowCount})` }, '', '', { formula: `SUM(I2:I${VS.rowCount})` }]); tv.font = { bold: true }; tv.getCell(6).numFmt = MONEY; tv.getCell(9).numFmt = MONEY; VS.autoFilter = { from: 'A1', to: 'I' + (VS.rowCount - 1) }; }
     return wb;
   }
   async function gather(period) {
@@ -247,11 +253,12 @@
     doc.text(doc.splitTextToSize('Km = odómetro final menos inicial de cada jornada cerrada. Efectivo esperado = lo que el chofer cobró en efectivo ese día, antes de gastos (rendición del mes).', W - 2 * M), M, y + 2); y += 9;
     if (ventas.length) {
       if (y + 30 > H - 18) { doc.addPage(); y = top(); }
-      y = section(doc, y + 2, 'Ventas y comisiones', M);
-      const vc = [{ label: 'Fecha', w: 24 }, { label: 'Servicio', w: 28 }, { label: 'Concepto', w: 52 }, { label: 'Venta', w: 28, align: 'right' }, { label: 'Regla', w: 30 }, { label: 'Comisión', w: W - 2 * M - 162, align: 'right' }];
-      const vr = ventas.map(v => [diaFecha(v), v.servicio || '—', v.regla || '', v.venta == null || !num(v.venta) ? '—' : money(v.venta), regla(v), money(v.comision)]);
-      y = table(doc, y, vc, [...vr, ['Total · ' + ventas.length + (ventas.length === 1 ? ' venta' : ' ventas'), '', '', money(ventas.reduce((n, v) => n + num(v.venta), 0)), '', money(ventas.reduce((n, v) => n + num(v.comision), 0))]], { M, W, H, onPage: top, rowStyle: (r, i) => i === vr.length ? { bold: true, topRule: true } : null });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...C_MUTED); doc.text('La comisión total coincide con la línea de comisiones del recibo.', M, y + 2);
+      y = section(doc, y + 2, 'Comisiones', M);
+      const vc = [{ label: 'Fecha', w: 20 }, { label: 'Servicio', w: 35 }, { label: 'Tipo', w: 18 }, { label: 'Concepto', w: 35 }, { label: 'Base', w: 26, align: 'right' }, { label: 'Regla', w: 25 }, { label: 'Comisión', w: W - 2 * M - 159, align: 'right' }];
+      const vr = ventas.map(v => [diaFecha(v), v.servicio || '—', tipo(v), v.concepto || v.regla || '', base(v), regla(v), money(v.comision)]);
+      const sv = soloVentas(ventas);
+      y = table(doc, y, vc, [...vr, ['Total · ' + ventas.length + (ventas.length === 1 ? ' comisión' : ' comisiones'), '', '', sv.length ? 'Ventas: ' + money(sv.reduce((n, v) => n + num(v.venta), 0)) : '', '', '', money(ventas.reduce((n, v) => n + num(v.comision), 0))]], { M, W, H, onPage: top, rowStyle: (r, i) => i === vr.length ? { bold: true, topRule: true } : null });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...C_MUTED); doc.text(doc.splitTextToSize('Venta: comisión sobre lo vendido. Marca: importe fijo por servicio marcado (p. ej. un cliente). Captación: comisión sobre el servicio de un particular que consiguió el chofer. El total coincide con la línea de comisiones del recibo.', W - 2 * M), M, y + 2);
     }
     footer(doc, W, H, M, (emp.legal_name || '') + ' · Recibo ' + String(l.liquidacion_id).slice(-8).toUpperCase());
     doc.save(`Recibo_${safeFile(l.chofer_nombre)}_${safeFile(periodLabel(l.periodo_yyyymm))}.pdf`);
