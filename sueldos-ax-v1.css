@@ -228,3 +228,26 @@
 /* Aviso en la pestaña Esquemas de pago */
 #screen-sueldos .ftab .ax-tab-alert { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: var(--ax-radius-pill); background: var(--ax-warn); color: var(--ax-accent-fg); font: 700 11px/1 var(--ax-font); vertical-align: 1px; }
 #screen-sueldos .ftab .ax-tab-alert[hidden] { display: none; }
+
+/* Sueldos · etapa 2: recibo por líneas y novedades del mes */
+#pv-driver-modal #pv-summary { overflow: auto; min-height: 0; }
+#pv-driver-modal .pv-lines-group { margin-bottom: 6px; }
+#pv-driver-modal .pv-lines-title { display: block; margin: 8px 0 2px; color: var(--ax-text-3, var(--ax-text-2)); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+#pv-driver-modal .pv-subtotal { border-top: 1px dashed var(--ax-border); color: var(--ax-text-2); }
+#pv-driver-modal .pv-tag { font-style: normal; font-size: 10px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--ax-accent); color: var(--ax-accent); margin-left: 4px; }
+#pv-driver-modal .pv-novedades { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ax-border); }
+#pv-driver-modal .pv-novedades h4 { margin: 0 0 6px; font-size: 13px; }
+#pv-driver-modal .pv-nov-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+#pv-driver-modal .pv-nov-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); font-size: 12px; }
+#pv-driver-modal .pv-nov-list small { display: block; color: var(--ax-text-2); font-size: 11px; margin-top: 2px; }
+#pv-driver-modal .pv-nov-list .pv-neg { color: var(--ax-danger, var(--red)); }
+#pv-driver-modal .pv-nov-del { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--ax-border); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#pv-driver-modal .pv-nov-del:hover { border-color: var(--ax-danger, var(--red)); color: var(--ax-danger, var(--red)); }
+#pv-driver-modal .pv-nov-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+#pv-driver-modal .pv-nov-form select, #pv-driver-modal .pv-nov-form #pv-nov-concepto { grid-column: 1 / -1; }
+#pv-driver-modal .pv-nov-actions { grid-column: 1 / -1; display: flex; gap: 6px; }
+#pv-driver-modal .pv-nov-actions button { flex: 1; width: auto; }
+#pv-driver-modal #pv-nov-error { grid-column: 1 / -1; margin: 0; color: var(--ax-danger, var(--red)); font-size: 11px; min-height: 0; }
+#pv-driver-modal .pv-nov-add { width: 100%; }
+#pv-driver-modal .pv-nov-add[hidden], #pv-driver-modal .pv-nov-form[hidden] { display: none; }
+@media (max-width: 850px) { #pv-driver-modal #pv-lines, #pv-driver-modal #pv-novedades, #pv-driver-modal #pv-commission-check { grid-column: 1 / -1; } #pv-driver-modal .pv-nov-list li { font-size: 11px; padding: 6px 8px; } }

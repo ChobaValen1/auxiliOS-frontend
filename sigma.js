@@ -13914,7 +13914,12 @@ function _exportarReciboPDF(liquidacion = null) {
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo) || 0 : 0;
   const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
-  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0);
+  // Novedades del mes (etapa 2): las carga el panel de sueldos en liq.novedades.
+  const _novSuma = ['bono','horas_extra','viatico'];
+  const novHaberes = (liq.novedades || []).filter(n => _novSuma.includes(n.tipo));
+  const novDescuentos = (liq.novedades || []).filter(n => !_novSuma.includes(n.tipo));
+  const _novRow = (n, signo) => `<tr class="${signo ? 'desc-row' : ''}"><td>${_escHtml(n.concepto)}${n.nota ? `<div class="muted">${_escHtml(n.nota)}</div>` : ''}</td><td class="right">${signo}$${_AR(n.importe)}</td></tr>`;
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0) + novHaberes.reduce((t, n) => t + (Number(n.importe)||0), 0);
   const emitidoStr  = liq.generada_at ? new Date(liq.generada_at).toLocaleString('es-AR') : new Date().toLocaleString('es-AR');
   const aprobadoStr = liq.aprobada_at ? `${new Date(liq.aprobada_at).toLocaleString('es-AR')}${liq.aprobador_nombre ? ' · ' + _escHtml(liq.aprobador_nombre) : ''}` : null;
   const pagadoStr   = liq.pagada_at   ? (liq.pagada_metodo ? _escHtml(liq.pagada_metodo) : '—') : null;
@@ -14024,8 +14029,10 @@ function _exportarReciboPDF(liquidacion = null) {
             <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
             <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
             <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr>${Number(liq.bonos_objetivos)?`<tr><td>Bonos por objetivos (histórico)</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>`:''}
+            ${novHaberes.map(n => _novRow(n, '')).join('')}
             <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
             <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
+            ${novDescuentos.map(n => _novRow(n, '- ')).join('')}
             <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
           </table>
         </div>
