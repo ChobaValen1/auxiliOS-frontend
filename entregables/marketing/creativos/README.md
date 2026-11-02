@@ -1,6 +1,6 @@
 # Creativos · Anuncios de Meta de AuxiliOS Solo (prueba 1)
 
-Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Para verlos todos juntos, abrí `galeria.html`. Todas las pantallas usan **datos de ejemplo** y así lo aclaran.
+Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Para verlos todos juntos, ordenados por TOFU / MOFU / BOFU, abrí `galeria.html`. El plan del embudo está en `../embudo-tofu-mofu-bofu.md`. Todas las pantallas usan **datos de ejemplo** y así lo aclaran.
 
 | Archivo | Anuncio | Formato | Dónde va |
 |---|---|---|---|
@@ -21,6 +21,10 @@ Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Para verlos 
 | `a9-sin-senal-4x5.jpg` · `a9-sin-senal-9x16.jpg` | 9 · Sin señal en la ruta | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
 | `a10-fundador-4x5.jpg` · `a10-fundador-9x16.jpg` | 10 · Buscamos grueros fundadores (oferta) | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
 | `a11-mesa-4x5.jpg` · `a11-mesa-9x16.jpg` | 11 · Cuaderno, talonario, tickets… o una sola app | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+
+| `t1-3am-remito-9x16.mp4` | TOFU · 3:00 AM | Video de 12 s, solo texto | Reels e Historias |
+| `m1-como-funciona-1…4-1x1.jpg` | MOFU · Cómo funciona | Carrusel de 4, 1080×1080 | Feed |
+| `b1-empeza-5-minutos` · `b2-dudas` · `b3-te-quedo-pendiente` · `b4-te-ayudamos` (4x5 y 9x16) | BOFU | Imágenes | Feed · Historias |
 
 **Sonido:** los videos no tienen audio. Al cargarlos en Meta (o en CapCut), sumá una música de la biblioteca libre. Los textos en pantalla ya funcionan como subtítulos.
 
