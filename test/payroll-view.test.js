@@ -54,3 +54,11 @@ test('migración etapa 3: aprobar/pagar/reabrir solo Administración, motivo obl
   assert.match(m,/grant select on public\.payroll_corridas, public\.payroll_eventos to authenticated;/);assert.doesNotMatch(m,/grant (insert|update|delete)[^;]*payroll_eventos/);
   assert.match(m,/length\(v_m\)<5/);assert.match(m,/if r\.review_required then/);assert.match(m,/La fecha de pago no puede ser futura/);
 });
+test('etapa 4: exportaciones de sueldos (letras, Excel con fórmulas, recibo y planilla PDF)',()=>{
+  const ctx={window:{},console};vm.runInNewContext(fs.readFileSync('payroll-export-v1.js','utf8'),ctx);const X=ctx.window.PayrollExport;
+  assert.equal(X.letras(1085400),'un millón ochenta y cinco mil cuatrocientos');assert.equal(X.letras(21000),'veintiún mil');assert.equal(X.letras(100),'cien');assert.equal(X.letras(1500.5),'mil quinientos con 50/100');assert.equal(X.letras(0),'cero');
+  assert.equal(X.periodLabel(202611),'Noviembre 2026');
+  const src=fs.readFileSync('payroll-export-v1.js','utf8');assert.match(src,/SUMIFS\('Líneas'!\$G:\$G/);assert.match(src,/fullCalcOnLoad = true/);assert.match(src,/\/vendor\/exceljs-4\.4\.0\.min\.js/);assert.doesNotMatch(src,/[\u0300-\u036f]/,'sin marcas combinantes literales');
+  const v=fs.readFileSync('payroll-view.js','utf8');assert.match(v,/PayrollExport\.reciboPdf\(l\)/);assert.match(v,/PayrollExport\.excelMes\(review\.periodo\)/);assert.match(v,/PayrollExport\.planillaPdf\(review\.periodo\)/);
+  assert.match(fs.readFileSync('Index.html','utf8'),/<script src="\/payroll-export-v1\.js\?v=/);assert.ok(fs.existsSync('vendor/exceljs-4.4.0.min.js'));
+});
