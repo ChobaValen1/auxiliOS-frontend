@@ -87,3 +87,7 @@ test('comisiones del desglose: cada fila dice su tipo y solo las ventas suman co
   assert.match(m,/when 'sale' then 'venta' when 'tog' then 'marca' when 'capt' then 'captacion'/);assert.match(m,/filter \(where x->>'tipo'='venta'\)/);
   const src=fs.readFileSync('payroll-export-v1.js','utf8');assert.match(src,/addWorksheet\('Comisiones'/);assert.match(src,/' por servicio'/);assert.match(src,/'1 servicio'/);
 });
+test('efectivo esperado: ventas en efectivo cargadas en el servicio (no en el remito) entran sin duplicar',()=>{
+  const m=fs.readFileSync('migrations/20261102240000_efectivo_ventas_cargadas_en_servicio_v1.sql','utf8');
+  assert.match(m,/e\.customer_payment_method='cash'/);assert.match(m,/rr\.concept_id is not distinct from e\.concept_id/);assert.match(m,/where exists\(select 1 from public\.remitos r/);
+});
