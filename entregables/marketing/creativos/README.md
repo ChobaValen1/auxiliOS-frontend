@@ -1,6 +1,6 @@
 # Creativos · Anuncios de Meta de AuxiliOS Solo (prueba 1)
 
-Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Todas las pantallas usan **datos de ejemplo** y así lo aclaran.
+Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Para verlos todos juntos, abrí `galeria.html`. Todas las pantallas usan **datos de ejemplo** y así lo aclaran.
 
 | Archivo | Anuncio | Formato | Dónde va |
 |---|---|---|---|
@@ -15,6 +15,12 @@ Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Todas las pa
 | `a4-comparacion-9x16.jpg` | 4 · Sin la app vs. con la app | Imagen 1080×1920 | Historias |
 | `a4-comparacion-9x16.mp4` | 4 · Sin la app vs. con la app | Video de 15 s, 1080×1920, sin sonido | Reels e Historias |
 | `a5-flujo-papel-vs-app-9x16.mp4` | 5 · Flujo con papel vs. con la app | Video de 20 s, 1080×1920, sin sonido | Reels e Historias |
+| `a6-tu-marca-4x5.jpg` · `a6-tu-marca-9x16.jpg` | 6 · Un remito que da gusto mandar (tu marca) | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+| `a7-reclamo-4x5.jpg` · `a7-reclamo-9x16.jpg` | 7 · Si el socio reclama, las fotos te cubren | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+| `a8-vencimientos-4x5.jpg` · `a8-vencimientos-9x16.jpg` | 8 · Vencimientos de la grúa | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+| `a9-sin-senal-4x5.jpg` · `a9-sin-senal-9x16.jpg` | 9 · Sin señal en la ruta | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+| `a10-fundador-4x5.jpg` · `a10-fundador-9x16.jpg` | 10 · Buscamos grueros fundadores (oferta) | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
+| `a11-mesa-4x5.jpg` · `a11-mesa-9x16.jpg` | 11 · Cuaderno, talonario, tickets… o una sola app | Imagen 1080×1350 y 1080×1920 | Feed · Historias |
 
 **Sonido:** los videos no tienen audio. Al cargarlos en Meta (o en CapCut), sumá una música de la biblioteca libre. Los textos en pantalla ya funcionan como subtítulos.
 

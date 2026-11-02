@@ -197,6 +197,66 @@ Una sección por anuncio. Al final, una tabla: ángulo | objetivo de campaña | 
 - **Creativo:** `a5-flujo-papel-vs-app-9x16.mp4` (20 s, 1080×1920, sin sonido).
 - **Ubicación:** Reels e Historias. En Feed también funciona, porque Meta lo recorta a 4:5 y los dos paneles quedan visibles.
 
+### Anuncio 6 · Un remito que da gusto mandar (tu marca)
+
+**Ganchos para probar:** “Un remito que da gusto mandar.” · “Tu logo, tu CUIT y un QR que lo valida.” · “Que el remito hable bien de tu grúa.”
+
+**Texto principal**
+> Un remito que da gusto mandar. Con tu logo, tu CUIT, las fotos del vehículo, la firma del socio y un código QR para comprobar que es original. Se lo mandás por WhatsApp o mail desde el celular. Gratis en la etapa de prueba. 👉 Probala.
+
+- **Título:** Remitos con tu logo y tu CUIT · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a6-tu-marca-4x5.jpg` (Feed) y `a6-tu-marca-9x16.jpg` (Historias y Reels)
+
+### Anuncio 7 · Si el socio reclama, las fotos te cubren
+
+**Ganchos para probar:** “Si el socio reclama, las fotos te cubren.” · ““El auto tenía un golpe que antes no tenía.” ¿Y ahora?” · “Foto antes de cargarlo + firma de “sin daños”.”
+
+**Texto principal**
+> “El auto tiene un golpe que antes no tenía.” Con AuxiliOS Solo sacás las fotos del vehículo antes de cargarlo y el socio firma en el celular que no hay daños. Si después hay un reclamo, tenés con qué responder. Gratis en la etapa de prueba. 👉 Probala.
+
+- **Título:** Fotos y firma que te respaldan · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a7-reclamo-4x5.jpg` (Feed) y `a7-reclamo-9x16.jpg` (Historias y Reels)
+
+### Anuncio 8 · Vencimientos de la grúa
+
+**Ganchos para probar:** “El seguro no avisa cuando vence. La app sí.” · “Seguro, VTV y habilitación, con aviso 15 días antes.” · “Que no se te pase ningún vencimiento de la grúa.”
+
+**Texto principal**
+> El seguro no avisa cuando vence. Con AuxiliOS Solo cargás seguro, VTV y habilitación una vez y te avisamos 15 días antes. El service también, por km, que se suman solos con cada servicio. Gratis en la etapa de prueba. 👉 Probala.
+
+- **Título:** Vencimientos de la grúa al día · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a8-vencimientos-4x5.jpg` (Feed) y `a8-vencimientos-9x16.jpg` (Historias y Reels)
+
+### Anuncio 9 · Sin señal en la ruta
+
+**Ganchos para probar:** “Sin señal en la ruta. La app sigue andando.” · “En la banquina no siempre hay señal. El remito sale igual.” · “Se guarda en el celular y se sube solo.”
+
+**Texto principal**
+> Sin señal en la ruta, la app sigue andando. Hacés el remito, sacás las fotos y el socio firma igual: todo queda guardado en el celular y se sube solo cuando vuelve la conexión. Gratis en la etapa de prueba. 👉 Probala.
+
+- **Título:** Funciona sin señal · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a9-sin-senal-4x5.jpg` (Feed) y `a9-sin-senal-9x16.jpg` (Historias y Reels)
+
+### Anuncio 10 · Buscamos grueros fundadores (oferta)
+
+**Ganchos para probar:** “Buscamos grueros fundadores.” · “Una app hecha para grueros. Buscamos los primeros.” · “Probala gratis y ayudanos a mejorarla.”
+
+**Texto principal**
+> Buscamos grueros fundadores. Estamos armando AuxiliOS Solo, una app para el gruero que trabaja solo: remitos con fotos y firma, servicios por prestadora y gastos. Es gratis en la etapa de prueba y sin tarjeta. Contanos qué te falta y lo tenemos en cuenta. 👉 Sumate.
+
+- **Título:** Sumate como gruero fundador · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a10-fundador-4x5.jpg` (Feed) y `a10-fundador-9x16.jpg` (Historias y Reels)
+
+### Anuncio 11 · Cuaderno, talonario, tickets… o una sola app
+
+**Ganchos para probar:** “Cuaderno, talonario, tickets… o una sola app.” · “Todo lo de la grúa, en un solo lugar.” · “Dejá la pila de papeles.”
+
+**Texto principal**
+> Cuaderno para las cuentas, talonario de remitos, tickets en la guantera y el WhatsApp lleno de fotos. Con AuxiliOS Solo está todo en una app: servicios por prestadora, gastos, remitos con fotos y firma, y lo que te queda del mes. Gratis en la etapa de prueba. 👉 Probala.
+
+- **Título:** Todo en una sola app · **Descripción:** Gratis en la etapa de prueba · **Botón:** *Registrarte*
+- **Creativos:** `a11-mesa-4x5.jpg` (Feed) y `a11-mesa-9x16.jpg` (Historias y Reels)
+
 ---
 
 ## 3. Comparación
