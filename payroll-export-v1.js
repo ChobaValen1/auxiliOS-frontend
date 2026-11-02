@@ -45,16 +45,10 @@
     }
     return out;
   }
-  async function journeys(period, drivers) {
-    const { from, until } = monthRange(period), out = [];
-    for (let i = 0; i < drivers.length; i += 50) {
-      for (let offset = 0; ; offset += 1000) {
-        const r = await _db.from('daily_logs').select('driver_id,log_date,km_inicio,km_final,status,truck:trucks!truck_id(plate)').in('driver_id', drivers.slice(i, i + 50)).gte('log_date', from).lt('log_date', until).order('log_date').range(offset, offset + 999);
-        if (r.error) throw r.error; out.push(...(r.data || [])); if ((r.data || []).length < 1000) break;
-      }
-    }
-    return out;
-  }
+  async function desglose(liq) { const r = await _db.rpc('payroll_desglose_v1', { p_liquidacion: liq }); if (r.error) throw r.error; return r.data || { dias: [], ventas: [] }; }
+  async function desgloseMes(period) { const r = await _db.rpc('payroll_desglose_mes_v1', { p_period: period }); if (r.error) throw r.error; return r.data || []; }
+  const regla = v => v.modo === 'percent' ? fmt(v.valor) + ' %' : money(v.valor) + ' fijo' + (num(v.cantidad) > 1 ? ' × ' + fmt(v.cantidad) : '');
+  const diaFecha = d => d.fecha ? ddmmyyyy(d.fecha) : 'Sin fecha';
   async function novedades(period) {
     const r = await _db.from('payroll_novedades').select('driver_id,tipo,concepto,importe,fecha,nota').eq('periodo_yyyymm', period).order('created_at');
     if (r.error) throw r.error; return r.data || [];
@@ -73,7 +67,7 @@
   }
   const AMBER = 'FFF5A623', INK = 'FF1A1203', DARK = 'FF14171D', GRAY = 'FF6B7180', LIGHT = 'FFF4F5F7', RED = 'FFB02A2A', MONEY = '"$" #,##0;[Red]-"$" #,##0';
   function buildWorkbook(ExcelJS, data) {
-    const { period, rev, lines, novs, logs, emp } = data, filas = rev.filas.filter(f => f.liquidacion_id), byLiq = new Map(filas.map(f => [f.liquidacion_id, f])), byDriver = new Map(rev.filas.map(f => [f.driver_id, f]));
+    const { period, rev, lines, novs, emp } = data, filas = rev.filas.filter(f => f.liquidacion_id), byLiq = new Map(filas.map(f => [f.liquidacion_id, f])), byDriver = new Map(rev.filas.map(f => [f.driver_id, f]));
     const wb = new ExcelJS.Workbook(); wb.creator = 'AuxiliOS'; wb.created = new Date(); wb.calcProperties.fullCalcOnLoad = true;
     const head = (ws, title, cols) => {
       ws.mergeCells(1, 1, 1, cols); const t = ws.getCell(1, 1); t.value = title; t.font = { bold: true, size: 16, color: { argb: DARK } };
@@ -124,25 +118,36 @@
     th(T.getRow(1));
     for (const f of filas) { if (num(f.neto) <= 0) continue; const row = T.addRow([f.full_name, f.legajo || '', f.dni || '', '— falta cargar —', '', num(f.neto), 'Sueldo ' + periodLabel(period), ESTADOS[f.estado] || f.estado]); row.getCell(6).numFmt = MONEY; row.getCell(4).font = { italic: true, color: { argb: GRAY } }; }
     const tt = T.addRow(['TOTAL', '', '', '', '', { formula: `SUM(F2:F${T.rowCount})` }]); tt.font = { bold: true }; tt.getCell(6).numFmt = MONEY;
-    // 5 · Jornadas (todas las del mes)
+    // 5 · Jornadas: desglose por día (km, servicios, ventas, comisión y efectivo esperado)
     const J = wb.addWorksheet('Jornadas', { views: [{ state: 'frozen', ySplit: 1 }] });
-    J.columns = [{ header: 'Chofer', width: 24 }, { header: 'Fecha', width: 12 }, { header: 'Móvil', width: 11 }, { header: 'Km inicio', width: 11 }, { header: 'Km fin', width: 11 }, { header: 'Km', width: 9 }, { header: 'Estado', width: 12 }];
+    J.columns = [{ header: 'Chofer', width: 24 }, { header: 'Fecha', width: 12 }, { header: 'Móvil', width: 13 }, { header: 'Km', width: 9 }, { header: 'Servicios', width: 10 }, { header: 'Ventas', width: 14 }, { header: 'Comisión', width: 13 }, { header: 'Efectivo esperado', width: 17 }, { header: 'Estado', width: 12 }];
     th(J.getRow(1));
-    for (const j of logs) {
-      const r = J.rowCount + 1, ok = j.km_inicio != null && j.km_final != null;
-      const row = J.addRow([byDriver.get(j.driver_id)?.full_name || '—', new Date(j.log_date + 'T12:00:00'), j.truck?.plate || '', j.km_inicio, j.km_final, ok ? { formula: `E${r}-D${r}`, result: num(j.km_final) - num(j.km_inicio) } : null, j.status === 'closed' ? 'Cerrada' : 'Sin cerrar']);
-      row.getCell(2).numFmt = 'dd/mm/yyyy'; [4, 5, 6].forEach(c => row.getCell(c).numFmt = '#,##0'); if (j.status !== 'closed') row.getCell(7).font = { color: { argb: RED } };
+    const V = [];
+    for (const d of data.desg) {
+      const f = byLiq.get(d.liquidacion_id); if (!f) continue;
+      for (const x of d.dias || []) {
+        const row = J.addRow([f.full_name, x.fecha ? new Date(x.fecha + 'T12:00:00') : 'Sin fecha', x.moviles || '', num(x.km), num(x.servicios), num(x.ventas), num(x.comision), num(x.efectivo), x.jornadas ? (x.abierta ? 'Sin cerrar' : 'Cerrada') : 'Sin jornada']);
+        row.getCell(2).numFmt = 'dd/mm/yyyy'; row.getCell(4).numFmt = '#,##0'; [6, 7, 8].forEach(c => row.getCell(c).numFmt = MONEY); if (x.abierta) row.getCell(9).font = { color: { argb: RED } };
+      }
+      for (const v of d.ventas || []) V.push([f.full_name, v]);
     }
-    J.autoFilter = { from: 'A1', to: 'G' + Math.max(1, J.rowCount) };
+    J.autoFilter = { from: 'A1', to: 'I' + Math.max(1, J.rowCount) };
+    // 6 · Ventas: una fila por venta con su comisión
+    const VS = wb.addWorksheet('Ventas', { views: [{ state: 'frozen', ySplit: 1 }] });
+    VS.columns = [{ header: 'Chofer', width: 24 }, { header: 'Fecha', width: 12 }, { header: 'Servicio', width: 14 }, { header: 'Concepto / regla', width: 30 }, { header: 'Venta', width: 14 }, { header: 'Regla', width: 18 }, { header: 'Comisión', width: 13 }];
+    th(VS.getRow(1));
+    for (const [name, v] of V) { const row = VS.addRow([name, v.fecha ? new Date(v.fecha + 'T12:00:00') : 'Sin fecha', v.servicio || '', v.regla || '', v.venta == null || !num(v.venta) ? null : num(v.venta), regla(v), num(v.comision)]); row.getCell(2).numFmt = 'dd/mm/yyyy'; row.getCell(5).numFmt = MONEY; row.getCell(7).numFmt = MONEY; }
+    if (!V.length) VS.addRow(['Sin ventas con comisión en el mes.']).font = { italic: true, color: { argb: GRAY } };
+    else { const tv = VS.addRow(['TOTAL', '', '', V.length + ' ventas', { formula: `SUM(E2:E${VS.rowCount})` }, '', { formula: `SUM(G2:G${VS.rowCount})` }]); tv.font = { bold: true }; tv.getCell(5).numFmt = MONEY; tv.getCell(7).numFmt = MONEY; VS.autoFilter = { from: 'A1', to: 'G' + (VS.rowCount - 1) }; }
     return wb;
   }
   async function gather(period) {
     const rev = await review(period), filas = rev.filas.filter(f => f.liquidacion_id);
     const drivers = rev.filas.map(f => f.driver_id);
-    const [lines, novs, logs, emp, dnis] = await Promise.all([linesFor(filas.map(f => f.liquidacion_id)), novedades(period), journeys(period, drivers), company(),
+    const [lines, novs, desg, emp, dnis] = await Promise.all([linesFor(filas.map(f => f.liquidacion_id)), novedades(period), desgloseMes(period), company(),
       drivers.length ? _db.from('users').select('user_id,dni').in('user_id', drivers) : Promise.resolve({ data: [] })]);
     const dni = new Map((dnis.data || []).map(u => [u.user_id, u.dni])); rev.filas.forEach(f => { f.dni = dni.get(f.driver_id) || ''; });
-    return { period, rev, lines, novs, logs, emp };
+    return { period, rev, lines, novs, desg, emp };
   }
   function saveBlob(blob, filename) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); if (typeof window.confirmarDescarga === 'function') window.confirmarDescarga(filename, 'Sueldos'); }
   async function excelMes(period) {
@@ -192,7 +197,7 @@
 
   async function reciboPdf(l) {
     if (!l?.liquidacion_id) throw new Error('Este chofer todavía no tiene liquidación.');
-    const [lines, logs, emp] = await Promise.all([linesFor([l.liquidacion_id]), journeys(l.periodo_yyyymm, [l.driver_id]), company()]);
+    const [lines, desg, emp] = await Promise.all([linesFor([l.liquidacion_id]), desglose(l.liquidacion_id), company()]);
     const doc = new (ctor())({ unit: 'mm', format: 'a4' }), W = 210, H = 297, M = 14;
     const estado = ESTADOS[l.estado] || l.estado, sub = 'Estado: ' + estado + (l.aprobada_at ? ' · aprobado ' + stamp(l.aprobada_at) + (l.aprobador_nombre ? ' por ' + l.aprobador_nombre : '') : '');
     let y = header(doc, emp, 'Recibo de haberes', periodLabel(l.periodo_yyyymm), sub, W, M);
@@ -227,12 +232,25 @@
     if (y + 26 > H - 16) { doc.addPage(); y = M + 10; }
     y += 16; doc.setDrawColor(...C_TEXT); doc.setLineWidth(0.3); doc.line(M, y, M + 80, y); doc.line(W - M - 80, y, W - M, y);
     doc.setFontSize(8.5); doc.setTextColor(68, 68, 68); doc.text('Firma del chofer · recibí conforme', M, y + 5); doc.text('Aclaración y DNI', W - M - 80, y + 5);
-    // Anexo: jornadas
-    doc.addPage(); y = header(doc, emp, 'Anexo · jornadas', periodLabel(l.periodo_yyyymm), l.chofer_nombre || '', W, M);
-    const jc = [{ label: 'Fecha', w: 26 }, { label: 'Móvil', w: 28 }, { label: 'Km inicio', w: 30, align: 'right' }, { label: 'Km fin', w: 30, align: 'right' }, { label: 'Km', w: 28, align: 'right' }, { label: 'Estado', w: W - 2 * M - 142 }];
-    const jr = logs.map(j => { const ok = j.km_inicio != null && j.km_final != null; return [ddmmyyyy(j.log_date), j.truck?.plate || '—', j.km_inicio == null ? '—' : fmt(j.km_inicio), j.km_final == null ? '—' : fmt(j.km_final), ok ? fmt(num(j.km_final) - num(j.km_inicio)) : '—', j.status === 'closed' ? 'Cerrada' : 'Sin cerrar']; });
-    const kmTot = logs.filter(j => j.status === 'closed' && j.km_inicio != null && j.km_final != null).reduce((n, j) => n + num(j.km_final) - num(j.km_inicio), 0);
-    y = table(doc, y, jc, jr.length ? [...jr, ['Total', logs.length + ' jornadas', '', '', fmt(kmTot), 'Solo cerradas']] : [['Sin jornadas en el mes', '', '', '', '', '']], { ...opt, rowStyle: (r, i) => i === jr.length && jr.length ? { bold: true, topRule: true } : r[5] === 'Sin cerrar' ? { colors: [C_TEXT, C_TEXT, C_TEXT, C_TEXT, C_TEXT, C_RED] } : null });
+    // Anexo: desglose por día (solo la cuenta de km) y ventas con su comisión
+    const top = () => header(doc, emp, 'Anexo · desglose por día', periodLabel(l.periodo_yyyymm), (l.chofer_nombre || '') + (l.chofer_legajo ? ' · legajo ' + l.chofer_legajo : ''), W, M);
+    doc.addPage(); y = top();
+    const dias = desg.dias || [], ventas = desg.ventas || [], sumD = k => dias.reduce((n, d) => n + num(d[k]), 0);
+    y = section(doc, y, 'Jornadas', M);
+    const jc = [{ label: 'Fecha', w: 24 }, { label: 'Móvil', w: 30 }, { label: 'Km', w: 18, align: 'right' }, { label: 'Servicios', w: 20, align: 'right' }, { label: 'Ventas', w: 30, align: 'right' }, { label: 'Comisión', w: 26, align: 'right' }, { label: 'Efectivo esperado', w: W - 2 * M - 148, align: 'right' }];
+    const jr = dias.map(d => [diaFecha(d) + (d.abierta ? '\nSin cerrar' : ''), d.moviles || '—', num(d.km) ? fmt(d.km) : '—', fmt(d.servicios), num(d.ventas) ? money(d.ventas) + (d.n_ventas ? '\n' + d.n_ventas + (d.n_ventas === 1 ? ' venta' : ' ventas') : '') : (d.n_ventas ? d.n_ventas + (d.n_ventas === 1 ? ' venta' : ' ventas') : '—'), num(d.comision) ? money(d.comision) : '—', money(d.efectivo)]);
+    y = table(doc, y, jc, jr.length ? [...jr, ['Total', dias.filter(d => d.jornadas).length + ' jornadas', fmt(sumD('km')), fmt(sumD('servicios')), money(sumD('ventas')), money(sumD('comision')), money(sumD('efectivo'))]] : [['Sin movimientos en el mes', '', '', '', '', '', '']],
+      { M, W, H, onPage: top, rowStyle: (r, i) => i === jr.length && jr.length ? { bold: true, topRule: true } : dias[i]?.abierta ? { colors: [C_RED, C_TEXT, C_TEXT, C_TEXT, C_TEXT, C_TEXT, C_TEXT] } : null });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...C_MUTED);
+    doc.text(doc.splitTextToSize('Km = odómetro final menos inicial de cada jornada cerrada. Efectivo esperado = lo que el chofer cobró en efectivo ese día, antes de gastos (rendición del mes).', W - 2 * M), M, y + 2); y += 9;
+    if (ventas.length) {
+      if (y + 30 > H - 18) { doc.addPage(); y = top(); }
+      y = section(doc, y + 2, 'Ventas y comisiones', M);
+      const vc = [{ label: 'Fecha', w: 24 }, { label: 'Servicio', w: 28 }, { label: 'Concepto', w: 52 }, { label: 'Venta', w: 28, align: 'right' }, { label: 'Regla', w: 30 }, { label: 'Comisión', w: W - 2 * M - 162, align: 'right' }];
+      const vr = ventas.map(v => [diaFecha(v), v.servicio || '—', v.regla || '', v.venta == null || !num(v.venta) ? '—' : money(v.venta), regla(v), money(v.comision)]);
+      y = table(doc, y, vc, [...vr, ['Total · ' + ventas.length + (ventas.length === 1 ? ' venta' : ' ventas'), '', '', money(ventas.reduce((n, v) => n + num(v.venta), 0)), '', money(ventas.reduce((n, v) => n + num(v.comision), 0))]], { M, W, H, onPage: top, rowStyle: (r, i) => i === vr.length ? { bold: true, topRule: true } : null });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...C_MUTED); doc.text('La comisión total coincide con la línea de comisiones del recibo.', M, y + 2);
+    }
     footer(doc, W, H, M, (emp.legal_name || '') + ' · Recibo ' + String(l.liquidacion_id).slice(-8).toUpperCase());
     doc.save(`Recibo_${safeFile(l.chofer_nombre)}_${safeFile(periodLabel(l.periodo_yyyymm))}.pdf`);
     if (typeof window.confirmarDescarga === 'function') window.confirmarDescarga('Recibo PDF', l.chofer_nombre || '');

@@ -62,3 +62,10 @@ test('etapa 4: exportaciones de sueldos (letras, Excel con fórmulas, recibo y p
   const v=fs.readFileSync('payroll-view.js','utf8');assert.match(v,/PayrollExport\.reciboPdf\(l\)/);assert.match(v,/PayrollExport\.excelMes\(review\.periodo\)/);assert.match(v,/PayrollExport\.planillaPdf\(review\.periodo\)/);
   assert.match(fs.readFileSync('Index.html','utf8'),/<script src="\/payroll-export-v1\.js\?v=/);assert.ok(fs.existsSync('vendor/exceljs-4.4.0.min.js'));
 });
+test('desglose por día: sin odómetro, con efectivo esperado, ventas y comisiones (PDF y Excel)',()=>{
+  const src=fs.readFileSync('payroll-export-v1.js','utf8');
+  assert.doesNotMatch(src,/Km inicio|Km fin/);assert.match(src,/payroll_desglose_v1/);assert.match(src,/payroll_desglose_mes_v1/);
+  for(const h of ["'Efectivo esperado'","'Comisión'","'Ventas'","addWorksheet('Ventas'","'Ventas y comisiones'"])assert.ok(src.includes(h),h);
+  const m=fs.readFileSync('migrations/20261102200000_payroll_desglose_dias_v1.sql','utf8');
+  assert.match(m,/completed_driver_services_v2/);assert.match(m,/coalesce\(l\.cash_snapshot,app_private\.monthly_cash_source_v2/);assert.match(m,/not in \('administracion','supervision'\)/);
+});
