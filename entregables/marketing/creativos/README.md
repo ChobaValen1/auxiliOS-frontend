@@ -14,6 +14,7 @@ Los textos de cada anuncio están en `../anuncios-meta-solo-v1.md`. Todas las pa
 | `a4-comparacion-4x5.jpg` | 4 · Sin la app vs. con la app | Imagen 1080×1350 | Feed |
 | `a4-comparacion-9x16.jpg` | 4 · Sin la app vs. con la app | Imagen 1080×1920 | Historias |
 | `a4-comparacion-9x16.mp4` | 4 · Sin la app vs. con la app | Video de 15 s, 1080×1920, sin sonido | Reels e Historias |
+| `a5-flujo-papel-vs-app-9x16.mp4` | 5 · Flujo con papel vs. con la app | Video de 20 s, 1080×1920, sin sonido | Reels e Historias |
 
 **Sonido:** los videos no tienen audio. Al cargarlos en Meta (o en CapCut), sumá una música de la biblioteca libre. Los textos en pantalla ya funcionan como subtítulos.
 

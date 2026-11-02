@@ -164,6 +164,39 @@ Una sección por anuncio. Al final, una tabla: ángulo | objetivo de campaña | 
 - **Ubicación:** Feed, Reels e Historias.
 - **Por qué probarlo:** los antes y después suelen tener buen CTR porque se entienden sin leer. Conviene ponerlo en la prueba inicial junto a los otros tres.
 
+### Anuncio 5 · El mismo servicio, con papel y con la app (flujo de trabajo)
+
+**Idea:** mostrar el trabajo paso a paso y en paralelo. Arriba, con papel; abajo, con AuxiliOS Solo. Cuatro pasos sincronizados:
+
+| Paso | ✕ Con papel | ✓ Con AuxiliOS Solo |
+|---|---|---|
+| 1 · En camino al origen | La grúa llega al origen | La grúa llega al origen |
+| 2 · El remito | Se completa a mano y se firma en papel (letra a mano, sin fotos, un solo papel) | Patente y recorrido en la app, 4 fotos del vehículo y firma del socio en pantalla |
+| 3 · Se hace el servicio | Remolque hasta el destino | Remolque hasta el destino |
+| 4 · Y después… | El remito se moja, la prestadora avisa “Falta el remito del servicio del martes. Sin remito no se liquida.” → **Servicio sin cobrar** | Se manda el remito al socio por WhatsApp: PDF con logo y QR, mensaje armado, queda guardado → **Enviado en un toque** |
+
+> El envío por WhatsApp **no es automático**: la app arma el mensaje con el número del socio y el gruero lo manda con un toque. Por eso el anuncio dice “en un toque”.
+
+**Ganchos para probar**
+1. Mismo servicio. Dos formas de hacerlo.
+2. El servicio lo hiciste. ¿Y el remito?
+3. Del origen al WhatsApp del socio, sin papel.
+
+**Texto principal** (~400 caracteres)
+> Mismo servicio. Dos formas de hacerlo.
+>
+> Con papel: lo completás a mano, lo firma el socio y queda en la guantera. Si se moja o se pierde, el servicio queda sin cobrar.
+>
+> Con AuxiliOS Solo: cargás patente y recorrido, sacás las fotos, el socio firma en la pantalla y le mandás el remito por WhatsApp en un toque. Queda guardado en la app.
+>
+> Gratis en la etapa de prueba, sin tarjeta. 👉 Probala.
+
+- **Título:** Del origen al WhatsApp, sin papel
+- **Descripción:** Gratis en la etapa de prueba
+- **Botón:** *Registrarte*.
+- **Creativo:** `a5-flujo-papel-vs-app-9x16.mp4` (20 s, 1080×1920, sin sonido).
+- **Ubicación:** Reels e Historias. En Feed también funciona, porque Meta lo recorta a 4:5 y los dos paneles quedan visibles.
+
 ---
 
 ## 3. Comparación
@@ -174,6 +207,7 @@ Una sección por anuncio. Al final, una tabla: ángulo | objetivo de campaña | 
 | Lo que queda del mes | Igual | Costo por registro |
 | Facturar a cada prestadora | Igual | Costo por registro y registros que cargan su primer servicio |
 | Sin la app vs. con la app | Igual | CTR y costo por registro |
+| Flujo papel vs. app | Igual | Reproducciones hasta el final (ThruPlay) y costo por registro |
 
 **Cómo correrlo:** 1 campaña, 1 conjunto (Argentina, público abierto o con intereses en grúas, auxilio mecánico o remolque), los 4 anuncios con 2 ganchos cada uno = 8 anuncios. 7 días sin tocar. Después se apagan los peores y se duplica el mejor.
 

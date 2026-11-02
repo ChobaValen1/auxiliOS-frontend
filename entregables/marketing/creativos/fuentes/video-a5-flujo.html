@@ -1,0 +1,129 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1080px;height:1920px;background:#0c0e12;color:#eef0f4;font-family:'DM Sans';overflow:hidden;position:relative}
+.big{font:400 150px/.92 'Bebas Neue';letter-spacing:.01em}.am{color:#f5a623}.rd{color:#ef6b6b}
+.panel{position:absolute;left:36px;right:36px;height:640px;border-radius:44px;overflow:hidden}
+.p1{top:250px;background:#14161b;border:2px solid #23262e}.p2{top:960px;background:radial-gradient(120% 90% at 100% 0%,rgba(245,166,35,.16),transparent 60%),#181c24;border:2px solid #f5a623}
+.tag{position:absolute;left:36px;top:30px;display:inline-flex;gap:10px;padding:10px 22px;border-radius:99px;font:700 26px 'DM Sans';letter-spacing:.1em;text-transform:uppercase}
+.tag.bad{background:rgba(239,107,107,.14);color:#ef6b6b}.tag.good{background:rgba(245,166,35,.16);color:#f5a623}
+.step{position:absolute;right:36px;top:30px;font:700 26px 'DM Sans';color:#8a90a0;letter-spacing:.06em}
+.cap{position:absolute;left:36px;right:36px;top:92px;font:400 64px/1 'Bebas Neue';letter-spacing:.01em}
+.stage{position:absolute;left:0;right:0;top:180px;bottom:0}
+.sc{position:absolute;inset:0;opacity:0}
+.road{position:absolute;left:60px;right:60px;top:300px;height:10px;border-radius:5px;background:repeating-linear-gradient(90deg,#3a3f4b 0 40px,transparent 40px 70px)}
+.pin{position:absolute;top:196px;width:150px;margin-left:-75px;text-align:center;font:700 26px 'DM Sans';color:#b9beca}
+.pin svg{display:block;margin:0 auto 6px;width:60px;height:80px}
+.truck{position:absolute;top:196px;width:250px}
+.paper{position:absolute;left:80px;top:20px;width:430px;height:400px;border-radius:12px;background:#ece5d3;color:#33427a;padding:26px 30px;box-shadow:0 20px 50px rgba(0,0,0,.5);transform:rotate(-3deg);font:700 34px/1.25 'Caveat';overflow:hidden}
+.paper .h{font:700 24px 'DM Sans';color:#555;letter-spacing:.08em;margin-bottom:10px}
+.paper .ln{border-bottom:2px solid #c6bfae;min-height:46px;white-space:nowrap;overflow:hidden}
+.list{position:absolute;left:560px;right:40px;top:60px;display:grid;gap:22px}
+.li{display:flex;gap:14px;align-items:center;font-size:32px;opacity:0}
+.li i{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:24px}
+.bad .li{color:#9aa0ad}.bad .li i{background:rgba(239,107,107,.16);color:#ef6b6b}.good .li i{background:#f5a623;color:#111}
+.phone{position:absolute;left:90px;top:-10px;width:380px;height:470px;border-radius:50px;padding:12px;background:linear-gradient(160deg,#2a2e37,#121419);box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,255,255,.08)}
+.scr{width:100%;height:100%;border-radius:40px;background:#0f1115;overflow:hidden;padding:26px 22px;position:relative}
+.fl{font-size:15px;color:#8a90a0;letter-spacing:.06em;text-transform:uppercase;margin:10px 0 6px}
+.in{height:46px;border-radius:12px;border:1.5px solid #2a2f3a;background:#151820;padding:0 14px;display:flex;align-items:center;font-size:21px;color:#eef0f4;white-space:nowrap;overflow:hidden}
+.in.on{border-color:#f5a623}
+.thumbs{display:flex;gap:8px;margin-top:12px}.thumbs b{width:72px;height:56px;border-radius:10px;background:linear-gradient(135deg,#4a5366,#262b36);opacity:0}
+.pad{position:absolute;left:22px;right:22px;bottom:22px;height:150px;border-radius:16px;background:#fff}
+.wa{position:absolute;inset:0;background:#0b141a}
+.wah{height:70px;background:#202c33;display:flex;align-items:center;gap:12px;padding:0 18px;font-size:21px;font-weight:600}
+.wah i{width:40px;height:40px;border-radius:50%;background:#6b7a8a;display:block}
+.bub{position:absolute;right:16px;max-width:300px;border-radius:14px 4px 14px 14px;background:#005c4b;padding:12px 14px;font-size:17px;line-height:1.35;color:#e9edef}
+.bub .lk{display:block;margin-top:8px;border-radius:10px;background:rgba(0,0,0,.25);padding:10px;font-size:15px;color:#9fe1d1}
+.bub small{display:block;text-align:right;color:#8fd3c4;font-size:14px;margin-top:4px}
+.inc{position:absolute;left:560px;right:40px;top:40px;border-radius:4px 18px 18px 18px;background:#202c33;padding:18px 20px;font-size:28px;line-height:1.35;color:#e9edef;opacity:0}
+.inc b{display:block;font-size:22px;color:#53bdeb;margin-bottom:6px}
+.res{position:absolute;left:560px;right:40px;bottom:40px;font:400 54px/1 'Bebas Neue';opacity:0}
+.vs{position:absolute;left:485px;top:860px;width:110px;height:110px;border-radius:50%;background:#0c0e12;border:3px solid #2a2e37;display:grid;place-items:center;font:400 54px 'Bebas Neue';z-index:3}
+.note{position:absolute;right:60px;top:1612px;font-size:22px;color:#5d6371}
+.brand{font:400 90px/1 'Bebas Neue';letter-spacing:.04em}.brand b{color:#f5a623;font-weight:400}.brand span{font-size:40px;letter-spacing:.22em;color:#8a90a0;margin-left:12px}
+.cta{display:inline-flex;align-items:center;gap:18px;background:#f5a623;color:#111;font:700 58px 'DM Sans';padding:36px 64px;border-radius:32px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+ <symbol id="tow" viewBox="0 0 250 110"><rect x="0" y="40" width="150" height="40" rx="6" fill="#3a3f4b"/><path d="M150 80V30a8 8 0 0 1 8-8h40l30 30v28z" fill="#f5a623"/><rect x="170" y="30" width="34" height="22" rx="4" fill="#0c0e12" opacity=".8"/><path d="M20 40 70 6h10l-40 34" fill="none" stroke="#8a90a0" stroke-width="6"/><circle cx="40" cy="88" r="18" fill="#1b1e25" stroke="#8a90a0" stroke-width="6"/><circle cx="195" cy="88" r="18" fill="#1b1e25" stroke="#8a90a0" stroke-width="6"/><rect x="226" y="58" width="10" height="10" rx="2" fill="#ffd27a"/></symbol>
+ <symbol id="car" viewBox="0 0 160 70"><path d="M10 50V36l22-20h70l26 20h20v14z" fill="#5d7fb8"/><rect x="42" y="22" width="26" height="14" rx="3" fill="#0c0e12" opacity=".7"/><rect x="74" y="22" width="26" height="14" rx="3" fill="#0c0e12" opacity=".7"/><circle cx="38" cy="54" r="12" fill="#1b1e25" stroke="#8a90a0" stroke-width="5"/><circle cx="122" cy="54" r="12" fill="#1b1e25" stroke="#8a90a0" stroke-width="5"/></symbol>
+ <symbol id="pinS" viewBox="0 0 60 80"><path d="M30 78C30 78 4 46 4 28a26 26 0 0 1 52 0c0 18-26 50-26 50z" fill="currentColor"/><circle cx="30" cy="28" r="10" fill="#0c0e12"/></symbol>
+</defs></svg>
+
+<div id="frame" style="opacity:0">
+ <div class="panel p1 bad"><span class="tag bad">✕ Con papel</span><span class="step" id="st1"></span><div class="cap" id="cap1"></div>
+  <div class="stage">
+   <!-- 1 y 3: ruta -->
+   <div class="sc" id="r1"><div class="road"></div><div class="pin" style="left:46%;color:#ef6b6b"><svg style="color:#ef6b6b"><use href="#pinS"/></svg>Origen</div><div class="pin" style="left:88%"><svg style="color:#8a90a0"><use href="#pinS"/></svg>Destino</div>
+     <svg class="truck" id="tk1" viewBox="0 0 250 110" style="height:110px"><use href="#tow"/></svg><svg id="car1" viewBox="0 0 160 70" style="position:absolute;top:174px;width:146px;opacity:0;z-index:2"><use href="#car"/></svg></div>
+   <!-- 2: remito de papel -->
+   <div class="sc" id="w1"><div class="paper" id="pp1"><div class="h">REMITO N.º 0043</div>
+     <div class="ln" id="pl1"></div><div class="ln" id="pl2"></div><div class="ln" id="pl3"></div>
+     <div style="margin-top:14px;font:700 22px 'DM Sans';color:#666">FIRMA</div>
+     <svg viewBox="0 0 360 90" style="width:360px;height:90px"><path id="ps1" d="M10 60 C 40 10, 60 90, 90 40 S 140 70, 170 30 S 230 80, 260 40 S 320 60, 350 45" fill="none" stroke="#33427a" stroke-width="4" stroke-linecap="round"/></svg></div>
+     <div class="list"><div class="li" id="b1"><i>✕</i>Letra a mano</div><div class="li" id="b2"><i>✕</i>Sin fotos del auto</div><div class="li" id="b3"><i>✕</i>Un solo papel</div></div></div>
+   <!-- 4: problema -->
+   <div class="sc" id="x1"><div class="paper" id="pp2" style="transform:rotate(-9deg);filter:saturate(.6)"><div class="h">REMITO N.º 0043</div><div class="ln">Patente AB 3_ _ K_</div><div class="ln">Ezeiza → Lan_ _ _</div><div class="ln"></div>
+       <div id="wet" style="position:absolute;inset:0;background:radial-gradient(40% 35% at 60% 55%,rgba(70,80,100,.55),transparent 70%),radial-gradient(25% 22% at 28% 30%,rgba(70,80,100,.45),transparent 70%);opacity:0"></div>
+       <div id="wetT" style="position:absolute;right:26px;bottom:24px;font:700 44px 'Caveat';color:#c0392b;transform:rotate(-8deg);opacity:0">mojado</div></div>
+     <div class="inc" id="inc1"><b>Asistencia Ruta</b>Falta el remito del servicio del martes. Sin remito no se liquida.</div>
+     <div class="res rd" id="res1">Servicio sin cobrar</div></div>
+  </div></div>
+
+ <div class="panel p2 good"><span class="tag good">✓ Con AuxiliOS Solo</span><span class="step" id="st2"></span><div class="cap" id="cap2"></div>
+  <div class="stage">
+   <div class="sc" id="r2"><div class="road"></div><div class="pin" style="left:46%;color:#f5a623"><svg style="color:#f5a623"><use href="#pinS"/></svg>Origen</div><div class="pin" style="left:88%"><svg style="color:#8a90a0"><use href="#pinS"/></svg>Destino</div>
+     <svg class="truck" id="tk2" viewBox="0 0 250 110" style="height:110px"><use href="#tow"/></svg><svg id="car2" viewBox="0 0 160 70" style="position:absolute;top:174px;width:146px;opacity:0;z-index:2"><use href="#car"/></svg></div>
+   <div class="sc" id="w2"><div class="phone"><div class="scr">
+       <div style="font-size:24px;font-weight:700">Remito N.º 12</div>
+       <div class="fl">Patente</div><div class="in" id="f1"></div>
+       <div class="fl">Desde → Hasta</div><div class="in" id="f2"></div>
+       <div class="thumbs"><b id="t1"></b><b id="t2"></b><b id="t3"></b><b id="t4"></b></div>
+       <div class="pad"><svg viewBox="0 0 300 130" style="width:100%;height:100%"><path id="ps2" d="M20 85 C 50 20, 70 120, 100 60 S 150 100, 180 45 S 240 110, 270 55" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/></svg></div></div></div>
+     <div class="list"><div class="li" id="g1"><i>✓</i>Patente y recorrido</div><div class="li" id="g2"><i>✓</i>4 fotos del vehículo</div><div class="li" id="g3"><i>✓</i>Firma del socio en pantalla</div></div></div>
+   <div class="sc" id="x2"><div class="phone"><div class="scr" style="padding:0"><div class="wa"><div class="wah"><i></i>Lucía Fernández</div>
+       <div class="bub" id="bub" style="top:96px;opacity:0">Hola Lucía, te envío el remito N.º 12 del servicio del 24/11 (patente AE 610 BC). Grúas Gómez.<span class="lk">📄 Descargalo acá: auxilios…/remito-12.pdf</span><small id="chk">23:52 ✓</small></div></div></div></div>
+     <div class="list" style="top:40px"><div class="li" id="h1"><i>✓</i>PDF con tu logo y QR</div><div class="li" id="h2"><i>✓</i>Mensaje armado al socio</div><div class="li" id="h3"><i>✓</i>Queda guardado en la app</div></div>
+     <div class="res am" id="res2">Enviado en un toque</div></div>
+  </div></div>
+ <div class="vs">VS</div><span class="note">Datos de ejemplo</span>
+</div>
+
+<div id="s0" style="position:absolute;left:80px;right:80px;top:620px;opacity:0"><div class="big" id="h0a">Mismo servicio.</div><div class="big am" id="h0b">Dos formas de hacerlo.</div></div>
+<div id="s9" style="position:absolute;left:80px;right:80px;top:500px;text-align:center;opacity:0"><div class="brand">AUXILI<b>OS</b><span>SOLO</span></div>
+ <div class="big" style="margin:60px 0 40px;font-size:140px">Dejá el papel. <span class="am">Hacé el remito en el celular.</span></div>
+ <div style="font-size:46px;color:#b9beca;margin-bottom:70px">Fotos, firma y WhatsApp en un toque.</div>
+ <span class="cta" id="cta">Probala gratis →</span><div style="font-size:38px;color:#8a90a0;margin-top:40px">Gratis en la etapa de prueba · sin tarjeta</div></div>
+<script>
+const $=id=>document.getElementById(id),cl=(x,a,b)=>Math.min(1,Math.max(0,(x-a)/(b-a))),ease=t=>1-Math.pow(1-t,3),io=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function vis(el,t,a,b,fin=.3,fout=.25,dy=24){const i=ease(cl(t,a,a+fin)),o=1-cl(t,b-fout,b);el.style.opacity=Math.min(i,o);el.style.transform=(el.dataset.base||'')+` translateY(${(1-i)*dy}px)`;}
+const type=(el,s,t,a,b)=>{el.textContent=s.slice(0,Math.round(s.length*cl(t,a,b)));};
+const pop=(el,t,a)=>{const k=ease(cl(t,a,a+.3));el.style.opacity=k;el.style.transform=`translateX(${(1-k)*-30}px)`;};
+const draw=(p,t,a,b)=>{const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=L*(1-io(cl(t,a,b)));};
+const S=[[2.2,5.2,'1 · En camino al origen'],[5.2,10.2,'2 · El remito'],[10.2,12.8,'3 · Se hace el servicio'],[12.8,18.2,'4 · Y después…']];
+window.render=t=>{
+ vis($('s0'),t,0,2.3,.01);[['h0a',.1],['h0b',.8]].forEach(([id,a])=>{const k=ease(cl(t,a,a+.35));$(id).style.opacity=k;$(id).style.transform=`scale(${1.1-.1*k})`;});
+ vis($('frame'),t,2.2,18.3,.3,.3,0);
+ const si=S.findIndex(s=>t>=s[0]&&t<s[1]);const lab=si<0?'':S[si][2];
+ ['1','2'].forEach(n=>{$('cap'+n).textContent=lab.replace(/^\d · /,'');$('st'+n).textContent=si<0?'':'PASO '+(si+1)+' / 4';});
+ $('cap1').textContent=['En camino al origen','Remito en papel','Se hace el servicio','El remito se perdió'][si]||'';
+ $('cap2').textContent=['En camino al origen','Remito en la app','Se hace el servicio','Remito al socio por WhatsApp'][si]||'';
+ // ruta: pasos 1 y 3
+ ['1','2'].forEach(n=>{const r=$('r'+n);const on=(t>=2.3&&t<5.2)||(t>=10.2&&t<12.8);vis(r,t,t<10?2.3:10.25,t<10?5.15:12.75,.25,.2,0);
+   const tk=$('tk'+n),car=$('car'+n);let x;
+   if(t<10){x=-10+46*io(cl(t,2.6,4.6));car.style.opacity=0;}else{x=46+42*io(cl(t,10.5,12.3));car.style.opacity=1;}
+   tk.style.left=`calc(${x}% - 200px)`;car.style.left=`calc(${x}% - 196px)`;});
+ // paso 2 papel
+ vis($('w1'),t,5.25,10.15);type($('pl1'),'Patente AB 334 KD',t,5.6,6.8);type($('pl2'),'Ezeiza → Lanús',t,6.8,7.9);type($('pl3'),'Socio: L. Fernández',t,7.9,8.8);draw($('ps1'),t,8.8,9.7);
+ pop($('b1'),t,6.2);pop($('b2'),t,7.4);pop($('b3'),t,8.6);
+ // paso 2 app
+ vis($('w2'),t,5.25,10.15);type($('f1'),'AE 610 BC',t,5.6,6.3);type($('f2'),'Ezeiza → Lanús',t,6.3,7.1);$('f1').classList.toggle('on',t>5.6&&t<6.3);$('f2').classList.toggle('on',t>6.3&&t<7.1);
+ ['t1','t2','t3','t4'].forEach((id,i)=>{const k=ease(cl(t,7.2+i*.2,7.45+i*.2));$(id).style.opacity=k;$(id).style.transform=`scale(${.6+.4*k})`;});draw($('ps2'),t,8.1,9.1);
+ pop($('g1'),t,6.4);pop($('g2'),t,7.9);pop($('g3'),t,9.1);
+ // paso 4
+ vis($('x1'),t,12.85,18.15);$('wet').style.opacity=ease(cl(t,13.2,14.2));$('wetT').style.opacity=ease(cl(t,14,14.4));
+ {const k=ease(cl(t,14.6,15));$('inc1').style.opacity=k;$('inc1').style.transform=`translateY(${(1-k)*30}px)`;}{const k=ease(cl(t,15.8,16.2));$('res1').style.opacity=k;}
+ vis($('x2'),t,12.85,18.15);{const k=ease(cl(t,13.3,13.7));$('bub').style.opacity=k;$('bub').style.transform=`translateY(${(1-k)*30}px)`;$('chk').textContent=t>14.3?'23:52 ✓✓':'23:52 ✓';$('chk').style.color=t>14.3?'#53bdeb':'#8fd3c4';}
+ pop($('h1'),t,13.8);pop($('h2'),t,14.4);pop($('h3'),t,15);{const k=ease(cl(t,15.8,16.2));$('res2').style.opacity=k;}
+ vis($('s9'),t,18.2,20.2);$('cta').style.transform=`scale(${1+.04*Math.sin(Math.max(0,t-18.9)*5)})`;};
+render(0);
+</script></body></html>
