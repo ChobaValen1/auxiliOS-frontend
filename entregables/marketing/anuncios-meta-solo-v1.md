@@ -138,6 +138,32 @@ Una sección por anuncio. Al final, una tabla: ángulo | objetivo de campaña | 
   - **12–15 s:** “Cerrá el mes en minutos · Probala gratis”.
 - **Ubicación:** Feed, Reels e Historias.
 
+### Anuncio 4 · Sin la app vs. con la app (comparación)
+
+**Idea:** el mismo gruero, el mismo trabajo y dos finales de mes distintos. La comparación muestra **situaciones**, no juzga a la persona (regla de atributos personales de Meta).
+
+**Ganchos para probar**
+1. Mismo trabajo. Otro fin de mes.
+2. Dos grueros, mismos servicios. Uno sabe cuánto le quedó.
+3. Cuaderno y calculadora, o todo en el celular.
+
+**Texto principal** (~420 caracteres)
+> Mismo trabajo. Otro fin de mes.
+>
+> Sin la app: remitos de papel que se pierden, cuentas en un cuaderno y, a fin de mes, la calculadora para saber cuánto quedó.
+>
+> Con AuxiliOS Solo: remito con fotos y firma en el celular, cuánto facturarle a cada prestadora y lo que te queda del mes, sin hacer cuentas. Y aviso antes de que venza el seguro.
+>
+> Gratis en la etapa de prueba, sin tarjeta.
+> 👉 Probala en tu próximo servicio.
+
+- **Título:** Mismo trabajo, otro fin de mes
+- **Descripción:** Gratis en la etapa de prueba
+- **Botón:** *Registrarte*.
+- **Creativos:** `a4-comparacion-4x5.jpg` (Feed), `a4-comparacion-9x16.jpg` (Historias) y `a4-comparacion-9x16.mp4`. El video dura 15 s y compara cuatro momentos: remito, cobros, vencimientos y fin de mes, con “Sin la app” arriba y “Con AuxiliOS Solo” abajo.
+- **Ubicación:** Feed, Reels e Historias.
+- **Por qué probarlo:** los antes y después suelen tener buen CTR porque se entienden sin leer. Conviene ponerlo en la prueba inicial junto a los otros tres.
+
 ---
 
 ## 3. Comparación
@@ -147,8 +173,9 @@ Una sección por anuncio. Al final, una tabla: ángulo | objetivo de campaña | 
 | Remito perdido | Clientes potenciales o Ventas, optimizando **Registro completado** (al principio, clics en el enlace) | CTR: es el gancho más amplio |
 | Lo que queda del mes | Igual | Costo por registro |
 | Facturar a cada prestadora | Igual | Costo por registro y registros que cargan su primer servicio |
+| Sin la app vs. con la app | Igual | CTR y costo por registro |
 
-**Cómo correrlo:** 1 campaña, 1 conjunto (Argentina, público abierto o con intereses en grúas, auxilio mecánico o remolque), los 3 anuncios con 2 ganchos cada uno = 6 anuncios. 7 días sin tocar. Después se apagan los peores y se duplica el mejor.
+**Cómo correrlo:** 1 campaña, 1 conjunto (Argentina, público abierto o con intereses en grúas, auxilio mecánico o remolque), los 4 anuncios con 2 ganchos cada uno = 8 anuncios. 7 días sin tocar. Después se apagan los peores y se duplica el mejor.
 
 **Enlace de cada anuncio:**
 `/gruero?utm_source=meta&utm_medium=paid&utm_campaign=solo_prueba1&utm_content=<anuncio>-<gancho>`
