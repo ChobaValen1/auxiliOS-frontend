@@ -26,7 +26,7 @@ function paint(s){
     :'<p class="sub">Se abre en pantalla completa, más rápido y sin la barra del navegador.</p>'+steps();
   const go=s.querySelector('#install-go');go.hidden=!deferred;
 }
-function open(){
+function open(hint){
   if(standalone())return false;
   let s=document.getElementById('install');
   if(!s){s=document.createElement('div');s.id='install';s.className='sheet-wrap';s.hidden=true;
@@ -42,6 +42,7 @@ function open(){
     s.querySelector('#install-go').onclick=async()=>{if(!deferred)return;deferred.prompt();const r=await deferred.userChoice.catch(()=>null);deferred=null;
       if(r?.outcome==='accepted'){store.set('installed');close();}else paint(s);};
   }
+  s.querySelector('.install-head .hint').textContent=hint||'Queda como una app en tu celular.';
   paint(s);s.hidden=false;store.set(store.get()||'seen');
   requestAnimationFrame(()=>s.classList.add('on'));setTimeout(()=>s.querySelector('button:not([hidden])')?.focus({preventScroll:true}),60);
   return true;
@@ -49,13 +50,15 @@ function open(){
 function close(){const s=document.getElementById('install');if(!s||s.hidden)return;s.classList.remove('on');setTimeout(()=>{s.hidden=true;},220);}
 addEventListener('keydown',e=>{if(e.key==='Escape')close();});
 
-// La primera vez que se entra desde el celular aparece el aviso para instalar.
-addEventListener('load',()=>{if(store.get()||standalone())return;
-  setTimeout(()=>{if(!store.get()&&(deferred||phone()))open();},deferred?400:1400);});
+// El aviso para instalar NO aparece al abrir la página (ni en el ingreso ni en el alta):
+// lo pide la app cuando la cuenta ya está creada (al terminar el alta, o al entrar a Inicio si nunca se mostró).
+function offer(delay=1200,hint){if(store.get()||standalone())return;
+  setTimeout(()=>{if(store.get()||standalone()||!(deferred||phone()))return;
+    if(document.querySelector('.sheet-wrap.on:not(#install)'))return;open(hint);},delay);}
 
 // Sin zoom: la app se maneja como una app, no como una página (los campos ya usan letra de 16px).
 ['gesturestart','gesturechange'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1)e.preventDefault();},{passive:false});
 
-window.SoloPWA={open,close,get installed(){return standalone();},get ios(){return ios;}};
+window.SoloPWA={open,close,offer,get installed(){return standalone();},get ios(){return ios;}};
 })();

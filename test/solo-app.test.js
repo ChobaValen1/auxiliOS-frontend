@@ -300,3 +300,10 @@ test('Solo: ingreso con pestañas Entrar / Crear cuenta, autocompletado oscuro y
   assert.match(a,/class="auth-aside" aria-hidden="true"/,'en compu se explica qué es la app');assert.match(a,/El control de tu grúa/);
   assert.match(css,/\.auth input:-webkit-autofill/,'el autocompletado no rompe el tema oscuro');assert.match(css,/\.solo\.bare:has\(\.auth2\)\{max-width:1080px\}/);
 });
+
+test('Solo: el aviso de instalar la app aparece recién con la cuenta creada',()=>{
+  const pwa=fs.readFileSync('solo/solo-pwa.js','utf8');
+  assert.doesNotMatch(pwa,/addEventListener\('load',\(\)=>\{if\(store\.get\(\)/,'ya no se abre al cargar la página');assert.match(pwa,/function offer\(delay=/);
+  const onb=js.slice(js.indexOf('function renderOnboarding('),js.indexOf('function renderOnboarding(')+6000);assert.match(onb,/SoloPWA\?\.offer\(1500,/,'al terminar el alta');
+  const ini=js.slice(js.indexOf('async function renderInicio('),js.indexOf('async function renderInicio(')+400);assert.match(ini,/SoloPWA\?\.offer\(/,'o al entrar a Inicio si nunca lo vio');
+});

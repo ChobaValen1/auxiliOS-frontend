@@ -237,7 +237,9 @@ function renderOnboarding(step){
       const {data:p,error}=await db.from('solo_profiles').insert({full_name:onb.name,business_name:onb.biz||null,phone:onb.phone||null}).select('*').single();if(error)throw error;
       profile=p;toast('¡Listo! Tu cuenta está armada.');
       // De qué anuncio o campaña vino (si vino de uno) y aviso de registro al píxel de Meta, si está configurado.
-      try{const src=window.AxPixel?.source?.();if(src&&!user?.user_metadata?.source)db.auth.updateUser({data:{source:src}}).catch(()=>{});window.AxPixel?.track('CompleteRegistration');}catch(_){}go(clientId?'cliente-'+clientId:'inicio');
+      try{const src=window.AxPixel?.source?.();if(src&&!user?.user_metadata?.source)db.auth.updateUser({data:{source:src}}).catch(()=>{});window.AxPixel?.track('CompleteRegistration');}catch(_){}
+      // Recién con la cuenta creada se ofrece instalar la app.
+      window.SoloPWA?.offer(1500,'¡Tu cuenta está lista! Dejala a mano en tu celular.');go(clientId?'cliente-'+clientId:'inicio');
     }catch(x){fail(x);}
   };
   document.getElementById('onb').onsubmit=async e=>{
@@ -275,6 +277,8 @@ function render(){
 }
 
 async function renderInicio(){
+  // Si tiene la cuenta creada y nunca vio el aviso (por ejemplo, la creó en la compu), se le ofrece instalar.
+  window.SoloPWA?.offer(1800);
   const first=(profile.full_name||'').split(' ')[0];
   shell(`<div class="top"><div class="brand">AuxiliOS <b>Solo</b></div><span class="sub">Hola, ${esc(first)}</span></div>
     <div class="month"><button class="btn ghost icon-btn" type="button" id="m-prev" aria-label="Mes anterior">${icon('chevron-left')}</button><h1 id="m-name">${esc(monthName(month))}</h1><button class="btn ghost icon-btn" type="button" id="m-next" aria-label="Mes siguiente">${icon('chevron-right')}</button></div>
