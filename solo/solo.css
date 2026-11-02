@@ -1111,3 +1111,47 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .cal-m.on{background:var(--ax-accent);border-color:var(--ax-accent);color:var(--ax-accent-fg)}
 .cal-m:disabled{opacity:.22;cursor:default}
 @media (prefers-reduced-motion:reduce){.cal-title .ico,.cal-d{transition:none}}
+
+/* ── Ingreso v2: pestañas, autocompletado oscuro y dos columnas en compu ── */
+.auth2{gap:0}
+.auth2>.auth-main{margin:auto 0;display:flex;flex-direction:column;gap:14px;width:100%}
+.auth-aside{display:none}
+.auth-brand-m .brand{font-size:22px}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.auth-tabs button{min-height:42px;border:0;border-radius:10px;background:none;color:var(--ax-text-2);font:600 15px var(--ax-font);cursor:pointer;transition:background 160ms ease,color 160ms ease}
+.auth-tabs button[aria-selected="true"]{background:var(--ax-accent);color:var(--ax-accent-fg);cursor:default}
+.auth-tabs button:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.auth-head h1{font-size:26px;line-height:1.15;margin:4px 0 4px}
+.auth-head .sub{margin:0}
+.auth2 #auth{display:grid;gap:12px}
+.auth-free{display:flex;align-items:center;justify-content:center;gap:6px;margin:0;font-size:13px;color:var(--ax-text-2)}
+.auth-free .ico{width:16px;height:16px;color:var(--ax-ok)}
+.auth2 .help-link{align-self:center}
+/* El autocompletado del navegador no pinta los campos de celeste */
+.auth input:-webkit-autofill,.auth input:-webkit-autofill:hover,.auth input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px var(--ax-surface) inset;-webkit-text-fill-color:var(--ax-text);caret-color:var(--ax-text);transition:background-color 9999s ease-out}
+@media (min-width:900px){
+  .solo.bare:has(.auth2){max-width:1080px}
+  .auth2{display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:56px;overflow:hidden}
+  .auth-aside{display:grid;gap:22px;align-content:center;padding:28px 0}
+  .auth-aside .brand{font-size:26px}
+  .auth-aside h2{font:400 64px/.95 var(--ax-font-brand);letter-spacing:.01em;margin:6px 0 0}
+  .auth-aside h2 em{font-style:normal;color:var(--ax-accent)}
+  .auth-points{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+  .auth-points li{display:flex;gap:10px;align-items:flex-start;color:var(--ax-text-2);font-size:16px}
+  .auth-points .ico{flex:none;width:20px;height:20px;padding:3px;border-radius:50%;background:var(--ax-accent);color:var(--ax-accent-fg);margin-top:1px}
+  .auth-shot{position:relative;height:300px;overflow:hidden;border-radius:26px 26px 0 0;border:1px solid var(--ax-border);border-bottom:0;background:var(--ax-surface-2);
+    -webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
+  .auth-shot img{display:block;width:78%;height:auto;margin:22px auto 0;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .auth2>.auth-main{max-width:440px;justify-self:end;padding:28px;border-radius:24px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+  .auth2 .auth-brand-m{display:none}
+  .auth2 #auth.card{background:none;border:0;padding:0;box-shadow:none}
+}
+.auth2 h1:focus,.auth2 h1:focus-visible{outline:none}
+@media (max-height:720px){
+  .auth2>.auth-main{gap:10px}
+  .auth-brand-m img{width:34px;height:34px}.auth-brand-m .brand{font-size:19px}
+  .auth-tabs button{min-height:36px}
+  .auth-head h1{font-size:23px;margin:0}
+  .auth-head .sub{display:none}
+  .auth2 #auth{gap:9px}
+}

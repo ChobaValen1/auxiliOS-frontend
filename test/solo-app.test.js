@@ -293,3 +293,10 @@ test('Solo: página de presentación para los anuncios (gruero.html) y medición
   assert.match(t,/píxel de Meta/,'la política de privacidad lo explica');
   for(const f of ['firma.jpg','inicio.jpg','grua.jpg','gastos.jpg','facturacion.jpg','og.jpg'])assert.ok(fs.statSync('assets/solo-landing/'+f).size<200000,f);
 });
+
+test('Solo: ingreso con pestañas Entrar / Crear cuenta, autocompletado oscuro y dos columnas en compu',()=>{
+  const a=js.slice(js.indexOf('function renderAuth('),js.indexOf('function renderCheckEmail('));
+  assert.match(a,/class="auth-tabs" role="tablist"/);assert.match(a,/aria-selected="\$\{signup\}"/);assert.match(a,/Gratis en la etapa de prueba · sin tarjeta/);
+  assert.match(a,/class="auth-aside" aria-hidden="true"/,'en compu se explica qué es la app');assert.match(a,/El control de tu grúa/);
+  assert.match(css,/\.auth input:-webkit-autofill/,'el autocompletado no rompe el tema oscuro');assert.match(css,/\.solo\.bare:has\(\.auth2\)\{max-width:1080px\}/);
+});

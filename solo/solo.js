@@ -95,13 +95,23 @@ document.addEventListener('click',e=>{const b=e.target.closest?.('[data-eye]');i
 
 function renderAuth(mode){
   const signup=mode==='signup',reset=mode==='reset';
-  const title=signup?'Creá tu cuenta':reset?'Recuperá tu contraseña':'Entrá a tu cuenta';
-  const sub=signup?'Lo que facturás, lo que gastás y lo que te queda, todo en el celular.':reset?'Te mandamos un enlace a tu email para elegir una contraseña nueva.':'Tus servicios, gastos y cuentas del mes.';
-  const cta=signup?'Crear cuenta':reset?'Mandarme el enlace':'Entrar';
-  screen(`<div class="view auth">
-    <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">AuxiliOS <b>Solo</b></div></div>
-    <h1>${title}</h1>
-    <p class="sub">${sub}</p>
+  const title=signup?'Creá tu cuenta gratis':reset?'Recuperá tu contraseña':'Hola de nuevo';
+  const sub=signup?'En un minuto tenés tu grúa cargada.':reset?'Te mandamos un enlace a tu email para elegir una contraseña nueva.':'Entrá para ver tus servicios, gastos y cuentas del mes.';
+  const cta=signup?'Crear cuenta gratis':reset?'Mandarme el enlace':'Entrar';
+  // En compu, a la izquierda va qué es la app; en el celular solo el formulario.
+  screen(`<div class="view auth auth2">
+    <aside class="auth-aside" aria-hidden="true">
+      <div class="auth-brand"><img src="/assets/icons/icon-192.png" alt="" width="52" height="52"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+      <h2>El control de tu grúa, <em>en una app.</em></h2>
+      <ul class="auth-points"><li>${icon('check')}Servicios por prestadora, con la tarifa que se calcula sola</li><li>${icon('check')}Gastos y lo que te queda en el mes</li><li>${icon('check')}Remitos con fotos y firma, por WhatsApp</li></ul>
+      <div class="auth-shot"><img src="/assets/solo-landing/inicio.jpg" alt="" width="390" height="844" loading="lazy"></div>
+    </aside>
+    <div class="auth-main">
+    <div class="auth-brand auth-brand-m"><img src="/assets/icons/icon-192.png" alt="" width="44" height="44"><div class="brand">AuxiliOS <b>Solo</b></div></div>
+    ${reset?'':`<div class="auth-tabs" role="tablist" aria-label="Entrar o crear cuenta">
+      <button type="button" role="tab" aria-selected="${!signup}" ${signup?'id="a-switch"':'tabindex="-1"'}>Entrar</button>
+      <button type="button" role="tab" aria-selected="${signup}" ${signup?'tabindex="-1"':'id="a-switch"'}>Crear cuenta</button></div>`}
+    <div class="auth-head"><h1>${title}</h1><p class="sub">${sub}</p></div>
     ${authNotice?`<p class="notice" role="alert">${icon('circle-alert')}<span>${esc(authNotice)}</span></p>`:''}
     ${reset?'':`<div class="google-wrap" id="g-wrap" hidden><button class="btn block google-btn" type="button" id="a-google">${GOOGLE_G}<span>${signup?'Crear cuenta con Google':'Entrar con Google'}</span></button><div class="or"><span>o con tu email</span></div></div>`}
     <form id="auth" class="card" novalidate>
@@ -112,9 +122,11 @@ function renderAuth(mode){
       <p id="a-err" class="err" hidden></p>
       <button class="btn pri block" type="submit">${cta}</button>
       ${!signup&&!reset?'<button class="link center" id="a-forgot" type="button">¿Olvidaste tu contraseña?</button>':''}
+      ${signup?`<p class="auth-free">${icon('circle-check')}Gratis en la etapa de prueba · sin tarjeta</p>`:''}
     </form>
-    <p class="sub center">${reset?'¿Te acordaste?':signup?'¿Ya tenés cuenta?':'¿Todavía no tenés cuenta?'} <button class="link" id="a-switch" type="button">${reset?'Entrá':signup?'Entrá':'Creala gratis'}</button></p>
+    ${reset?'<p class="sub center">¿Te acordaste? <button class="link" id="a-switch" type="button">Entrá</button></p>':''}
     <button class="link center help-link" type="button" id="a-help">${icon('life-buoy')} ¿Necesitás ayuda? Escribinos</button>
+    </div>
   </div>`);
   authNotice=null;
   const $=x=>document.getElementById(x),er=$('a-err');
