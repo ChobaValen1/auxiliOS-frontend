@@ -251,3 +251,71 @@
 #pv-driver-modal .pv-nov-add { width: 100%; }
 #pv-driver-modal .pv-nov-add[hidden], #pv-driver-modal .pv-nov-form[hidden] { display: none; }
 @media (max-width: 850px) { #pv-driver-modal #pv-lines, #pv-driver-modal #pv-novedades, #pv-driver-modal #pv-commission-check { grid-column: 1 / -1; } #pv-driver-modal .pv-nov-list li { font-size: 11px; padding: 6px 8px; } }
+
+/* Sueldos · etapa 3: el mes como unidad (pasos, totales, alertas, aprobar y pagar en lote) */
+#screen-sueldos .pv-steps { display: flex; align-items: center; gap: 0; margin: 0; padding: 0; list-style: none; }
+#screen-sueldos .pv-steps li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; color: var(--ax-text-3, var(--ax-text-2)); font-size: 13px; font-weight: 600; white-space: nowrap; }
+#screen-sueldos .pv-steps li + li::before { content: ""; width: 22px; height: 2px; background: var(--ax-border-strong); margin-right: 6px; }
+#screen-sueldos .pv-steps i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; border: 2px solid var(--ax-border-strong); }
+#screen-sueldos .pv-steps .done { color: var(--ax-ok); }
+#screen-sueldos .pv-steps .done i { background: var(--ax-ok); border-color: var(--ax-ok); color: var(--ax-bg); }
+#screen-sueldos .pv-steps .cur { color: var(--ax-accent); }
+#screen-sueldos .pv-steps .cur i { border-color: var(--ax-accent); background: color-mix(in srgb, var(--ax-accent) 15%, transparent); }
+#screen-sueldos .pv-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+#screen-sueldos .pv-kpi { padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); min-width: 0; }
+#screen-sueldos .pv-kpi small { display: block; color: var(--ax-text-2); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+#screen-sueldos .pv-kpi b { display: block; margin-top: 4px; font: 500 20px var(--ax-font-mono, 'DM Mono', monospace); font-variant-numeric: tabular-nums; color: var(--ax-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-sueldos .pv-kpi b span { font-size: 12px; color: var(--ax-text-2); }
+#screen-sueldos .pv-kpi--neg b, #screen-sueldos .pv-kpi--down b { color: var(--ax-danger); }
+#screen-sueldos .pv-kpi--up b { color: var(--ax-ok); }
+#screen-sueldos .pv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+#screen-sueldos .pv-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+#screen-sueldos .pv-chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font: 600 13px var(--ax-font); cursor: pointer; }
+#screen-sueldos .pv-chip span { opacity: .7; margin-left: 2px; }
+#screen-sueldos .pv-chip.on { background: var(--ax-accent); border-color: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-sueldos .pv-chip:focus-visible, #screen-sueldos .pv-table tr[data-id]:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-sueldos .pv-bar #pv-search { flex: 1; min-width: 140px; max-width: 260px; }
+#screen-sueldos .pv-bar .pv-actions { display: flex; gap: 8px; margin: 0 0 0 auto; flex-wrap: wrap; }
+#screen-sueldos .pv-table-wrap { max-height: calc(100vh - 360px); min-height: 160px; overflow: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#screen-sueldos .pv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#screen-sueldos .pv-table th { position: sticky; top: 0; z-index: 1; text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ax-text-2); padding: 10px 12px; background: var(--ax-surface-3); border-bottom: 1px solid var(--ax-border); }
+#screen-sueldos .pv-table td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); vertical-align: top; color: var(--ax-text); }
+#screen-sueldos .pv-table .n { text-align: right; font-family: var(--ax-font-mono, 'DM Mono', monospace); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-sueldos .pv-table tr[data-id] { cursor: pointer; }
+#screen-sueldos .pv-table tr[data-id]:hover td { background: var(--ax-surface-2); }
+#screen-sueldos .pv-table tr.sel td { background: color-mix(in srgb, var(--ax-accent) 8%, transparent); }
+#screen-sueldos .pv-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--ax-accent); }
+#screen-sueldos .pv-alert { display: block; margin-top: 3px; color: var(--ax-accent); font-size: 12px; }
+#screen-sueldos .pv-alert.bad { color: var(--ax-danger); }
+#screen-sueldos .pv-pill { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+#screen-sueldos .pv-pill.ok { background: color-mix(in srgb, var(--ax-ok) 14%, transparent); color: var(--ax-ok); }
+#screen-sueldos .pv-pill.wa { background: color-mix(in srgb, var(--ax-accent) 15%, transparent); color: var(--ax-accent); }
+#screen-sueldos .pv-pill.bad { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-sueldos .pv-pill.mu { background: var(--ax-surface-3); color: var(--ax-text-2); }
+#screen-sueldos .pv-empty { text-align: center; color: var(--ax-text-2); padding: 24px; }
+#screen-sueldos .pv-run { margin: 8px 0 0; font-size: 11px; color: var(--ax-text-2); }
+#pv-pay-dialog, #pv-reopen-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: 92vh; overflow: auto; width: min(440px, 94vw); padding: 20px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text); font-family: var(--ax-font); }
+#pv-pay-dialog::backdrop, #pv-reopen-dialog::backdrop { background: color-mix(in srgb, var(--ax-bg) 72%, transparent); }
+#pv-pay-dialog h3, #pv-reopen-dialog h3 { margin: 0 0 6px; font-size: 18px; }
+#pv-pay-dialog .pv-note, #pv-reopen-dialog .pv-note { margin: 0 0 12px; color: var(--ax-text-2); font-size: 13px; }
+#pv-pay-dialog .form-label, #pv-reopen-dialog .form-label { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--ax-text-2); }
+#pv-pay-dialog .form-input, #pv-reopen-dialog .form-input { width: 100%; }
+#pv-pay-dialog [role="alert"], #pv-reopen-dialog [role="alert"] { min-height: 0; margin: 8px 0 0; color: var(--ax-danger); font-size: 12px; }
+#pv-pay-dialog-actions, #pv-reopen-dialog-actions { display: flex; gap: 8px; margin-top: 14px; }
+#pv-pay-dialog-actions .btn, #pv-reopen-dialog-actions .btn { flex: 1; }
+@media (max-width: 1100px) { #screen-sueldos .pv-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } #screen-sueldos .pv-steps li { font-size: 12px; padding: 4px 6px; } }
+@media (max-width: 700px) {
+  #screen-sueldos .pv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #screen-sueldos .pv-kpi--main { grid-column: 1 / -1; }
+  #screen-sueldos .pv-kpi { padding: 8px 10px; }
+  #screen-sueldos .pv-kpi b { font-size: 16px; }
+  #screen-sueldos .pv-kpi small { font-size: 10px; }
+  #screen-sueldos .pv-hide-sm { display: none; }
+  #screen-sueldos .pv-steps li { font-size: 0; gap: 0; padding: 4px; }
+  #screen-sueldos .pv-steps li.cur { font-size: 12px; gap: 6px; }
+  #screen-sueldos .pv-steps li + li::before { width: 10px; }
+  #screen-sueldos .pv-bar .pv-actions { margin: 0; width: 100%; }
+  #screen-sueldos .pv-bar .pv-actions .btn { flex: 1; }
+  #screen-sueldos .pv-bar #pv-search { max-width: none; }
+  #screen-sueldos .pv-table-wrap { max-height: calc(100vh - 420px); }
+}

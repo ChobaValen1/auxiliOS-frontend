@@ -42,7 +42,7 @@
   }
   async function refreshLiq(l){
     const fresh=await _db.from('payroll_liquidaciones').select('total,ajuste_rendiciones,cash_snapshot').eq('liquidacion_id',l.liquidacion_id).single();
-    if(fresh.error)throw fresh.error;Object.assign(l,fresh.data);summary(l);stats();cards();
+    if(fresh.error)throw fresh.error;Object.assign(l,fresh.data);summary(l);if(review)loadReview(review.periodo).catch(()=>{});
   }
   function bindNovedades(l){
     const form=document.getElementById('pv-nov-form'),add=document.getElementById('pv-nov-add'),err=document.getElementById('pv-nov-error');
@@ -61,21 +61,109 @@
       try{const r=await _db.from('payroll_novedades').delete().eq('novedad_id',b.dataset.nov);if(r.error)throw r.error;await refreshLiq(l);}
       catch(x){b.disabled=false;if(typeof toast==='function')toast(x.message,'error');}});
   }
-  function stats(){
-    const sum=list=>list.reduce((n,l)=>n+num(l.total),0),el=document.getElementById('pl-mes-stats');
-    if(el)el.innerHTML=cell('Total del mes',cash(sum(rows)))+cell('Pendiente de pago',cash(sum(rows.filter(l=>l.estado!=='pagada'))))+cell('Pagado',cash(sum(rows.filter(l=>l.estado==='pagada'))));
+  // Etapa 3 · el mes como unidad: pasos, totales, alertas y acciones en lote (todo por funciones de la base).
+  let review=null,chip='';
+  const PASOS=[['calculado','Calculado'],['en_revision','En revisión'],['aprobado','Aprobado'],['pagado','Pagado']];
+  const isAdmin=()=>typeof PERFIL_USUARIO!=='undefined'&&PERFIL_USUARIO?.roles?.name==='administracion';
+  function stepsHtml(paso){
+    const idx={sin_calcular:-1,en_revision:1,aprobado:2,pagado:3}[paso]??-1;
+    return '<ol class="pv-steps" aria-label="Pasos del mes">'+PASOS.map(([k,label],i)=>{const st=paso==='pagado'||i<idx?'done':i===idx?'cur':'';return '<li class="'+st+'"'+(st==='cur'?' aria-current="step"':'')+'><i>'+(st==='done'?'✓':i+1)+'</i>'+label+'</li>';}).join('')+'</ol>';
   }
-  function render(data) {
-    closeDetail(); rows = data; request++; active = null; monthLabel();
-    stats();
-    document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><button class="btn btn-ghost" onclick="PayrollView.exportMonth('xlsx')">Exportar Excel</button><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select><button class="btn btn-primary pv-generate" onclick="_generarLiquidacionesMes()">Generar liquidaciones</button></div><div id="pv-cards"></div>`;
-    const input=document.getElementById('pv-search'), select=document.getElementById('pv-filter');
-    input.value=search;select.value=filter;
-    input.oninput=()=>{search=input.value;cards();};select.onchange=()=>{filter=select.value;cards();};cards();
+  function rowState(f){
+    if(f.estado==='sin_liquidacion')return['bad','Sin calcular'];
+    if(f.estado==='pagada')return['ok','Pagado'];
+    if(f.estado==='aprobada')return['mu','Aprobado'];
+    return f.listo?['ok','Listo']:['wa','Revisar'];
+  }
+  function chipMatch(f){
+    if(!chip)return true;
+    if(chip==='revisar')return f.estado==='sin_liquidacion'||(f.estado==='pendiente'&&!f.listo);
+    if(chip==='listo')return f.listo;
+    return f.estado===chip;
+  }
+  function alertText(a){return a.tipo==='cambio'?'Cambió la información: recalculá el mes':a.texto;}
+  function visible(){return (review?.filas||[]).filter(f=>chipMatch(f)&&String(f.full_name||'').toLowerCase().includes(search.toLowerCase()));}
+  function reviewHtml(r){
+    const f=r.filas||[],sum=(list,k)=>list.reduce((n,x)=>n+num(x[k]),0),neto=sum(f,'neto');
+    const listos=f.filter(x=>x.listo),aprob=f.filter(x=>x.estado==='aprobada'),count=fn=>f.filter(fn).length;
+    const prev=num(r.prev_neto),vs=prev>0?(neto-prev)*100/prev:null;
+    const kpi=(label,val,cls='')=>'<div class="pv-kpi '+cls+'"><small>'+label+'</small><b>'+val+'</b></div>';
+    const chips=[['','Todos',f.length],['revisar','Para revisar',count(x=>x.estado==='sin_liquidacion'||(x.estado==='pendiente'&&!x.listo))],['listo','Listos',listos.length],['aprobada','Aprobados',aprob.length],['pagada','Pagados',count(x=>x.estado==='pagada')]];
+    const admin=isAdmin();
+    const actions=admin?'<button class="btn btn-ghost" id="pv-calc">'+(r.paso==='sin_calcular'?'Calcular el mes':'Recalcular')+'</button><button class="btn btn-ghost" onclick="PayrollView.exportMonth(\'xlsx\')">Exportar</button>'+(aprob.length?'<button class="btn btn-ghost" id="pv-pay-all">Pagar '+aprob.length+' aprobado'+(aprob.length===1?'':'s')+'</button>':'')+'<button class="btn btn-primary" id="pv-approve-all"'+(listos.length?'':' disabled')+'>Aprobar '+listos.length+' listo'+(listos.length===1?'':'s')+'</button>':'<button class="btn btn-ghost" onclick="PayrollView.exportMonth(\'xlsx\')">Exportar</button>';
+    const calc=r.corrida?.calculada_at?'Calculado el '+new Date(r.corrida.calculada_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(r.corrida.calculada_por?' por '+esc(r.corrida.calculada_por):''):'Todavía no se calculó este mes.';
+    return '<div class="pv-kpis">'+kpi('Neto a pagar',cash(neto),'pv-kpi--main')+kpi('Haberes',cash(sum(f,'haberes')))+kpi('Descuentos',(sum(f,'descuentos')?'−':'')+cash(sum(f,'descuentos')),'pv-kpi--neg')+kpi('Choferes',f.length+' <span>· '+listos.length+' listos</span>')+kpi('Vs. mes anterior',vs===null?'—':(vs>=0?'+':'−')+fmt(Math.abs(Math.round(vs*10)/10))+' %',vs===null?'':vs>=0?'pv-kpi--up':'pv-kpi--down')+'</div>'
+      +'<div class="pv-bar"><div class="pv-chips" role="group" aria-label="Filtrar">'+chips.map(([k,label,n])=>'<button class="pv-chip'+(chip===k?' on':'')+'" data-chip="'+k+'" aria-pressed="'+(chip===k)+'">'+label+' <span>'+n+'</span></button>').join('')+'</div><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><div class="pv-actions">'+actions+'</div></div>'
+      +'<div class="pv-table-wrap"><table class="pv-table"><thead><tr><th>Chofer</th><th class="n">Días</th><th class="n pv-hide-sm">Km</th><th class="n pv-hide-sm">Serv.</th><th class="n pv-hide-sm">Haberes</th><th class="n pv-hide-sm">Desc.</th><th class="n">Neto</th><th>Estado</th></tr></thead><tbody id="pv-rows"></tbody></table></div>'
+      +'<p class="pv-note pv-run">'+calc+(r.sin_esquema?.length?' · Sin esquema salarial: '+r.sin_esquema.map(esc).join(', ')+'.':'')+'</p>';
+  }
+  function rowsHtml(){
+    const list=visible();
+    if(!list.length)return '<tr><td colspan="8" class="pv-empty">'+(review?.filas?.length?'No hay choferes con este filtro.':'Sin choferes para este mes.')+'</td></tr>';
+    return list.map(f=>{const [cls,label]=rowState(f),al=f.alertas||[];
+      return '<tr'+(f.liquidacion_id?' data-id="'+esc(f.liquidacion_id)+'" tabindex="0"':'')+' class="'+(active?.liquidacion_id&&active.liquidacion_id===f.liquidacion_id?'sel':'')+'"><td><b>'+esc(f.full_name)+'</b>'+al.map(a=>'<small class="pv-alert '+(a.nivel==='bad'?'bad':'')+'">⚠ '+esc(alertText(a))+'</small>').join('')+'</td><td class="n">'+fmt(f.jornadas)+'</td><td class="n pv-hide-sm">'+fmt(f.km_total)+'</td><td class="n pv-hide-sm">'+fmt(f.servicios)+'</td><td class="n pv-hide-sm">'+fmt(f.haberes)+'</td><td class="n pv-hide-sm">'+(num(f.descuentos)?'−'+fmt(f.descuentos):'0')+'</td><td class="n"><b>'+fmt(f.neto)+'</b></td><td><span class="pv-pill '+cls+'">'+label+'</span></td></tr>';}).join('');
   }
   function cards(){
-    document.getElementById('pv-cards').innerHTML=rows.filter(l=>(!filter||l.estado===filter)&&String(l.chofer_nombre).toLowerCase().includes(search.toLowerCase())).map(l=>`<button class="pv-driver ${active?.liquidacion_id===l.liquidacion_id?'selected':''}" data-id="${esc(l.liquidacion_id)}"><span class="pv-avatar">${esc(String(l.chofer_nombre).split(' ').map(n=>n[0]).slice(0,2).join(''))}</span><span><b>${esc(l.chofer_nombre)}</b><small>${esc(l.chofer_legajo||'')} · ${num(l.jornadas)} jornadas</small></span><span><strong>${cash(l.total)}</strong><small>${esc(l.estado)}</small></span><span>Ver detalle ›</span></button>`).join('')||'<p class="pv-empty">No hay liquidaciones para estos filtros. Podés generar el mes desde arriba.</p>';
-    document.querySelectorAll('.pv-driver').forEach(b=>b.onclick=()=>open(b.dataset.id));
+    const body=document.getElementById('pv-rows');if(!body)return;
+    body.innerHTML=rowsHtml();
+    body.querySelectorAll('tr[data-id]').forEach(tr=>{tr.onclick=()=>open(tr.dataset.id);tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open(tr.dataset.id);}};});
+  }
+  function bindReview(){
+    const input=document.getElementById('pv-search');input.value=search;input.oninput=()=>{search=input.value;cards();};
+    document.querySelectorAll('.pv-chip').forEach(b=>b.onclick=()=>{chip=b.dataset.chip;document.querySelectorAll('.pv-chip').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',String(x===b));});cards();});
+    const calc=document.getElementById('pv-calc');if(calc)calc.onclick=()=>_generarLiquidacionesMes();
+    const ap=document.getElementById('pv-approve-all');if(ap)ap.onclick=()=>{const ids=(review.filas||[]).filter(f=>f.listo).map(f=>f.liquidacion_id);if(ids.length&&confirm('¿Aprobar '+ids.length+' recibo'+(ids.length===1?'':'s')+' sin alertas? Los importes quedan congelados.'))approveIds(ids);};
+    const pay=document.getElementById('pv-pay-all');if(pay)pay.onclick=()=>payDialog((review.filas||[]).filter(f=>f.estado==='aprobada').map(f=>({id:f.liquidacion_id,name:f.full_name,total:f.neto})));
+  }
+  async function loadReview(period){
+    const token=++reviewSeq;
+    const r=await _db.rpc('payroll_revision_mes_v1',{p_period:period});
+    if(token!==reviewSeq)return;
+    if(r.error)throw r.error;
+    review=r.data;
+    const steps=document.getElementById('pl-mes-stats');if(steps)steps.innerHTML=stepsHtml(review.paso);
+    document.getElementById('pl-mes-body').innerHTML=reviewHtml(review);bindReview();cards();
+  }
+  let reviewSeq=0;
+  function render(data) {
+    closeDetail(); rows = data; request++; active = null; monthLabel();
+    const input=document.getElementById('pl-mes-periodo'),period=input?.value?Number(input.value.replace('-','')):null;
+    if(!period)return;
+    document.getElementById('pl-mes-body').innerHTML='<p role="status" class="pv-note">Cargando revisión del mes…</p>';
+    loadReview(period).catch(e=>{document.getElementById('pl-mes-body').innerHTML='<p role="alert">No se pudo cargar la revisión del mes: '+esc(e.message)+'</p>';});
+  }
+  const reload=()=>typeof _cargarLiquidacionesMes==='function'&&_cargarLiquidacionesMes();
+  async function approveIds(ids){
+    try{const r=await _db.rpc('payroll_aprobar_v1',{p_ids:ids});if(r.error)throw r.error;
+      const salt=r.data.saltadas||[];toast('Aprobados: '+r.data.aprobadas+(salt.length?' · no aprobados: '+salt.length+' ('+salt[0].motivo+')':''),salt.length?'warning':'success',6000);
+    }catch(e){toast(e.message,'error');}
+    closeDetail();reload();
+  }
+  function ensureDialog(id){let d=document.getElementById(id);if(!d){d=document.createElement('dialog');d.id=id;d.className='pv-dialog';document.body.appendChild(d);}return d;}
+  function todayAR(){return new Date(Date.now()-3*3600e3).toISOString().slice(0,10);}
+  function payDialog(items){
+    if(!items.length)return;
+    const d=ensureDialog('pv-pay-dialog'),total=items.reduce((n,x)=>n+num(x.total),0);
+    d.innerHTML='<form method="dialog" id="pv-pay-form"><h3>Registrar pago</h3><p class="pv-note">'+items.length+' recibo'+(items.length===1?'':'s')+' · <b>'+cash(total)+'</b>'+(items.length<=4?' · '+items.map(x=>esc(x.name)).join(', '):'')+'</p>'
+      +'<label class="form-label" for="pv-pay-metodo">Método</label><select class="form-input" id="pv-pay-metodo"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="mixto">Mixto</option><option value="otro">Otro</option></select>'
+      +'<label class="form-label" for="pv-pay-fecha">Fecha de pago</label><input class="form-input" type="date" id="pv-pay-fecha" value="'+todayAR()+'" max="'+todayAR()+'" required>'
+      +'<label class="form-label" for="pv-pay-ref">Comprobante (opcional)</label><input class="form-input" id="pv-pay-ref" maxlength="120" placeholder="N.º de operación o nota">'
+      +'<p id="pv-pay-error" role="alert"></p><div class="pv-dialog-actions"><button class="btn btn-ghost" type="button" id="pv-pay-cancel">Cancelar</button><button class="btn btn-primary" type="submit" id="pv-pay-ok">Confirmar pago</button></div></form>';
+    d.querySelector('#pv-pay-cancel').onclick=()=>d.close();
+    d.querySelector('#pv-pay-form').onsubmit=async e=>{e.preventDefault();const ok=d.querySelector('#pv-pay-ok'),err=d.querySelector('#pv-pay-error');ok.disabled=true;ok.textContent='Guardando…';
+      try{const r=await _db.rpc('payroll_pagar_v1',{p_ids:items.map(x=>x.id),p_metodo:d.querySelector('#pv-pay-metodo').value,p_fecha:d.querySelector('#pv-pay-fecha').value,p_referencia:d.querySelector('#pv-pay-ref').value.trim()||null});if(r.error)throw r.error;
+        const salt=r.data.saltadas||[];d.close();toast('Pagados: '+r.data.pagadas+(salt.length?' · sin pagar: '+salt.length:''),salt.length?'warning':'success',6000);closeDetail();reload();
+      }catch(x){err.textContent=x.message;ok.disabled=false;ok.textContent='Confirmar pago';}};
+    d.showModal();
+  }
+  function reopenDialog(l){
+    const d=ensureDialog('pv-reopen-dialog');
+    d.innerHTML='<form method="dialog" id="pv-reopen-form"><h3>Reabrir recibo</h3><p class="pv-note">'+esc(l.chofer_nombre||'')+' · '+cash(l.total)+'. Vuelve a pendiente'+(l.estado==='pagada'?' y se borra el pago registrado':'')+'. El motivo queda registrado.</p><label class="form-label" for="pv-reopen-motivo">Motivo</label><textarea class="form-input" id="pv-reopen-motivo" rows="3" minlength="5" maxlength="300" required placeholder="Ej.: faltó cargar un adelanto"></textarea><p id="pv-reopen-error" role="alert"></p><div class="pv-dialog-actions"><button class="btn btn-ghost" type="button" id="pv-reopen-cancel">Cancelar</button><button class="btn btn-primary" type="submit" id="pv-reopen-ok">Reabrir</button></div></form>';
+    d.querySelector('#pv-reopen-cancel').onclick=()=>d.close();
+    d.querySelector('#pv-reopen-form').onsubmit=async e=>{e.preventDefault();const ok=d.querySelector('#pv-reopen-ok'),err=d.querySelector('#pv-reopen-error');ok.disabled=true;
+      try{const r=await _db.rpc('payroll_reabrir_v1',{p_id:l.liquidacion_id,p_motivo:d.querySelector('#pv-reopen-motivo').value});if(r.error)throw r.error;d.close();toast('Recibo reabierto','success');closeDetail();reload();}
+      catch(x){err.textContent=x.message;ok.disabled=false;}};
+    d.showModal();d.querySelector('#pv-reopen-motivo').focus();
   }
   function summary(l){
     const values=[['Sueldo básico',l.sueldo_basico],[l.compensation_snapshot?.km_basis==='billed'?'Km facturados (histórico)':'Kilómetros de jornadas',l.adic_km],['Servicios',l.adic_serv],['Comisiones',l.commission_total],['Bonos mensuales',l.bonus_monthly],['Presentismo',l.bono_presentismo],...(num(l.bonos_objetivos)?[['Objetivos (histórico)',l.bonos_objetivos]]:[]),['Descuento por rendición',-num(l.ajuste_rendiciones)]];
@@ -83,10 +171,10 @@
     if(l.liquidacion_id)extras(l);
     document.getElementById('pv-audit-button').onclick=()=>audit(l);
     const approve=document.getElementById('pv-approve'),pay=document.getElementById('pv-pay');
-    if(approve)approve.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'aprobada');};
-    if(pay)pay.onclick=()=>{closeDetail();_marcarPagada(l.liquidacion_id);};
+    if(approve)approve.onclick=()=>approveIds([l.liquidacion_id]);
+    if(pay)pay.onclick=()=>payDialog([{id:l.liquidacion_id,name:l.chofer_nombre,total:l.total}]);
     const pending=document.getElementById('pv-pending');
-    if(pending)pending.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'pendiente');};
+    if(pending)pending.onclick=()=>reopenDialog(l);
   }
   function formula(l,label){
     let text='';
@@ -200,7 +288,7 @@
     let modal=document.getElementById('pv-driver-modal');
     if(!modal){modal=document.createElement('dialog');modal.id='pv-driver-modal';modal.setAttribute('aria-labelledby','pv-modal-title');document.body.appendChild(modal);modal.addEventListener('cancel',()=>{request++;});modal.addEventListener('click',e=>{if(e.target===modal)closeDetail();});}
     const period=String(l.periodo_yyyymm),month=new Date(period.slice(0,4)+'-'+period.slice(4)+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    const stateAction=l.estado==='pendiente'?'<button class="btn btn-primary" id="pv-approve">Aprobar</button>':l.estado==='aprobada'?'<button class="btn btn-primary" id="pv-pay">Registrar pago</button><button class="btn btn-ghost" id="pv-pending">Volver a pendiente</button>':'';
+    const stateAction=!isAdmin()?'':l.estado==='pendiente'?'<button class="btn btn-primary" id="pv-approve">Aprobar</button>':l.estado==='aprobada'?'<button class="btn btn-primary" id="pv-pay">Registrar pago</button><button class="btn btn-ghost" id="pv-pending">Reabrir</button>':l.estado==='pagada'?'<button class="btn btn-ghost" id="pv-pending">Reabrir</button>':'';
     modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div class="pv-modal-columns"><section id="pv-detail"></section><section id="pv-audit" hidden></section><aside class="pv-salary"><h3>Liquidación y recibo</h3><div id="pv-summary"></div><div class="pv-export-footer"><div class="pv-action-row"><button class="btn btn-ghost" id="pv-audit-button" disabled>Rendiciones y datos</button>${stateAction}</div><div class="pv-action-row pv-action-row--exports"><button class="btn btn-ghost" id="pv-export-xlsx" disabled>Exportar Excel</button><button class="btn btn-ghost" id="pv-pdf">Imprimir PDF</button></div></div></aside></div></div>`;
     document.getElementById('pv-modal-close').onclick=closeDetail;
     if(!modal.open)modal.showModal();
@@ -252,7 +340,7 @@
     const url=URL.createObjectURL(new Blob([csv(columns,data)],{type:'text/csv;charset=utf-8;'}));const link=document.createElement('a');link.href=url;link.download=filename+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     if(typeof window.confirmarDescarga==='function')window.confirmarDescarga(filename+'.csv',detalle);
   }
-  function exportMonth(format){try{const data=rows.filter(l=>(!filter||l.estado===filter)&&String(l.chofer_nombre).toLowerCase().includes(search.toLowerCase()));download(format,'Sueldos_'+document.getElementById('pl-mes-periodo').value,exportColumns,data);}catch(e){toast(e.message,'error');}}
+  function exportMonth(format){try{const ids=review?new Set(visible().map(f=>f.liquidacion_id)):null;const data=rows.filter(l=>(ids?ids.has(l.liquidacion_id):true)&&String(l.chofer_nombre).toLowerCase().includes(search.toLowerCase()));download(format,'Sueldos_'+document.getElementById('pl-mes-periodo').value,exportColumns,data);}catch(e){toast(e.message,'error');}}
   function exportDetail(format){
     if(!detailData)return;
     try{const {logs,services,l}=detailData;
@@ -264,5 +352,5 @@
     }catch(e){toast(e.message,'error');}
   }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={linesHtml,novedadesHtml,NOV_TIPOS,openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow,unlinkedServices};
+  window.PayrollView={stepsHtml,reviewHtml,rowState,chipMatch,payDialog,reopenDialog,_setReview:r=>{review=r;},_rowsHtml:()=>rowsHtml(),_setChip:c=>{chip=c;},linesHtml,novedadesHtml,NOV_TIPOS,openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow,unlinkedServices};
 })();
