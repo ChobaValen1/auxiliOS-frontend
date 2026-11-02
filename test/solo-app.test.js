@@ -311,6 +311,6 @@ test('Solo: el aviso de instalar la app aparece recién con la cuenta creada',()
 test('Solo: «Lo que viene» en /gruero suma votos en la base (prueba de mercado)',()=>{
   const l=fs.readFileSync('gruero.html','utf8'),m=fs.readFileSync('migrations/20261102120000_solo_votos_funciones_v1.sql','utf8');
   const fs5=['liquidacion','factura_arca','cotizador','cobros','whatsapp_auto'];for(const f of fs5)assert.match(l,new RegExp('data-f="'+f+'"'),f);
-  assert.match(l,/rest\/v1\/rpc\/solo_vote_feature_v1/);assert.match(m,/revoke all on public\.solo_feature_votes from anon, authenticated/,'nadie lee los votos directo');
+  assert.match(l,/<section id="viene" hidden>/,'oculto hasta decidir publicarlo');assert.match(l,/rest\/v1\/rpc\/solo_vote_feature_v1/);assert.match(m,/revoke all on public\.solo_feature_votes from anon, authenticated/,'nadie lee los votos directo');
   assert.match(m,/security definer set search_path=''/);assert.match(m,/grant execute on function public\.solo_vote_feature_v1\(text,text\) to anon, authenticated/);
 });
