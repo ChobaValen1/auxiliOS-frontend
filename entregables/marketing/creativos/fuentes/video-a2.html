@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1080px;height:1920px;background:#0c0e12;color:#eef0f4;font-family:'DM Sans';overflow:hidden;position:relative}
+.glow{position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 38%,rgba(245,166,35,.20),transparent 70%)}
+.s{position:absolute;left:90px;right:90px;opacity:0}
+.big{font:400 150px/.92 'Bebas Neue';letter-spacing:.01em}.am{color:#f5a623}
+.lbl{font:700 34px 'DM Sans';color:#f5a623;letter-spacing:.12em;text-transform:uppercase}
+.card{background:#181c24;border:2px solid #262b36;border-radius:36px;padding:44px 48px}
+.card small{display:block;font-size:40px;color:#9aa0ad}
+.mono{font-family:'DM Mono',monospace;font-weight:500}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px 20px;align-items:center;margin-bottom:34px}
+.row b{font-size:44px}.row span{font-size:44px}
+.bar{grid-column:1/3;height:18px;border-radius:9px;background:#232834;overflow:hidden}.bar i{display:block;height:100%;background:#f5a623;border-radius:inherit;width:0}
+.bar.fx i{background:#8a90a0}
+.note{position:absolute;right:60px;bottom:330px;font-size:26px;color:#5d6371;opacity:0}
+.brand{font:400 90px/1 'Bebas Neue';letter-spacing:.04em}.brand b{color:#f5a623;font-weight:400}.brand span{font-size:40px;letter-spacing:.22em;color:#8a90a0;margin-left:12px}
+.cta{display:inline-flex;align-items:center;gap:18px;background:#f5a623;color:#111;font:700 58px 'DM Sans';padding:36px 64px;border-radius:32px}
+</style></head><body><div class="glow"></div>
+<!-- Escena 1 -->
+<div class="s" id="s1" style="top:520px"><div class="big" id="l1">Facturar mucho</div><div class="big" id="l2">no es lo mismo</div><div class="big am" id="l3">que te quede mucho.</div></div>
+<!-- Escena 2 -->
+<div class="s" id="s2" style="top:430px"><div class="lbl">Noviembre · facturado</div><div class="big" style="margin:24px 0 60px">Esto <span class="am">facturaste.</span></div>
+  <div class="card"><small>Facturé</small><div class="mono" style="font-size:120px;color:#34c77b;margin-top:10px" id="n2">$ 0</div><div style="font-size:38px;color:#9aa0ad;margin-top:16px">12 servicios · 2 prestadoras</div></div></div>
+<!-- Escena 3 -->
+<div class="s" id="s3" style="top:330px"><div class="lbl">Noviembre · gastos</div><div class="big" style="margin:24px 0 50px">Esto <span class="am">se fue.</span></div>
+  <div class="card" style="padding:44px 48px 14px">
+    <div class="row"><b>Cubiertas</b><span class="mono">$ 420.000</span><div class="bar"><i data-w="100"></i></div></div>
+    <div class="row"><b>Cuota de la grúa</b><span class="mono">$ 380.000</span><div class="bar fx"><i data-w="90"></i></div></div>
+    <div class="row"><b>Combustible</b><span class="mono">$ 241.000</span><div class="bar"><i data-w="57"></i></div></div>
+    <div class="row"><b>Seguro</b><span class="mono">$ 145.000</span><div class="bar fx"><i data-w="35"></i></div></div>
+    <div class="row"><b>Taller y otros</b><span class="mono">$ 156.100</span><div class="bar"><i data-w="37"></i></div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:34px;font-size:44px"><span style="color:#9aa0ad">Total</span><span class="mono" style="font-size:80px;color:#ef6b6b" id="n3">$ 0</span></div></div>
+<!-- Escena 4 -->
+<div class="s" id="s4" style="top:520px"><div class="lbl">Noviembre · lo que queda</div><div class="big" style="margin:24px 0 60px">Esto te <span class="am">quedó.</span></div>
+  <div class="card" style="background:#2a2213;border-color:#f5a623"><small>Me queda</small><div class="mono" style="font-size:136px;color:#f5a623;margin-top:10px" id="n4">$ 0</div></div>
+  <div class="big" style="font-size:96px;margin-top:60px" id="l4">Ahora <span class="am">lo sabés.</span></div></div>
+<!-- Escena 5 -->
+<div class="s" id="s5" style="top:470px;text-align:center"><div class="brand">AUXILI<b>OS</b><span>SOLO</span></div>
+  <div class="big" style="margin:60px 0 40px">El control de tu grúa, <span class="am">en una app.</span></div>
+  <div style="font-size:46px;color:#b9beca;line-height:1.35;margin-bottom:70px">Servicios por prestadora, gastos<br>y remitos digitales.</div>
+  <span class="cta" id="cta">Probala gratis →</span><div style="font-size:38px;color:#8a90a0;margin-top:40px">Gratis en la etapa de prueba · sin tarjeta</div></div>
+<div class="note" id="note">Datos de ejemplo</div>
+<script>
+const $=id=>document.getElementById(id),cl=(x,a,b)=>Math.min(1,Math.max(0,(x-a)/(b-a))),ease=t=>1-Math.pow(1-t,3);
+const money=v=>'$ '+Math.round(v).toLocaleString('es-AR');
+function vis(el,t,a,b,fin=.35,fout=.3){const i=ease(cl(t,a,a+fin)),o=1-cl(t,b-fout,b);el.style.opacity=Math.min(i,o);el.style.transform=`translateY(${(1-i)*40}px)`;}
+window.render=t=>{
+  vis($('s1'),t,0,2.9,.01);[['l1',.1],['l2',.7],['l3',1.3]].forEach(([id,a])=>{const k=ease(cl(t,a,a+.35));$(id).style.opacity=k;$(id).style.transform=`translateY(${(1-k)*50}px) scale(${1.08-.08*k})`;});
+  vis($('s2'),t,2.9,6.3);$('n2').textContent=money(1474000*ease(cl(t,3.3,4.8)));
+  vis($('s3'),t,6.3,9.7);document.querySelectorAll('#s3 .bar i').forEach((b,i)=>b.style.width=(b.dataset.w*ease(cl(t,6.6+i*.18,7.4+i*.18)))+'%');$('n3').textContent=money(1342100*ease(cl(t,6.8,8.6)));
+  vis($('s4'),t,9.7,12.7);$('n4').textContent=money(131900*ease(cl(t,10.1,11.2)));const k=ease(cl(t,11.3,11.7));$('l4').style.opacity=k;
+  vis($('s5'),t,12.7,15.2);$('cta').style.transform=`scale(${1+.04*Math.sin(Math.max(0,t-13.4)*5)})`;
+  $('note').style.opacity=(t>2.9&&t<12.6)?1:0;};
+render(0);
+</script></body></html>
