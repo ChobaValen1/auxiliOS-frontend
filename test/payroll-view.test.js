@@ -31,3 +31,26 @@ test('migración etapa 2: novedades suman al total guardado, líneas solo de lec
   assert.match(m,/\+app_private\.payroll_novedades_neto_v1\(new\.driver_id,new\.periodo_yyyymm\)/);
   assert.match(m,/volvelo a pendiente para cambiar novedades/);assert.match(m,/'total',greatest\(0,v_bruto-v_ajuste\+v_nov\)/);
 });
+test('etapa 3: pasos del mes, estado por fila y filtros',()=>{
+  assert.match(view.stepsHtml('en_revision'),/class="done"><i>✓<\/i>Calculado/);assert.match(view.stepsHtml('en_revision'),/class="cur" aria-current="step"><i>2<\/i>En revisión/);
+  assert.doesNotMatch(view.stepsHtml('sin_calcular'),/done|cur/);assert.equal((view.stepsHtml('pagado').match(/class="done"/g)||[]).length,4);
+  assert.deepEqual([...view.rowState({estado:'pendiente',listo:true})],['ok','Listo']);assert.deepEqual([...view.rowState({estado:'pendiente',listo:false})],['wa','Revisar']);
+  assert.deepEqual([...view.rowState({estado:'sin_liquidacion'})],['bad','Sin calcular']);assert.deepEqual([...view.rowState({estado:'pagada'})],['ok','Pagado']);
+});
+test('etapa 3: revisión con alertas, aprobar listos y sin acciones para Supervisión',()=>{
+  const r={paso:'en_revision',prev_neto:1000,sin_esquema:['Chofer <x>'],corrida:null,filas:[
+    {liquidacion_id:'a',full_name:'Ana <b>',estado:'pendiente',listo:true,jornadas:20,km_total:3000,servicios:50,haberes:900,descuentos:100,neto:800,alertas:[]},
+    {liquidacion_id:'b',full_name:'Beto',estado:'pendiente',listo:false,jornadas:2,km_total:0,servicios:1,haberes:400,descuentos:0,neto:400,alertas:[{tipo:'jornadas',nivel:'warn',texto:'2 jornadas sin cerrar'},{tipo:'cambio',nivel:'bad',texto:'x'}]},
+    {liquidacion_id:'c',full_name:'Caro',estado:'aprobada',listo:false,haberes:0,descuentos:0,neto:0,alertas:[]}]};
+  c.PERFIL_USUARIO={roles:{name:'administracion'}};
+  const html=view.reviewHtml(r);assert.match(html,/Aprobar 1 listo</);assert.match(html,/Pagar 1 aprobado</);assert.match(html,/\$1\.200/);assert.match(html,/\+20 %/);assert.match(html,/Chofer &lt;x&gt;/);assert.match(html,/Para revisar <span>1/);
+  view._setReview(r);view._setChip('');const rows=view._rowsHtml();assert.match(rows,/Ana &lt;b&gt;/);assert.match(rows,/2 jornadas sin cerrar/);assert.match(rows,/recalculá el mes/);assert.match(rows,/pv-alert bad/);
+  view._setChip('listo');assert.doesNotMatch(view._rowsHtml(),/Beto/);view._setChip('revisar');assert.doesNotMatch(view._rowsHtml(),/Ana/);view._setChip('');
+  c.PERFIL_USUARIO={roles:{name:'supervision'}};assert.doesNotMatch(view.reviewHtml(r),/Aprobar|Pagar|Recalcular/);
+});
+test('migración etapa 3: aprobar/pagar/reabrir solo Administración, motivo obligatorio y eventos de solo lectura',()=>{
+  const m=fs.readFileSync('migrations/20261102180000_payroll_mes_corridas_v1.sql','utf8');
+  for(const f of ['payroll_aprobar_v1','payroll_pagar_v1','payroll_reabrir_v1','payroll_calcular_mes_v1'])assert.match(m,new RegExp('function public\\.'+f+'[\\s\\S]*?current_auxilios_role\\(\\),\'\'\\)<>\'administracion\''),f);
+  assert.match(m,/grant select on public\.payroll_corridas, public\.payroll_eventos to authenticated;/);assert.doesNotMatch(m,/grant (insert|update|delete)[^;]*payroll_eventos/);
+  assert.match(m,/length\(v_m\)<5/);assert.match(m,/if r\.review_required then/);assert.match(m,/La fecha de pago no puede ser futura/);
+});
