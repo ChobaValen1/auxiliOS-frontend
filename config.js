@@ -5,7 +5,7 @@ const ENV = {
 };
 window.AUXILIOS_EDITION = AUXILIOS_RUNTIME.edition;
 document.documentElement.dataset.edition = AUXILIOS_RUNTIME.edition;
-// La instalación monogruero usa AuxiliOS, una app aparte pensada para el celular.
+// La instalación monogruero usa AuxiliOS Solo, una app aparte pensada para el celular.
 if (AUXILIOS_RUNTIME.edition === 'monogruero' && !/\/solo(\.html)?$/.test(location.pathname)) location.replace('/solo.html' + location.hash);
 
 /* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).

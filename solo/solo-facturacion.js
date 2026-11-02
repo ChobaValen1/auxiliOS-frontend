@@ -1,4 +1,4 @@
-// AuxiliOS · facturación agrupada por prestadora: cuánto le facturaste a cada una en el mes, qué remitos entran,
+// AuxiliOS Solo · facturación agrupada por prestadora: cuánto le facturaste a cada una en el mes, qué remitos entran,
 // cuándo vence y qué falta cobrar. Usa las columnas invoiced_at (facturado) y paid_at (cobrado) de cada servicio.
 (function(){
 'use strict';

@@ -1,4 +1,4 @@
-// AuxiliOS · configuración: prestadoras (con sus tarifas por tipo de servicio) y tipos de servicio.
+// AuxiliOS Solo · configuración: prestadoras (con sus tarifas por tipo de servicio) y tipos de servicio.
 // Reglas: todo cambio y todo borrado se confirma; una prestadora con servicios no se borra, se desactiva;
 // un tipo de servicio se desactiva (borrarlo borraría sus tarifas). Una tarifa nueva no cambia servicios viejos.
 (function(){

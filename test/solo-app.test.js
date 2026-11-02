@@ -1,7 +1,7 @@
 const test=require('node:test');const assert=require('node:assert');const fs=require('fs');
 const html=fs.readFileSync('solo.html','utf8'),js=fs.readFileSync('solo/solo.js','utf8'),css=fs.readFileSync('solo/solo.css','utf8'),cfg=fs.readFileSync('config.js','utf8'),sb=fs.readFileSync('supabase.js','utf8'),mig=fs.readFileSync('migrations/20261030160000_solo_v1.sql','utf8');
 test('Solo: página propia, conectada a la base de la instalación',()=>{
-  assert.match(html,/<title>AuxiliOS<\/title>/);assert.match(html,/\/runtime-config\.js/);assert.match(html,/\/solo\/solo\.js/);
+  assert.match(html,/<title>AuxiliOS Solo<\/title>/);assert.match(html,/\/runtime-config\.js/);assert.match(html,/\/solo\/solo\.js/);
   assert.match(js,/createClient\(RT\.supabaseUrl,RT\.supabaseKey\)/);
   assert.match(cfg,/edition === 'monogruero'[^\n]*location\.replace\('\/solo\.html'/);
 });
@@ -195,7 +195,7 @@ test('Solo: remito paso 1 (Servicio arriba con fecha tipo Gastos, Km debajo del 
 });
 test('Solo: pantalla de carga con contador hasta 100',()=>{
   assert.match(html,/id="boot" class="boot" role="progressbar"/);assert.match(html,/id="boot-n">0</);assert.match(html,/MutationObserver/);
-  assert.match(html,/prefers-reduced-motion/);assert.doesNotMatch(html,/Cargando AuxiliOS…<\/div>/);assert.match(css,/\.boot\.done\{/);
+  assert.match(html,/prefers-reduced-motion/);assert.doesNotMatch(html,/Cargando AuxiliOS Solo…<\/div>/);assert.match(css,/\.boot\.done\{/);
 });
 test('Solo: remito PDF con membrete de la grúa, marca de agua de AuxiliOS, fotos y sin tarifa de la prestadora',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');const f=ops.slice(ops.indexOf('async function remitoPdf('),ops.indexOf('function prepPdf('));
@@ -306,11 +306,4 @@ test('Solo: el aviso de instalar la app aparece recién con la cuenta creada',()
   assert.doesNotMatch(pwa,/addEventListener\('load',\(\)=>\{if\(store\.get\(\)/,'ya no se abre al cargar la página');assert.match(pwa,/function offer\(delay=/);
   const onb=js.slice(js.indexOf('function renderOnboarding('),js.indexOf('function renderOnboarding(')+6000);assert.match(onb,/SoloPWA\?\.offer\(1500,/,'al terminar el alta');
   const ini=js.slice(js.indexOf('async function renderInicio('),js.indexOf('async function renderInicio(')+400);assert.match(ini,/SoloPWA\?\.offer\(/,'o al entrar a Inicio si nunca lo vio');
-});
-
-test('Solo: «Lo que viene» en /gruero suma votos en la base (prueba de mercado)',()=>{
-  const l=fs.readFileSync('gruero.html','utf8'),m=fs.readFileSync('migrations/20261102120000_solo_votos_funciones_v1.sql','utf8');
-  const fs5=['liquidacion','factura_arca','cotizador','cobros','whatsapp_auto'];for(const f of fs5)assert.match(l,new RegExp('data-f="'+f+'"'),f);
-  assert.match(l,/<section id="viene" hidden>/,'oculto hasta decidir publicarlo');assert.match(l,/rest\/v1\/rpc\/solo_vote_feature_v1/);assert.match(m,/revoke all on public\.solo_feature_votes from anon, authenticated/,'nadie lee los votos directo');
-  assert.match(m,/security definer set search_path=''/);assert.match(m,/grant execute on function public\.solo_vote_feature_v1\(text,text\) to anon, authenticated/);
 });

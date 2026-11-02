@@ -1,4 +1,4 @@
-// AuxiliOS · servicios (con precio por tarifa), nuevo servicio por pasos, remito digital con firma y gastos fijos/variables.
+// AuxiliOS Solo · servicios (con precio por tarifa), nuevo servicio por pasos, remito digital con firma y gastos fijos/variables.
 (function(){
 'use strict';
 const C=window.SoloCore;if(!C)return;
@@ -589,7 +589,7 @@ async function remitoPdf(s,cl,tp,tk){
       doc.setGState(new doc.GState({opacity:1}));}
     doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M,286,W-M,286);
     if(logo)doc.addImage(logo.d,'PNG',M,288.2,4.6,4.6,'logo','FAST');font(7.2,true,INK);txt('AuxiliOS',M+6,291.6);const bw=doc.getTextWidth('AuxiliOS ');font(7.2,false,MUTED);
-    txt('Remito digital'+(s.remito_number?' N.º '+s.remito_number:'')+' · '+(P.business_name||P.full_name||''),M+6+bw,291.6);
+    txt('Solo · Remito digital'+(s.remito_number?' N.º '+s.remito_number:'')+' · '+(P.business_name||P.full_name||''),M+6+bw,291.6);
     txt('Página '+i+' de '+n,W-M,291.6,{align:'right'});}
   return doc;}
 // Se arma apenas se abre el remito: así «Enviar» comparte al instante (el celular solo deja compartir justo después del toque).

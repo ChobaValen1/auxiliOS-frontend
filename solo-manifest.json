@@ -1,7 +1,7 @@
 {
   "id": "/solo.html",
-  "name": "AuxiliOS",
-  "short_name": "AuxiliOS",
+  "name": "AuxiliOS Solo",
+  "short_name": "AuxiliOS Solo",
   "description": "Lo que facturás, lo que gastás y lo que te queda, con tu grúa.",
   "lang": "es-AR",
   "start_url": "/solo.html",

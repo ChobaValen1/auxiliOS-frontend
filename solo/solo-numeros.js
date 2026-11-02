@@ -1,4 +1,4 @@
-// AuxiliOS · etapa 3 «Decidir mejor»: ganancia por servicio y por km, punto de equilibrio,
+// AuxiliOS Solo · etapa 3 «Decidir mejor»: ganancia por servicio y por km, punto de equilibrio,
 // comparación de los últimos meses y próximos vencimientos de los gastos fijos.
 (function(){
 'use strict';
