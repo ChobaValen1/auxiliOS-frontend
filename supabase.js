@@ -3858,7 +3858,21 @@ async function borrarCumplimiento(cumplimientoId) {
 }
 
 // ── Generación de liquidaciones del mes ──
+// Etapa 1: el cálculo y la escritura se hacen en la base (payroll_calcular_mes_v1),
+// con las mismas reglas que el cálculo anterior. Si la función no existe todavía,
+// se usa el cálculo en el navegador como respaldo.
 async function generarLiquidacionesMes(yyyymm) {
+  if (!yyyymm) return { ok: false, error: 'Falta yyyymm' };
+  const { data, error } = await _db.rpc('payroll_calcular_mes_v1', { p_period: yyyymm });
+  if (error) {
+    if (error.code === 'PGRST202' || /payroll_calcular_mes_v1/.test(error.message || '')) return _generarLiquidacionesMesCliente(yyyymm);
+    console.error('[Payroll generarLiquidaciones] rpc', error.message);
+    return { ok: false, error };
+  }
+  return { ok: true, creadas: Number(data?.creadas) || 0, actualizadas: Number(data?.actualizadas) || 0, saltadas: Number(data?.saltadas) || 0, detalle: Array.isArray(data?.detalle) ? data.detalle : [] };
+}
+
+async function _generarLiquidacionesMesCliente(yyyymm) {
   if (!yyyymm) return { ok: false, error: 'Falta yyyymm' };
   const { desde, hastaExclusive, desdeTs, hastaTsExclusive } = _payrollRangoMes(yyyymm);
 

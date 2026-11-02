@@ -172,9 +172,9 @@ async function generatePayroll(state=null,race=false){
       then(resolve){assert.notEqual(table,'remitos','generation must not count remitos');return Promise.resolve({data:[]}).then(resolve);}};return chain;
   }};
   vm.runInNewContext(fs.readFileSync('payroll-matrix.js','utf8'),context);context.PayrollMatrix=context.window.PayrollMatrix;
-  const source=fs.readFileSync('supabase.js','utf8').match(/async function generarLiquidacionesMes\(yyyymm\) \{[\s\S]*?\n\}/)[0];
+  const source=fs.readFileSync('supabase.js','utf8').match(/async function _generarLiquidacionesMesCliente\(yyyymm\) \{[\s\S]*?\n\}/)[0];
   vm.runInNewContext(source,context);
-  return{result:await context.generarLiquidacionesMes(202610),writes,calls};
+  return{result:await context._generarLiquidacionesMesCliente(202610),writes,calls};
 }
 test('generación real de frontend usa servicios v2 y descuento v2 en el nuevo recibo',async()=>{
   const {result,writes,calls}=await generatePayroll();assert.equal(result.creadas,1);assert.equal(writes[0].servicios,2);assert.equal(writes[0].adic_serv,1000);assert.equal(writes[0].ajuste_rendiciones,1000);assert.equal(writes[0].total,10000);assert.equal(writes[0].compensation_snapshot.completed_services_v2,true);
@@ -183,4 +183,18 @@ test('generación real de frontend usa servicios v2 y descuento v2 en el nuevo r
 test('generador no modifica aprobadas/pagadas ni si se aprueba durante el cálculo',async()=>{
   for(const state of ['aprobada','pagada']){const r=await generatePayroll(state);assert.equal(r.writes.length,0);assert.equal(r.result.saltadas,1);}
   const r=await generatePayroll('pendiente',true);assert.equal(r.writes.length,0);assert.equal(r.result.saltadas,1);
+});
+
+test('generar liquidaciones usa el cálculo en la base y respeta la forma de respuesta',async()=>{
+  const src=fs.readFileSync('supabase.js','utf8').match(/async function generarLiquidacionesMes\(yyyymm\) \{[\s\S]*?\n\}/)[0];
+  const calls=[];let fallback=0;
+  const ctx={console,_generarLiquidacionesMesCliente:async()=>{fallback++;return{ok:true,creadas:9}},_db:{rpc:async(n,a)=>{calls.push([n,a]);return{data:{ok:true,creadas:1,actualizadas:2,saltadas:3,detalle:[{driverId:'x',accion:'creada',total:5}]}};}}};
+  vm.runInNewContext(src,ctx);
+  const r=await ctx.generarLiquidacionesMes(202610);
+  assert.equal(JSON.stringify(calls),JSON.stringify([['payroll_calcular_mes_v1',{p_period:202610}]]));
+  assert.equal(r.ok,true);assert.equal(r.creadas,1);assert.equal(r.actualizadas,2);assert.equal(r.saltadas,3);assert.equal(r.detalle.length,1);assert.equal(fallback,0);
+  ctx._db.rpc=async()=>({error:{code:'PGRST202',message:'not found'}});
+  assert.equal((await ctx.generarLiquidacionesMes(202610)).creadas,9);assert.equal(fallback,1);
+  ctx._db.rpc=async()=>({error:{code:'P0001',message:'No autorizado'}});
+  assert.equal((await ctx.generarLiquidacionesMes(202610)).ok,false);assert.equal(fallback,1);
 });
