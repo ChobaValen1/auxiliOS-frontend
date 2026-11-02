@@ -319,3 +319,11 @@
   #screen-sueldos .pv-bar #pv-search { max-width: none; }
   #screen-sueldos .pv-table-wrap { max-height: calc(100vh - 420px); }
 }
+
+/* Esquema de pago · datos bancarios del chofer */
+#modal-esquema-edit .esq-bank { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ax-border); }
+#modal-esquema-edit .esq-bank h3 { margin: 0 0 8px; font-size: 13px; color: var(--ax-text); }
+#modal-esquema-edit .esq-bank-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; }
+#modal-esquema-edit .esq-bank .form-input { width: 100%; font-variant-numeric: tabular-nums; }
+#modal-esquema-edit .esq-bank .pm-help { margin: 6px 0 0; }
+@media (max-width: 600px) { #modal-esquema-edit .esq-bank-grid { grid-template-columns: 1fr; } }

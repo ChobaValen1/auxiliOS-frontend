@@ -3610,7 +3610,7 @@ async function cargarPayrollSettingsChofer(driverId) {
   if (!driverId) return null;
   const { data, error } = await _db
     .from('payroll_settings')
-    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at')
+    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, cbu, alias_cbu, updated_at')
     .eq('user_id', driverId)
     .maybeSingle();
   if (error) { console.error('[Payroll cargarPayrollSettingsChofer]', error.message); return null; }
@@ -3626,7 +3626,7 @@ async function cargarPayrollSettingsFlota(commissionData = null) {
       .eq('is_active', true)
       .order('full_name', { ascending: true }),
     _db.from('payroll_settings')
-      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at'),
+      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, cbu, alias_cbu, updated_at'),
     commissionData ? Promise.resolve(commissionData) : cargarPayrollCommissionData(),
   ]);
   if (usersRes.error)    { console.error('[Payroll cargarPayrollSettingsFlota] users', usersRes.error.message); return []; }
@@ -3709,7 +3709,7 @@ async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
 }
 
-async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix }) {
+async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, cbu, alias_cbu }) {
   if (!driverId) return { ok: false, error: 'Falta driverId' };
   const normalized = PayrollMatrix.normalize(compensation_matrix);
   const payload = {
@@ -3721,6 +3721,9 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
     bono_presentismo: Number(bono_presentismo) || 0,
     updated_at:       new Date().toISOString(),
   };
+  // Datos de pago (opcionales): solo se escriben si el formulario los manda.
+  if (cbu !== undefined) payload.cbu = cbu || null;
+  if (alias_cbu !== undefined) payload.alias_cbu = alias_cbu || null;
   const { data, error } = await _db
     .from('payroll_settings')
     .upsert(payload, { onConflict: 'user_id' })
