@@ -234,7 +234,7 @@ test('Solo: enviar remito al teléfono y email del socio, e ingreso con Google c
   const wa=eval('('+sd.slice(sd.indexOf('v=>'),sd.indexOf(';\nasync function pdfLink'))+')');
   assert.equal(wa('11 2345 6789'),'5491123456789');assert.equal(wa('+54 9 11 2345-6789'),'5491123456789');assert.equal(wa('011 2345 6789'),'5491123456789');assert.equal(wa('221 456 7890'),'5492214567890');assert.equal(wa(''),'');
   assert.match(js,/signInWithOAuth\(\{provider:'google'/);assert.match(js,/\/auth\/v1\/settings/,'el botón solo aparece si Google está activo');
-  assert.match(js,/id="o-terms"/);assert.match(js,/if\(needsTerms\(\)\)\{const t=document\.getElementById\('o-terms'\);if\(!t\.checked\)/);assert.match(js,/updateUser\(\{data:\{terms_version:TERMS_VERSION/);
+  assert.match(js,/id="o-terms"/);assert.match(js,/if\(needsTerms\(\)\)\{const t=\$\('o-terms'\);if\(!t\.checked\)/);assert.match(js,/updateUser\(\{data:\{terms_version:TERMS_VERSION/);
   assert.match(fs.readFileSync('ui/icons.svg','utf8'),/id="send"/);
 });
 test('Solo: Más ordenado como ajustes profesionales (perfil, grupos, cerrar sesión aparte) y Mi grúa editable',()=>{
@@ -309,7 +309,7 @@ test('Solo: ingreso con pestañas Entrar / Crear cuenta, autocompletado oscuro y
 test('Solo: el aviso de instalar la app aparece recién con la cuenta creada',()=>{
   const pwa=fs.readFileSync('solo/solo-pwa.js','utf8');
   assert.doesNotMatch(pwa,/addEventListener\('load',\(\)=>\{if\(store\.get\(\)/,'ya no se abre al cargar la página');assert.match(pwa,/function offer\(delay=/);
-  const onb=js.slice(js.indexOf('function renderOnboarding('),js.indexOf('function renderOnboarding(')+6000);assert.match(onb,/SoloPWA\?\.offer\(1500,/,'al terminar el alta');
+  const onb=js.slice(js.indexOf('function renderOnboarding('),js.indexOf('function renderOnboarding(')+12000);assert.match(onb,/SoloPWA\?\.offer\(1500,/,'al terminar el alta');
   const ini=js.slice(js.indexOf('async function renderInicio('),js.indexOf('async function renderInicio(')+400);assert.match(ini,/SoloPWA\?\.offer\(/,'o al entrar a Inicio si nunca lo vio');
 });
 
@@ -318,4 +318,12 @@ test('Solo: «Lo que viene» en /gruero suma votos en la base (prueba de mercado
   const fs5=['liquidacion','factura_arca','cotizador','cobros','whatsapp_auto'];for(const f of fs5)assert.match(l,new RegExp('data-f="'+f+'"'),f);
   assert.match(l,/<section id="viene" hidden>/,'oculto hasta decidir publicarlo');assert.match(l,/rest\/v1\/rpc\/solo_vote_feature_v1/);assert.match(m,/revoke all on public\.solo_feature_votes from anon, authenticated/,'nadie lee los votos directo');
   assert.match(m,/security definer set search_path=''/);assert.match(m,/grant execute on function public\.solo_vote_feature_v1\(text,text\) to anon, authenticated/);
+});
+
+test('Solo: alta v2 en 4 pasos con datos del gruero (zona, trabajo, prestadoras, cómo nos conoció)',()=>{
+  const onb=js.slice(js.indexOf('const ONB_STEPS='),js.indexOf('function renderOnboarding(')+12000);
+  assert.match(onb,/const ONB_STEPS=4/);for(const k of ['fleet','types','drivers','years','monthly','providers','tools','pains','heard'])assert.match(onb,new RegExp(k+':\\{label:'));
+  assert.match(onb,/onboarding_version:2/);assert.match(onb,/localStorage\.setItem\(onbKey\(\)/,'si cierra a mitad sigue donde estaba');
+  assert.match(onb,/function waNormalize/);assert.match(onb,/if\(!trucks\?\.length\)/,'no duplica la grúa');
+  const m=fs.readFileSync('migrations/20261103180000_solo_perfil_alta_v2.sql','utf8');assert.match(m,/solo_profiles_alta_v2_chk/);
 });

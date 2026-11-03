@@ -1160,3 +1160,15 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .auth .caps-warn .ico{width:14px;height:14px}
 .auth #a-fix .link{font-size:12px;padding:0}
 .auth .auth-alt{margin-top:4px}
+/* Alta v2: preguntas con chips, volver y paso N de 4. */
+.onb2 .onb-top{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px}
+.onb2 .onb-top .brand{text-align:center}
+.onb2 .onb-n{font-size:13px;color:var(--ax-text-3);font-weight:600;min-width:44px;text-align:right}
+.onb2 .q{border:0;margin:0;padding:0;display:grid;gap:10px;min-width:0}
+.onb2 .q legend{font-weight:700;font-size:15px;padding:0;margin-bottom:10px}
+.onb2 .q-hint{margin:-6px 0 0;font-size:13px;color:var(--ax-text-3)}
+.onb2 .q.need legend{color:var(--ax-danger)}
+.onb2 .q.need .chip{border-color:var(--ax-danger)}
+.onb2 .frm{display:grid;gap:22px}
+.onb2 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.onb2 select{width:100%}

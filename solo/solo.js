@@ -230,62 +230,118 @@ function renderNewPassword(){
     recovering=false;history.replaceState(null,'',location.pathname);toast('Contraseña actualizada');boot();};
 }
 
-/* ── Alta inicial: perfil → grúa → primera prestadora ── */
-function stepsBar(n){return '<div class="steps" aria-label="Paso '+n+' de 3">'+[1,2,3].map(i=>'<i class="'+(i<=n?'on':'')+'"></i>').join('')+'</div>';}
+/* ── Alta inicial: vos → tu trabajo → cómo trabajás hoy → tu grúa ── */
+// Lo que se responde queda en el celular hasta terminar: si cierra la app a mitad, sigue donde estaba.
+const ONB_STEPS=4;
+function stepsBar(n){return '<div class="steps" aria-label="Paso '+n+' de '+ONB_STEPS+'">'+Array.from({length:ONB_STEPS},(_,i)=>'<i class="'+(i<n?'on':'')+'"></i>').join('')+'</div>';}
+const PROVINCES=['Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'];
+const ONB_Q={
+  fleet:{label:'¿Cuántas grúas tenés?',opts:[['1','1'],['2','2'],['3-5','3 a 5'],['6+','6 o más']]},
+  types:{label:'¿Qué tipo de grúa?',multi:true,opts:[['plancha','Plancha'],['arrastre','Arrastre / pluma'],['pesada','Pesada'],['utilitario','Auxilio mecánico']]},
+  drivers:{label:'¿Quién maneja?',opts:[['solo','Yo solo'],['con_choferes','Yo y choferes'],['solo_choferes','Solo choferes']]},
+  years:{label:'¿Hace cuánto sos gruero?',opts:[['<1','Menos de 1 año'],['1-3','1 a 3 años'],['3-10','3 a 10 años'],['10+','Más de 10']]},
+  monthly:{label:'¿Cuántos servicios hacés por mes?',opts:[['<20','Menos de 20'],['20-50','20 a 50'],['50-100','50 a 100'],['100+','Más de 100']]},
+  providers:{label:'¿Con quién trabajás?',hint:'Marcá todas. Las cargamos como tus prestadoras.',multi:true,opts:[['IKE','IKE'],['Addiuva','Addiuva'],['Cardinal','Cardinal'],['SOS','SOS'],['Europ Assistance','Europ Assistance'],['Mapfre','Mapfre'],['ACA','ACA'],['Particulares','Particulares'],['otra','Otra']]},
+  tools:{label:'¿Cómo llevás las cuentas hoy?',multi:true,opts:[['cuaderno','Cuaderno'],['excel','Excel'],['otra_app','Otra app'],['whatsapp','WhatsApp / fotos'],['nada','No las llevo']]},
+  pains:{label:'¿Qué es lo que más te cuesta?',multi:true,opts:[['ganancia','Saber cuánto gano'],['cobrar','Cobrarle a las prestadoras'],['remitos','Hacer los remitos'],['gastos','Controlar los gastos'],['facturar','Facturar']]},
+  heard:{label:'¿Cómo nos conociste?',opts:[['facebook','Facebook'],['instagram','Instagram'],['tiktok','TikTok'],['google','Google'],['otro_gruero','Otro gruero'],['prestadora','Una prestadora'],['otro','Otro']]}
+};
+const ONB_REQ={2:['fleet','types','drivers','years','monthly'],3:['providers','tools','heard']};
+let onb={};
+const onbKey=()=>'solo-onb-v2:'+(user?.id||'');
+function onbLoad(){try{onb=JSON.parse(localStorage.getItem(onbKey())||'{}')||{};}catch(x){onb={};}}
+function onbSave(){try{localStorage.setItem(onbKey(),JSON.stringify(onb));}catch(x){}}
+// WhatsApp argentino: código de área + número (10 dígitos), sin 0 ni 15. Se guarda como +549…
+function waNormalize(v){let d=String(v||'').replace(/\D/g,'');if(d.startsWith('54'))d=d.slice(2);if(d.startsWith('9')&&d.length===11)d=d.slice(1);if(d.startsWith('0'))d=d.slice(1);
+  // 11 15 2345 6789 → quita el 15 que va después del código de área (2 a 4 dígitos).
+  if(d.length===12){for(const a of [2,3,4])if(d.slice(a,a+2)==='15'){d=d.slice(0,a)+d.slice(a+2);break;}}
+  return d.length===10?'+549'+d:null;}
+const chipsQ=k=>{const q=ONB_Q[k],v=onb[k];const on=x=>q.multi?(v||[]).includes(x):v===x;
+  return `<fieldset class="q" data-q="${k}"><legend>${q.label}</legend>${q.hint?`<p class="q-hint">${q.hint}</p>`:''}<div class="chips">${q.opts.map(([val,l])=>`<button type="button" class="chip" data-v="${esc(val)}" aria-pressed="${on(val)}">${esc(l)}</button>`).join('')}</div></fieldset>`;};
 function renderOnboarding(step){
+  if(step===1&&!onb._loaded){onbLoad();onb._loaded=true;if(onb.step>1&&onb.step<=ONB_STEPS)step=onb.step;}
+  onb.step=step;onbSave();
   const metaName=user?.user_metadata?.full_name||user?.user_metadata?.name||'';
   const body={
-    1:`<h1>Bienvenido</h1><p class="sub">Contanos quién sos. Lo usamos en tus remitos.</p>
-      <div class="frm"><div class="field"><label for="o-name">Nombre y apellido</label><input id="o-name" autocomplete="name" value="${esc(metaName)}" required></div>
-        <div class="field"><label for="o-biz">Nombre comercial<small>opcional</small></label><input id="o-biz" placeholder="Grúas Pérez"></div>
-        <div class="field"><label for="o-phone">Teléfono<small>opcional</small></label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789"></div></div>
+    1:`<h1>Bienvenido</h1><p class="sub">Contanos quién sos. Tu nombre y tu WhatsApp salen en los remitos.</p>
+      <div class="frm"><div class="field"><label for="o-name">Nombre y apellido</label><input id="o-name" autocomplete="name" value="${esc(onb.name||metaName)}" required></div>
+        <div class="field"><label for="o-phone">WhatsApp</label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="11 2345 6789" value="${esc(onb.phoneRaw||'')}" required><span class="help">Con código de área, sin 0 ni 15.</span></div>
+        <div class="field"><label for="o-biz">Nombre comercial<small>opcional</small></label><input id="o-biz" placeholder="Grúas Pérez" value="${esc(onb.biz||'')}"></div>
+        <div class="row2"><div class="field"><label for="o-prov">Provincia</label><select id="o-prov" required><option value="">Elegí…</option>${PROVINCES.map(p=>`<option ${onb.province===p?'selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="field"><label for="o-city">Localidad</label><input id="o-city" autocomplete="address-level2" placeholder="Pilar" value="${esc(onb.city||'')}" required></div></div></div>
       ${needsTerms()?`<label class="terms" for="o-terms"><input type="checkbox" id="o-terms"><span>Acepto los <a href="/terminos-solo.html" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/terminos-solo.html#privacidad" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>`:''}`,
-    2:`<h1>Tu grúa</h1><p class="sub">La patente sale en cada remito.</p>
-      <div class="frm"><div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" required></div>
-        <div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco"></div>
-        <div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily"></div>
-        <div class="field"><label for="o-km">Km actuales<small>opcional</small></label><span class="fx post"><input id="o-km" inputmode="numeric" placeholder="0"><i>km</i></span></div></div>`,
-    3:`<h1>Tu primera prestadora</h1><p class="sub">La empresa que más servicios te pasa. Las tarifas las cargás después. «Particular» ya viene creado.</p>
-      <div class="frm"><div class="field"><label for="o-client">Prestadora</label><input id="o-client" placeholder="Asistencia Ruta S.A."></div>
-        <div class="field"><label for="o-days">Te paga a</label><span class="fx post"><input id="o-days" inputmode="numeric" value="30"><i>días</i></span></div></div>`
+    2:`<h1>Tu trabajo</h1><p class="sub">Así armamos la app a tu medida. Tocá una opción en cada una.</p><div class="frm">${ONB_REQ[2].map(chipsQ).join('')}</div>`,
+    3:`<h1>Cómo trabajás hoy</h1><p class="sub">Nos ayuda a mejorar AuxiliOS para vos.</p><div class="frm">${chipsQ('providers')}
+        <div class="field" id="o-other-wrap" ${(onb.providers||[]).includes('otra')?'':'hidden'}><label for="o-other">¿Cuál otra?</label><input id="o-other" placeholder="Nombre de la prestadora" value="${esc(onb.providersOther||'')}"></div>
+        ${chipsQ('tools')}${chipsQ('pains')}${chipsQ('heard')}</div>`,
+    4:`<h1>Tu grúa</h1><p class="sub">La patente sale en cada remito.</p>
+      <div class="frm"><div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(onb.plate||'')}" required></div>
+        <div class="row2"><div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco" value="${esc(onb.brand||'')}"></div>
+        <div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily" value="${esc(onb.model||'')}"></div></div>
+        <div class="field"><label for="o-km">Km actuales<small>opcional</small></label><span class="fx post"><input id="o-km" inputmode="numeric" placeholder="0" value="${esc(onb.km||'')}"><i>km</i></span></div></div>`
   }[step];
-  screen(`<form id="onb" class="view" novalidate><div class="brand">Auxili<b>OS</b></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" hidden></p></div>
-    <button class="btn pri block" type="submit">${step<3?'Seguir':'Empezar'}</button>
-    ${step===3?'<button class="btn ghost block" type="button" id="o-skip">Lo cargo después</button>':''}</form>`);
-  const er=document.getElementById('o-err'),fail=x=>{er.textContent=errText(x);er.hidden=false;};
-  const finish=async(withClient)=>{
+  screen(`<form id="onb" class="view onb2" novalidate><div class="onb-top">${step>1?`<button class="btn ghost icon-btn" type="button" id="o-back" aria-label="Volver">${icon('arrow-left')}</button>`:'<span></span>'}<div class="brand">Auxili<b>OS</b></div><span class="onb-n">${step} de ${ONB_STEPS}</span></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" role="alert" hidden></p></div>
+    <button class="btn pri block" type="submit">${step<ONB_STEPS?'Seguir':'Empezar'}</button></form>`);
+  const $=x=>document.getElementById(x),er=$('o-err'),fail=x=>{er.textContent=errText(x);er.hidden=false;er.scrollIntoView({block:'nearest',behavior:'smooth'});};
+  $('o-back')?.addEventListener('click',()=>{keep();renderOnboarding(step-1);});
+  // Chips: una opción o varias; «No las llevo» deja solo esa.
+  document.querySelectorAll('#onb .q').forEach(fs=>{const k=fs.dataset.q,q=ONB_Q[k];
+    fs.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const v=b.dataset.v;
+      if(q.multi){let a=(onb[k]||[]).slice();a=a.includes(v)?a.filter(x=>x!==v):(v==='nada'?['nada']:a.filter(x=>x!=='nada').concat(v));onb[k]=a;}else onb[k]=v;
+      fs.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',String(q.multi?onb[k].includes(c.dataset.v):onb[k]===c.dataset.v)));
+      fs.classList.remove('need');if(k==='providers'){const w=$('o-other-wrap');if(w)w.hidden=!onb.providers.includes('otra');}onbSave();});});
+  // Guarda lo escrito aunque vuelva atrás.
+  function keep(){const g=id=>$(id)?.value?.trim();
+    if(step===1){onb.name=g('o-name')??onb.name;onb.phoneRaw=g('o-phone')??onb.phoneRaw;onb.biz=g('o-biz')??onb.biz;onb.province=g('o-prov')??onb.province;onb.city=g('o-city')??onb.city;}
+    if(step===3)onb.providersOther=g('o-other')??onb.providersOther;
+    if(step===4){onb.plate=g('o-plate')?.toUpperCase()??onb.plate;onb.brand=g('o-brand')??onb.brand;onb.model=g('o-model')??onb.model;onb.km=g('o-km')??onb.km;}
+    onbSave();}
+  const finish=async()=>{const b=$('onb').querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class="spin" aria-hidden="true"></span>Armando tu cuenta…';
     try{
-      const {data:part}=await db.from('solo_clients').select('id').eq('kind','particular').limit(1);
-      if(!part?.length){const {error}=await db.from('solo_clients').insert({name:'Particular',kind:'particular',payment_days:0});if(error)throw error;}
+      const {data:part}=await db.from('solo_clients').select('id,name,kind');
+      const have=new Set((part||[]).map(c=>c.name.toLowerCase()));
+      if(!(part||[]).some(c=>c.kind==='particular')){const {error}=await db.from('solo_clients').insert({name:'Particular',kind:'particular',payment_days:0});if(error)throw error;have.add('particular');}
       const {data:types}=await db.from('solo_service_types').select('name');
       const missing=DEFAULT_TYPES.filter(n=>!(types||[]).some(t=>t.name.toLowerCase()===n.toLowerCase()));
       if(missing.length){const {error}=await db.from('solo_service_types').insert(missing.map(name=>({name})));if(error)throw error;}
-      let clientId=null;
-      if(withClient){const name=document.getElementById('o-client').value.trim();if(name.length<2)throw new Error('Escribí el nombre de la prestadora o tocá «Lo cargo después».');
-        const {data,error}=await db.from('solo_clients').insert({name,payment_days:Math.round(num(document.getElementById('o-days').value))||30}).select('id').single();if(error)throw error;clientId=data.id;}
-      const {data:p,error}=await db.from('solo_profiles').insert({full_name:onb.name,business_name:onb.biz||null,phone:onb.phone||null}).select('*').single();if(error)throw error;
-      profile=p;toast('¡Listo! Tu cuenta está armada.');
+      // Las prestadoras que marcó quedan creadas (cobro a 30 días; se cambia después).
+      const names=(onb.providers||[]).filter(p=>p!=='Particulares'&&p!=='otra');
+      if((onb.providers||[]).includes('otra')&&onb.providersOther)names.push(...onb.providersOther.split(/[,;/]/).map(s=>s.trim()).filter(s=>s.length>=2).slice(0,5));
+      const add=[...new Set(names)].filter(n=>!have.has(n.toLowerCase())).map(name=>({name,payment_days:30}));
+      if(add.length){const {error}=await db.from('solo_clients').insert(add);if(error)throw error;}
+      const {data:trucks}=await db.from('solo_trucks').select('id').limit(1);
+      if(!trucks?.length){const {error}=await db.from('solo_trucks').insert({plate:onb.plate,brand:onb.brand||null,model:onb.model||null,km:num(onb.km)||null});if(error)throw error;}
+      const row={full_name:onb.name,business_name:onb.biz||null,phone:onb.phone,province:onb.province,city:onb.city,
+        fleet_size:onb.fleet,tow_types:onb.types,drivers_mode:onb.drivers,years_in_trade:onb.years,monthly_services:onb.monthly,
+        providers:onb.providers,providers_other:(onb.providers||[]).includes('otra')?(onb.providersOther||null):null,current_tools:onb.tools,pains:onb.pains||[],heard_from:onb.heard,onboarding_version:2};
+      const {data:p,error}=await db.from('solo_profiles').insert(row).select('*').single();if(error)throw error;
+      profile=p;try{localStorage.removeItem(onbKey());}catch(x){}onb={};toast('¡Listo! Tu cuenta está armada.');
       // De qué anuncio o campaña vino (si vino de uno) y aviso de registro al píxel de Meta, si está configurado.
       try{const src=window.AxPixel?.source?.();if(src&&!user?.user_metadata?.source)db.auth.updateUser({data:{source:src}}).catch(()=>{});window.AxPixel?.track('CompleteRegistration');}catch(_){}
       // Recién con la cuenta creada se ofrece instalar la app.
-      window.SoloPWA?.offer(1500,'¡Tu cuenta está lista! Dejala a mano en tu celular.');go(clientId?'cliente-'+clientId:'inicio');
-    }catch(x){fail(x);}
+      window.SoloPWA?.offer(1500,'¡Tu cuenta está lista! Dejala a mano en tu celular.');go('inicio');
+    }catch(x){fail(x);b.disabled=false;b.textContent='Empezar';}
   };
-  document.getElementById('onb').onsubmit=async e=>{
-    e.preventDefault();er.hidden=true;
-    if(step===1){const name=document.getElementById('o-name').value.trim();if(name.length<2)return fail('Escribí tu nombre.');
+  $('onb').onsubmit=async e=>{
+    e.preventDefault();er.hidden=true;keep();
+    if(step===1){
+      if((onb.name||'').length<2){$('o-name').focus();return fail('Escribí tu nombre.');}
+      onb.phone=waNormalize(onb.phoneRaw);if(!onb.phone){$('o-phone').focus();return fail('Revisá el WhatsApp: código de área y número, por ejemplo 11 2345 6789.');}
+      if(!onb.province){$('o-prov').focus();return fail('Elegí tu provincia.');}
+      if((onb.city||'').length<2){$('o-city').focus();return fail('Escribí tu localidad.');}
       // Al entrar con Google no pasa por la casilla del registro: se pide acá y queda guardada en la cuenta.
-      if(needsTerms()){const t=document.getElementById('o-terms');if(!t.checked){t.closest('.terms').classList.add('need');return fail('Para seguir tenés que aceptar los Términos y la Política de privacidad.');}
+      if(needsTerms()){const t=$('o-terms');if(!t.checked){t.closest('.terms').classList.add('need');return fail('Para seguir tenés que aceptar los Términos y la Política de privacidad.');}
         const {data,error}=await db.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}});if(error)return fail(error);if(data?.user)user=data.user;}
-      onb.name=name;onb.biz=document.getElementById('o-biz').value.trim();onb.phone=document.getElementById('o-phone').value.trim();return renderOnboarding(2);}
-    if(step===2){const plate=document.getElementById('o-plate').value.trim().toUpperCase();if(plate.replace(/\s/g,'').length<5)return fail('Escribí la patente de la grúa.');
-      const {error}=await db.from('solo_trucks').insert({plate,brand:document.getElementById('o-brand').value.trim()||null,model:document.getElementById('o-model').value.trim()||null,km:num(document.getElementById('o-km').value)||null});
-      if(error)return fail(error);return renderOnboarding(3);}
-    finish(true);
+      onbSave();return renderOnboarding(2);}
+    if(ONB_REQ[step]){const miss=ONB_REQ[step].find(k=>ONB_Q[k].multi?!(onb[k]||[]).length:!onb[k]);
+      if(miss){const fs=document.querySelector(`.q[data-q="${miss}"]`);fs.classList.add('need');fs.scrollIntoView({block:'center',behavior:'smooth'});return fail('Falta responder: '+ONB_Q[miss].label.replace(/[¿?]/g,''));}
+      if(step===3&&onb.providers.includes('otra')&&(onb.providersOther||'').length<2){$('o-other').focus();return fail('Escribí cuál es la otra prestadora.');}
+      return renderOnboarding(step+1);}
+    if((onb.plate||'').replace(/\s/g,'').length<5){$('o-plate').focus();return fail('Escribí la patente de la grúa.');}
+    finish();
   };
-  document.getElementById('o-skip')?.addEventListener('click',()=>finish(false));
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches)document.querySelector('#onb input:not([type=checkbox]),#onb select')?.focus({preventScroll:true});
 }
-const onb={name:'',biz:'',phone:''};
 
 /* ── Pantallas con barra inferior ─────────────────────── */
 const TABS=[['inicio','Inicio','layout-dashboard'],['servicios','Servicios','file-text'],['gastos','Gastos','wallet'],['mas','Más','ellipsis']];
