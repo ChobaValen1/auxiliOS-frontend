@@ -96,3 +96,8 @@ test('corrección de servicio finalizado: guarda los cargos del operador y el ef
   assert.match(m,/administrative_commercial=app_private\.validate_administrative_commercial_v1\(p_service_id,v_company/);
   assert.match(m,/where s\.administrative_commercial is null\n      and exists/);assert.match(m,/nullif\(e->>'excess_report_id',''\) is null/);
 });
+test('rendición: no se aprueba sin rendición y cargarla después reabre el recibo aprobado',()=>{
+  const m=fs.readFileSync('migrations/20261103130000_payroll_rendicion_antes_de_aprobar_v1.sql','utf8');
+  assert.match(m,/Falta cargar la rendición del mes/);assert.match(m,/l\.estado='aprobada' and coalesce\(\(v_cash->>'discount'\)::numeric,0\) is distinct from/);assert.match(m,/'receipt_reopened',true/);
+  const v=fs.readFileSync('payroll-view.js','utf8');assert.match(v,/l\.estado==='pendiente'\|\|r\.data\.receipt_reopened/);assert.match(v,/vuelve a pendiente para aplicar el descuento/);
+});
