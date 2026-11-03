@@ -1,0 +1,45 @@
+{
+  "name": "auxilios-marketing-video",
+  "version": "1.0.0",
+  "description": "Creativos de video de AuxiliOS para Meta Ads, hechos con Remotion",
+  "repository": {},
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.540",
+    "@remotion/fonts": "4.0.540",
+    "@remotion/media": "4.0.540",
+    "@remotion/transitions": "4.0.540",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.540"
+  },
+  "devDependencies": {
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@remotion/eslint-config-flat": "4.0.540",
+    "@types/react": "19.3.0",
+    "@types/web": "0.0.166",
+    "eslint": "10.12.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3",
+    "maplibre-gl": "^5.24.0"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "lint": "eslint src && tsc",
+    "render:del-chat": "remotion render DelChatAlRemito out/auxilios-del-chat-al-remito.mp4 --codec=h264 --crf=18",
+    "render:remito": "remotion render AnuncioRemito out/auxilios-anuncio-remito.mp4 --codec=h264 --crf=18",
+    "render:comparacion": "remotion render ComparacionSolo out/auxilios-solo-comparacion.mp4 --codec=h264 --crf=18",
+    "render:mapa": "remotion render MapaRecorrido out/auxilios-recorrido-mapa.mp4 --codec=h264 --crf=18",
+    "mapa": "node scripts/render_map.js data/osrm public/mapa-recorrido.png src/mapa/route.json",
+    "upgrade": "remotion upgrade"
+  },
+  "allowScripts": {
+    "esbuild": false
+  }
+}
