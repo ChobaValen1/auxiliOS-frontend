@@ -85,7 +85,7 @@ test('CBU/CVU y alias del chofer: validación igual en la app y en la base, y va
 test('comisiones del desglose: cada fila dice su tipo y solo las ventas suman como venta',()=>{
   const m=fs.readFileSync('migrations/20261102230000_payroll_desglose_tipos_v1.sql','utf8');
   assert.match(m,/when 'sale' then 'venta' when 'tog' then 'marca' when 'capt' then 'captacion'/);assert.match(m,/filter \(where x->>'tipo'='venta'\)/);
-  const src=fs.readFileSync('payroll-export-v1.js','utf8');assert.match(src,/addWorksheet\('Comisiones'/);assert.match(src,/' por servicio'/);assert.match(src,/'1 servicio'/);
+  const src=fs.readFileSync('payroll-export-v1.js','utf8');assert.match(src,/addWorksheet\('Comisiones'/);assert.match(src,/label: 'Código'/);assert.match(src,/label: 'Patente'/);assert.doesNotMatch(src,/v\.servicio \|\|/);assert.match(src,/' por servicio'/);assert.match(src,/'1 servicio'/);
 });
 test('efectivo esperado: ventas en efectivo cargadas en el servicio (no en el remito) entran sin duplicar',()=>{
   const m=fs.readFileSync('migrations/20261102240000_efectivo_ventas_cargadas_en_servicio_v1.sql','utf8');
