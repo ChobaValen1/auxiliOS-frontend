@@ -11,7 +11,8 @@ const text=v=>String(v||'').trim();
 const MODES={base_origin_destination_base:'Base → Origen → Destino → Base',base_origin:'Base → Origen',origin_destination:'Origen → Destino'};
 function planFor(s,context){
   let mode=context?.billing?.route_mode;
-  if(s.driver_activated){if(s.activation_kind!=='origin')return{stops:[],message:'Activado con kilometraje manual: no hay un recorrido automático.'};mode='base_origin_destination_base';}
+  /* Activado Origen: el recorrido es solo de la base hasta el origen. */
+  if(s.driver_activated){if(s.activation_kind!=='origin')return{stops:[],message:'Activado con kilometraje manual: no hay un recorrido automático.'};mode='base_origin';}
   if(!MODES[mode])return{stops:[],message:mode==='manual'?'Kilometraje manual: no hay un recorrido automático de facturación.':'La prestadora no tiene un método de recorrido configurado.'};
   const b=context.bases?.find(x=>String(x.base_id)===String(s.billing_base_id||s.branch_id));
   const single=s.driver_activated||context.services?.some(c=>String(c.concept_id)===String(s.primary_concept_id||s.category_id)&&c.single_address===true);

@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v638-flota-v603-solo-v625';
+const CACHE_NAME='auxilios-v639-flota-v604-solo-v625';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
