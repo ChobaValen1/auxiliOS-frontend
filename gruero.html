@@ -15,7 +15,7 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/ui/tokens.css?v=solo-v627-20261102">
+<link rel="stylesheet" href="/ui/tokens.css?v=solo-v628-20261103">
 <style>
 /* Página de presentación de AuxiliOS (a donde llegan los anuncios). Pensada primero para el celular. */
 *{box-sizing:border-box}
@@ -140,8 +140,8 @@ footer a{color:var(--ax-text-2)}
   footer{padding-bottom:28px}
 }
 </style>
-<script src="/runtime-config.js?v=solo-v627-20261102" defer></script>
-<script src="/ui/meta-pixel.js?v=solo-v627-20261102" defer></script>
+<script src="/runtime-config.js?v=solo-v628-20261103" defer></script>
+<script src="/ui/meta-pixel.js?v=solo-v628-20261103" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -160,7 +160,7 @@ footer a{color:var(--ax-text-2)}
 
 <header class="nav"><div class="wrap">
   <a class="brand" href="#top" aria-label="AuxiliOS">AUXILI<b>OS</b></a>
-  <a class="btn ghost sm" href="/solo.html" data-cta="nav">Entrar</a>
+  <a class="btn ghost sm" href="/solo.html" data-cta="nav">Ingresar</a>
 </div></header>
 
 <main id="top">
@@ -170,7 +170,7 @@ footer a{color:var(--ax-text-2)}
       <h1>El control de tu grúa, <em>en una app.</em></h1>
       <p class="lead">Anotá tus servicios por prestadora, cargá tus gastos, hacé remitos digitales y <b>sabé de una vez si estás ganando o perdiendo plata</b>.</p>
       <div class="ctas">
-        <a class="btn pri" href="/solo.html" data-cta="hero">Probala gratis <svg><use href="#i-arrow"/></svg></a>
+        <a class="btn pri" href="/solo.html?alta=1" data-cta="hero">Probala gratis <svg><use href="#i-arrow"/></svg></a>
         <a class="btn ghost" href="#" data-wa="hero"><svg><use href="#i-wa"/></svg> Preguntar por WhatsApp</a>
       </div>
       <ul class="micro">
@@ -309,7 +309,7 @@ footer a{color:var(--ax-text-2)}
       <p class="sec-k">Precio</p>
       <div class="big">Gratis</div>
       <p>Durante la etapa de prueba no pagás nada. Si más adelante pasa a ser pago, te avisamos con 30 días de anticipación y decidís si seguís.</p>
-      <a class="btn pri" href="/solo.html" data-cta="precio">Crear mi cuenta gratis <svg><use href="#i-arrow"/></svg></a>
+      <a class="btn pri" href="/solo.html?alta=1" data-cta="precio">Crear mi cuenta gratis <svg><use href="#i-arrow"/></svg></a>
     </div>
   </div></section>
 
@@ -331,7 +331,7 @@ footer a{color:var(--ax-text-2)}
     <h2>Dejá de hacer cuentas en el cuaderno.</h2>
     <p class="sec-sub" style="margin:0 auto 22px">Cargá el mes en la app y sabé cuánto te queda. Si no te sirve, no perdiste nada.</p>
     <div class="ctas">
-      <a class="btn pri" href="/solo.html" data-cta="final">Probala gratis <svg><use href="#i-arrow"/></svg></a>
+      <a class="btn pri" href="/solo.html?alta=1" data-cta="final">Probala gratis <svg><use href="#i-arrow"/></svg></a>
       <a class="btn ghost" href="#" data-wa="final"><svg><use href="#i-wa"/></svg> Preguntar por WhatsApp</a>
     </div>
   </div></section>
@@ -343,7 +343,7 @@ footer a{color:var(--ax-text-2)}
 </div></footer>
 
 <div class="sticky-cta" id="sticky" aria-hidden="true">
-  <a class="btn pri" href="/solo.html" data-cta="sticky" tabindex="-1">Probala gratis</a>
+  <a class="btn pri" href="/solo.html?alta=1" data-cta="sticky" tabindex="-1">Probala gratis</a>
   <a class="btn wa" href="#" data-wa="sticky" aria-label="Preguntar por WhatsApp" tabindex="-1"><svg><use href="#i-wa"/></svg></a>
 </div>
 
@@ -357,7 +357,7 @@ footer a{color:var(--ax-text-2)}
     if(P&&P.enabled)P.boot();
     // Los botones de «Probala gratis» llevan los datos de la campaña a la app.
     var qs=location.search;
-    document.querySelectorAll('[data-cta]').forEach(function(a){if(qs)a.href=a.getAttribute('href')+qs;
+    document.querySelectorAll('[data-cta]').forEach(function(a){if(qs){var h=a.getAttribute('href');a.href=h+(h.indexOf('?')<0?qs:'&'+qs.slice(1));}
       a.addEventListener('click',function(){if(P)P.track('Lead',{content_name:'probar_gratis',content_category:a.dataset.cta});});});
     // WhatsApp de soporte con mensaje armado; si la instalación no tiene número, se ocultan.
     var wa=String(RT.supportWhatsapp||'').replace(/\D/g,'');

@@ -286,7 +286,9 @@ test('Solo: formularios de arriba hacia abajo, campos del mismo tamaño y fechas
 
 test('Solo: página de presentación para los anuncios (gruero.html) y medición de Meta',()=>{
   const l=fs.readFileSync('gruero.html','utf8'),px=fs.readFileSync('ui/meta-pixel.js','utf8'),v=fs.readFileSync('vercel.json','utf8'),t=fs.readFileSync('terminos-solo.html','utf8');
-  assert.match(l,/El control de tu grúa, <em>en una app\.<\/em>/);assert.match(l,/ganando o perdiendo plata/);assert.match(l,/data-cta="hero"/);assert.match(l,/a\.href=a\.getAttribute\('href'\)\+qs/,'los botones llevan la campaña a la app');
+  assert.match(l,/El control de tu grúa, <em>en una app\.<\/em>/);assert.match(l,/ganando o perdiendo plata/);assert.match(l,/data-cta="hero"/);assert.match(l,/a\.href=h\+\(h\.indexOf\('\?'\)<0\?qs:'&'\+qs\.slice\(1\)\)/,'los botones llevan la campaña a la app');
+  for(const c of ['hero','precio','final','sticky'])assert.match(l,new RegExp('href="/solo\\.html\\?alta=1" data-cta="'+c+'"'),'«Probala gratis» abre en Crear cuenta');
+  assert.match(l,/href="\/solo\.html" data-cta="nav">Ingresar</);
   assert.match(l,/if\(!wa\)\{a\.hidden=true/,'sin número de soporte no se muestra WhatsApp');assert.match(l,/og:image/);assert.doesNotMatch(l,/AIza|sk-[A-Za-z0-9]/,'sin llaves en la página');
   assert.ok(v.indexOf('"/gruero"')>0&&v.indexOf('"/gruero"')<v.indexOf('"/(.*)"'),'la ruta /gruero va antes de la general');
   assert.match(px,/if\(!id\)return/,'el píxel solo se carga si está configurado');assert.match(px,/utm_source/);assert.match(js,/AxPixel\?\.track\('CompleteRegistration'\)/);
@@ -296,6 +298,9 @@ test('Solo: página de presentación para los anuncios (gruero.html) y medición
 
 test('Solo: ingreso con pestañas Entrar / Crear cuenta, autocompletado oscuro y dos columnas en compu',()=>{
   const a=js.slice(js.indexOf('function renderAuth('),js.indexOf('function renderCheckEmail('));
+  assert.match(js,/renderAuth\(authStartMode\(\)\)/);assert.match(js,/alta=1\(&\|\$\)/);assert.match(a,/syncAuthUrl\(mode\)/,'la URL sigue a la pestaña');
+  assert.match(a,/¿Ya tenés cuenta\?/);assert.match(a,/getModifierState\('CapsLock'\)/);assert.match(a,/mailSuggest/);
+  assert.match(a,/authNotice='Ese email ya tiene una cuenta\. Ingresá con tu contraseña\.';return renderAuth\('login'\)/,'email repetido: pasa a Ingresar con el email cargado');
   assert.match(a,/class="auth-tabs" role="tablist"/);assert.match(a,/aria-selected="\$\{signup\}"/);assert.match(a,/Gratis en la etapa de prueba · sin tarjeta/);
   assert.match(a,/class="auth-aside" aria-hidden="true"/,'en compu se explica qué es la app');assert.match(a,/El control de tu grúa/);
   assert.match(css,/\.auth input:-webkit-autofill/,'el autocompletado no rompe el tema oscuro');assert.match(css,/\.solo\.bare:has\(\.auth2\)\{max-width:1080px\}/);

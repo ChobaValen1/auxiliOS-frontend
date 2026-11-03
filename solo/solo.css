@@ -1155,3 +1155,8 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
   .auth-head .sub{display:none}
   .auth2 #auth{gap:9px}
 }
+/* Ingreso: aviso de mayúsculas, sugerencia de email y enlace para cambiar de pestaña. */
+.auth .caps-warn{display:flex;align-items:center;gap:6px;margin:-4px 0 0;font-size:12px;color:var(--ax-warn)}
+.auth .caps-warn .ico{width:14px;height:14px}
+.auth #a-fix .link{font-size:12px;padding:0}
+.auth .auth-alt{margin-top:4px}

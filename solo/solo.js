@@ -49,7 +49,8 @@ function start(){
 async function boot(){
   if(recovering&&user)return renderNewPassword();
   if(window.SoloOffline)await window.SoloOffline.setUser(user?.id||null);
-  if(!user){profile=null;return renderAuth('login');}
+  if(!user){profile=null;return renderAuth(authStartMode());}
+  if(/(^|&)alta=1/.test(location.search.slice(1)))syncAuthUrl('login'); // ya entró: al cerrar sesión vuelve a Ingresar
   const {data,error}=await db.from('solo_profiles').select('*').eq('owner_id',user.id).maybeSingle();
   if(error){app.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
   profile=data;
@@ -68,6 +69,21 @@ function go(name,fromHash){
 /* ── Registro e ingreso ───────────────────────────────── */
 // Los enlaces de los emails (confirmar cuenta, nueva contraseña) vuelven siempre a esta app.
 const backUrl=()=>location.origin+'/solo.html';
+// «Probala gratis» abre en Crear cuenta (?alta=1); «Ingresar» y los enlaces de los emails abren en Ingresar.
+const authStartMode=()=>/(^|&)alta=1(&|$)/.test(location.search.slice(1))?'signup':'login';
+// La URL sigue a la pestaña: si recarga o vuelve atrás, queda donde estaba.
+function syncAuthUrl(mode){try{const q=new URLSearchParams(location.search);if(mode==='signup')q.set('alta','1');else q.delete('alta');
+  const s=q.toString();history.replaceState(null,'',location.pathname+(s?'?'+s:'')+location.hash);}catch(x){}}
+// Errores de tipeo comunes en el dominio del email.
+const MAIL_FIX={'gmial.com':'gmail.com','gmai.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com','gmail.com.ar':'gmail.com',
+  'hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','hotmal.com':'hotmail.com','hotmail.con':'hotmail.com','hotmail.co':'hotmail.com',
+  'outlok.com':'outlook.com','outloo.com':'outlook.com','yaho.com':'yahoo.com','yahoo.com.ar.com':'yahoo.com.ar','yahoo.con':'yahoo.com'};
+const mailSuggest=e=>{const m=/^([^@\s]+)@([^@\s]+)$/.exec(String(e||'').trim().toLowerCase());return m&&MAIL_FIX[m[2]]?m[1]+'@'+MAIL_FIX[m[2]]:null;};
+// En «Revisá tu email»: botón directo a la casilla según el dominio.
+const mailApp=e=>{const d=String(e||'').split('@')[1]?.toLowerCase()||'';
+  if(/^(gmail|googlemail)\./.test(d))return{name:'Gmail',url:'https://mail.google.com/mail/u/0/#search/AuxiliOS'};
+  if(/^(hotmail|outlook|live|msn)\./.test(d))return{name:'Outlook',url:'https://outlook.live.com/mail/0/'};
+  if(/^yahoo\./.test(d))return{name:'Yahoo Mail',url:'https://mail.yahoo.com/'};return null;};
 function readAuthHash(){
   const h=location.hash.slice(1),qs=location.search.slice(1);
   if(!/(^|&)(error|access_token|type)=/.test(h)&&!/(^|&)error=/.test(qs))return;
@@ -97,7 +113,7 @@ function renderAuth(mode){
   const signup=mode==='signup',reset=mode==='reset';
   const title=signup?'Creá tu cuenta gratis':reset?'Recuperá tu contraseña':'Hola de nuevo';
   const sub=signup?'En un minuto tenés tu grúa cargada.':reset?'Te mandamos un enlace a tu email para elegir una contraseña nueva.':'Entrá para ver tus servicios, gastos y cuentas del mes.';
-  const cta=signup?'Crear cuenta gratis':reset?'Mandarme el enlace':'Entrar';
+  const cta=signup?'Crear cuenta gratis':reset?'Mandarme el enlace':'Ingresar';
   // En compu, a la izquierda va qué es la app; en el celular solo el formulario.
   screen(`<div class="view auth auth2">
     <aside class="auth-aside" aria-hidden="true">
@@ -108,29 +124,40 @@ function renderAuth(mode){
     </aside>
     <div class="auth-main">
     <div class="auth-brand auth-brand-m"><img src="/assets/icons/icon-192.png" alt="" width="44" height="44"><div class="brand">Auxili<b>OS</b></div></div>
-    ${reset?'':`<div class="auth-tabs" role="tablist" aria-label="Entrar o crear cuenta">
-      <button type="button" role="tab" aria-selected="${!signup}" ${signup?'id="a-switch"':'tabindex="-1"'}>Entrar</button>
+    ${reset?'':`<div class="auth-tabs" role="tablist" aria-label="Ingresar o crear cuenta">
+      <button type="button" role="tab" aria-selected="${!signup}" ${signup?'id="a-switch"':'tabindex="-1"'}>Ingresar</button>
       <button type="button" role="tab" aria-selected="${signup}" ${signup?'tabindex="-1"':'id="a-switch"'}>Crear cuenta</button></div>`}
     <div class="auth-head"><h1>${title}</h1><p class="sub">${sub}</p></div>
     ${authNotice?`<p class="notice" role="alert">${icon('circle-alert')}<span>${esc(authNotice)}</span></p>`:''}
-    ${reset?'':`<div class="google-wrap" id="g-wrap" hidden><button class="btn block google-btn" type="button" id="a-google">${GOOGLE_G}<span>${signup?'Crear cuenta con Google':'Entrar con Google'}</span></button><div class="or"><span>o con tu email</span></div></div>`}
+    ${reset?'':`<div class="google-wrap" id="g-wrap" hidden><button class="btn block google-btn" type="button" id="a-google">${GOOGLE_G}<span>${signup?'Crear cuenta con Google':'Ingresar con Google'}</span></button><div class="or"><span>o con tu email</span></div></div>`}
     <form id="auth" class="card" novalidate>
       ${signup?'<div class="field"><label for="a-name">Tu nombre</label><input id="a-name" autocomplete="name" required></div>':''}
-      <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required value="${esc(authEmail)}"></div>
+      <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required value="${esc(authEmail)}"><span class="help" id="a-fix" hidden></span></div>
       ${reset?'':passField('a-pass','Contraseña',signup?'new-password':'current-password',signup?'Al menos 6 caracteres.':'')}
+      ${reset?'':'<p class="caps-warn" id="a-caps" hidden>'+icon('circle-alert')+'Tenés las mayúsculas activadas.</p>'}
       ${signup?`<label class="terms" for="a-terms"><input type="checkbox" id="a-terms"><span>Acepto los <a href="/terminos-solo.html" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/terminos-solo.html#privacidad" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>`:''}
       <p id="a-err" class="err" hidden></p>
       <button class="btn pri block" type="submit">${cta}</button>
       ${!signup&&!reset?'<button class="link center" id="a-forgot" type="button">¿Olvidaste tu contraseña?</button>':''}
       ${signup?`<p class="auth-free">${icon('circle-check')}Gratis en la etapa de prueba · sin tarjeta</p>`:''}
     </form>
-    ${reset?'<p class="sub center">¿Te acordaste? <button class="link" id="a-switch" type="button">Entrá</button></p>':''}
+    ${reset?'<p class="sub center">¿Te acordaste? <button class="link" id="a-switch" type="button">Ingresá</button></p>'
+      :`<p class="sub center auth-alt">${signup?'¿Ya tenés cuenta?':'¿Todavía no tenés cuenta?'} <button class="link" id="a-alt" type="button">${signup?'Ingresá':'Creala gratis'}</button></p>`}
     <button class="link center help-link" type="button" id="a-help">${icon('life-buoy')} ¿Necesitás ayuda? Escribinos</button>
     </div>
   </div>`);
   authNotice=null;
+  if(!reset)syncAuthUrl(mode);
   const $=x=>document.getElementById(x),er=$('a-err');
-  $('a-switch').onclick=()=>{authEmail=$('a-email').value.trim();renderAuth(signup?'login':reset?'login':'signup');};
+  const other=()=>{authEmail=$('a-email').value.trim();renderAuth(signup?'login':reset?'login':'signup');};
+  $('a-switch').onclick=other;$('a-alt')?.addEventListener('click',other);
+  // En compu el cursor arranca en el primer campo; en el celular no, para no tapar la pantalla con el teclado.
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches)(signup?$('a-name'):$('a-email').value?$('a-pass'):$('a-email'))?.focus({preventScroll:true});
+  const fix=$('a-fix'),checkMail=()=>{const g=mailSuggest($('a-email').value);if(!fix)return;fix.hidden=!g;
+    if(g){fix.innerHTML='¿Quisiste decir <button class="link" type="button" id="a-fixit">'+esc(g)+'</button>?';$('a-fixit').onclick=()=>{$('a-email').value=g;fix.hidden=true;$('a-pass')?.focus();};}};
+  $('a-email').addEventListener('blur',checkMail);
+  const caps=$('a-caps');$('a-pass')?.addEventListener('keyup',e=>{if(caps&&e.getModifierState)caps.hidden=!e.getModifierState('CapsLock');});
+  $('a-pass')?.addEventListener('blur',()=>{if(caps)caps.hidden=true;});
   $('a-forgot')?.addEventListener('click',()=>{authEmail=$('a-email').value.trim();renderAuth('reset');});
   $('a-help').onclick=()=>support(signup?'No puedo crear la cuenta':'No puedo entrar',$('a-email').value.trim());
   if(!reset)googleEnabled().then(on=>{const w=$('g-wrap');if(w&&on)w.hidden=false;});
@@ -138,7 +165,7 @@ function renderAuth(mode){
     if(!navigator.onLine)return fail('Sin señal no se puede entrar con Google. Probá cuando vuelva la conexión.');
     b.disabled=true;b.innerHTML='<span class="spin" aria-hidden="true"></span>Abriendo Google…';
     const {error}=await db.auth.signInWithOAuth({provider:'google',options:{redirectTo:backUrl(),queryParams:{prompt:'select_account'}}});
-    if(error){fail('No pudimos abrir Google. Probá de nuevo o entrá con tu email.');b.disabled=false;b.innerHTML=GOOGLE_G+'<span>'+(signup?'Crear cuenta con Google':'Entrar con Google')+'</span>';}});
+    if(error){fail('No pudimos abrir Google. Probá de nuevo o entrá con tu email.');b.disabled=false;b.innerHTML=GOOGLE_G+'<span>'+(signup?'Crear cuenta con Google':'Ingresar con Google')+'</span>';}});
   const fail=(msg,resend)=>{er.innerHTML=esc(msg)+(resend?' <button class="link" type="button" id="a-resend">Reenviar email</button>':'');er.hidden=false;
     $('a-resend')?.addEventListener('click',()=>renderCheckEmail(authEmail,'signup',true));};
   $('auth').onsubmit=async e=>{
@@ -155,10 +182,11 @@ function renderAuth(mode){
         const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name,terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()},emailRedirectTo:backUrl()}});
         if(error)throw error;
         // Supabase no avisa con error cuando el email ya existe: devuelve un usuario sin identidades.
-        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('already registered');
+        if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length){authNotice='Ese email ya tiene una cuenta. Ingresá con tu contraseña.';return renderAuth('login');}
         if(!data.session)return renderCheckEmail(email,'signup');
       }else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;}
-    }catch(x){fail(errText(x),/Email not confirmed/i.test(String(x?.message||'')));b.disabled=false;b.textContent=cta;}
+    }catch(x){if(signup&&/already registered|already been registered/i.test(String(x?.message||''))){authNotice='Ese email ya tiene una cuenta. Ingresá con tu contraseña.';return renderAuth('login');}
+      fail(errText(x),/Email not confirmed/i.test(String(x?.message||'')));b.disabled=false;b.textContent=cta;}
   };
 }
 // Pantalla de «revisá tu email», con reenvío (una vez por minuto, como pide Supabase).
@@ -171,8 +199,9 @@ function renderCheckEmail(email,kind,sendNow){
     <p class="sub">Te mandamos un enlace a <b>${esc(email)}</b>. ${reset?'Tocalo para elegir una contraseña nueva.':'Tocalo para confirmar tu cuenta: se abre AuxiliOS y ya entrás.'}</p>
     <p class="hint">¿No te llegó? Mirá en Spam o Promociones. Puede tardar un par de minutos.</p>
     <p id="a-err" class="err" hidden></p>
+    ${mailApp(email)?`<a class="btn pri block" id="open-mail" href="${mailApp(email).url}" target="_blank" rel="noopener">Abrir ${mailApp(email).name}</a>`:''}
     <button class="btn block" type="button" id="resend">Reenviar email</button>
-    <button class="btn ghost block" type="button" id="back">Volver a entrar</button>
+    <button class="btn ghost block" type="button" id="back">Ir a Ingresar</button>
   </div>`);
   const $=x=>document.getElementById(x),b=$('resend'),er=$('a-err');
   $('back').onclick=()=>{authEmail=email;renderAuth('login');};
