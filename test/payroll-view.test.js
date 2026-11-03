@@ -91,3 +91,8 @@ test('efectivo esperado: ventas en efectivo cargadas en el servicio (no en el re
   const m=fs.readFileSync('migrations/20261102240000_efectivo_ventas_cargadas_en_servicio_v1.sql','utf8');
   assert.match(m,/e\.customer_payment_method='cash'/);assert.match(m,/rr\.concept_id is not distinct from e\.concept_id/);assert.match(m,/where exists\(select 1 from public\.remitos r/);
 });
+test('corrección de servicio finalizado: guarda los cargos del operador y el efectivo los suma una sola vez',()=>{
+  const m=fs.readFileSync('migrations/20261103100000_correccion_finalizado_guarda_cargos_v1.sql','utf8');
+  assert.match(m,/administrative_commercial=app_private\.validate_administrative_commercial_v1\(p_service_id,v_company/);
+  assert.match(m,/where s\.administrative_commercial is null\n      and exists/);assert.match(m,/nullif\(e->>'excess_report_id',''\) is null/);
+});
