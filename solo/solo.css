@@ -1172,3 +1172,4 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .onb2 .frm{display:grid;gap:22px}
 .onb2 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .onb2 select{width:100%}
+.onb2 .field label small{margin-left:6px;text-transform:none;letter-spacing:0;color:var(--ax-text-3)}

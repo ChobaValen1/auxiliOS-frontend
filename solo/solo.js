@@ -241,11 +241,17 @@ const ONB_Q={
   drivers:{label:'¿Quién maneja?',opts:[['solo','Yo solo'],['con_choferes','Yo y choferes'],['solo_choferes','Solo choferes']]},
   years:{label:'¿Hace cuánto sos gruero?',opts:[['<1','Menos de 1 año'],['1-3','1 a 3 años'],['3-10','3 a 10 años'],['10+','Más de 10']]},
   monthly:{label:'¿Cuántos servicios hacés por mes?',opts:[['<20','Menos de 20'],['20-50','20 a 50'],['50-100','50 a 100'],['100+','Más de 100']]},
-  providers:{label:'¿Con quién trabajás?',hint:'Marcá todas. Las cargamos como tus prestadoras.',multi:true,opts:[['IKE','IKE'],['Addiuva','Addiuva'],['Cardinal','Cardinal'],['SOS','SOS'],['Europ Assistance','Europ Assistance'],['Mapfre','Mapfre'],['ACA','ACA'],['Particulares','Particulares'],['otra','Otra']]},
+  providers:{label:'¿Con quién trabajás?',hint:'Las que marques quedan cargadas como tus prestadoras.',multi:true,opts:[['IKE','IKE'],['Addiuva','Addiuva'],['Cardinal','Cardinal'],['SOS','SOS'],['Europ Assistance','Europ Assistance'],['Mapfre','Mapfre'],['ACA','ACA'],['Particulares','Particulares'],['otra','Otra']]},
   tools:{label:'¿Cómo llevás las cuentas hoy?',multi:true,opts:[['cuaderno','Cuaderno'],['excel','Excel'],['otra_app','Otra app'],['whatsapp','WhatsApp / fotos'],['nada','No las llevo']]},
   pains:{label:'¿Qué es lo que más te cuesta?',multi:true,opts:[['ganancia','Saber cuánto gano'],['cobrar','Cobrarle a las prestadoras'],['remitos','Hacer los remitos'],['gastos','Controlar los gastos'],['facturar','Facturar']]},
-  heard:{label:'¿Cómo nos conociste?',opts:[['facebook','Facebook'],['instagram','Instagram'],['tiktok','TikTok'],['google','Google'],['otro_gruero','Otro gruero'],['prestadora','Una prestadora'],['otro','Otro']]}
+  heard:{label:'¿Cómo nos conociste?',multi:true,opts:[['facebook','Facebook'],['instagram','Instagram'],['tiktok','TikTok'],['google','Google'],['otro_gruero','Otro gruero'],['prestadora','Una prestadora'],['otro','Otro']]}
 };
+// Marcas y modelos más usados para grúas en Argentina. «Otra» / «Otro» deja escribirlo.
+const TRUCKS={'Iveco':['Daily','Tector','Eurocargo','Stralis','Trakker'],'Mercedes-Benz':['Sprinter','Accelo','Atego','Axor','Actros','710','1114','1620'],
+  'Ford':['Cargo 816','Cargo 1119','Cargo 1723','F-4000','F-350','F-100','Ranger'],'Volkswagen':['Delivery','Worker','Constellation','Amarok'],
+  'Agrale':['8700','10000','MA 9.2','Marruá'],'Hyundai':['HD 65','HD 78','HD 120'],'Isuzu':['NPR','NKR','NQR'],'JAC':['1040','1063','1083'],'Foton':['Aumark','Tunland'],
+  'Renault':['Master','Midlum'],'Fiat':['Ducato','Iveco 150'],'Peugeot':['Boxer'],'Toyota':['Hilux','Dyna'],'Chevrolet':['NPR','S10','C-10'],'Scania':['P','G','R'],'Volvo':['FM','FH','VM']};
+const OTHER='__otra__';
 const ONB_REQ={2:['fleet','types','drivers','years','monthly'],3:['providers','tools','heard']};
 let onb={};
 const onbKey=()=>'solo-onb-v2:'+(user?.id||'');
@@ -257,7 +263,7 @@ function waNormalize(v){let d=String(v||'').replace(/\D/g,'');if(d.startsWith('5
   if(d.length===12){for(const a of [2,3,4])if(d.slice(a,a+2)==='15'){d=d.slice(0,a)+d.slice(a+2);break;}}
   return d.length===10?'+549'+d:null;}
 const chipsQ=k=>{const q=ONB_Q[k],v=onb[k];const on=x=>q.multi?(v||[]).includes(x):v===x;
-  return `<fieldset class="q" data-q="${k}"><legend>${q.label}</legend>${q.hint?`<p class="q-hint">${q.hint}</p>`:''}<div class="chips">${q.opts.map(([val,l])=>`<button type="button" class="chip" data-v="${esc(val)}" aria-pressed="${on(val)}">${esc(l)}</button>`).join('')}</div></fieldset>`;};
+  return `<fieldset class="q" data-q="${k}"><legend>${q.label}</legend>${q.multi||q.hint?`<p class="q-hint">${[q.multi?'Podés marcar varias.':'',q.hint||''].filter(Boolean).join(' ')}</p>`:''}<div class="chips">${q.opts.map(([val,l])=>`<button type="button" class="chip" data-v="${esc(val)}" aria-pressed="${on(val)}">${esc(l)}</button>`).join('')}</div></fieldset>`;};
 function renderOnboarding(step){
   if(step===1&&!onb._loaded){onbLoad();onb._loaded=true;if(onb.step>1&&onb.step<=ONB_STEPS)step=onb.step;}
   onb.step=step;onbSave();
@@ -276,14 +282,19 @@ function renderOnboarding(step){
         ${chipsQ('tools')}${chipsQ('pains')}${chipsQ('heard')}</div>`,
     4:`<h1>Tu grúa</h1><p class="sub">La patente sale en cada remito.</p>
       <div class="frm"><div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" value="${esc(onb.plate||'')}" required></div>
-        <div class="row2"><div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco" value="${esc(onb.brand||'')}"></div>
-        <div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily" value="${esc(onb.model||'')}"></div></div>
-        <div class="field"><label for="o-km">Km actuales<small>opcional</small></label><span class="fx post"><input id="o-km" inputmode="numeric" placeholder="0" value="${esc(onb.km||'')}"><i>km</i></span></div></div>`
+        <div class="field"><label for="o-brand">Marca</label><select id="o-brand" required><option value="">Elegí la marca…</option>${Object.keys(TRUCKS).map(m=>`<option ${onb.brandSel===m?'selected':''}>${m}</option>`).join('')}<option value="${OTHER}" ${onb.brandSel===OTHER?'selected':''}>Otra marca</option></select></div>
+        <div class="field" id="o-brand-x-wrap" ${onb.brandSel===OTHER?'':'hidden'}><label for="o-brand-x">¿Qué marca?</label><input id="o-brand-x" value="${esc(onb.brandOther||'')}"></div>
+        <div class="field"><label for="o-model">Modelo</label><select id="o-model" ${onb.brandSel?'':'disabled'}></select></div>
+        <div class="field" id="o-model-x-wrap" ${onb.modelSel===OTHER||onb.brandSel===OTHER?'':'hidden'}><label for="o-model-x">¿Qué modelo?</label><input id="o-model-x" value="${esc(onb.modelOther||'')}"></div>
+        <div class="row2"><div class="field"><label for="o-year">Año<small>opcional</small></label><select id="o-year"><option value="">—</option>${Array.from({length:new Date().getFullYear()-1979},(_,i)=>new Date().getFullYear()+1-i).map(y=>`<option ${String(onb.year)===String(y)?'selected':''}>${y}</option>`).join('')}<option value="1979" ${String(onb.year)==='1979'?'selected':''}>Antes de 1980</option></select></div>
+        <div class="field"><label for="o-km">Km actuales<small>opcional</small></label><span class="fx post"><input id="o-km" inputmode="numeric" placeholder="0" value="${esc(onb.km||'')}"><i>km</i></span></div></div></div>`
   }[step];
   screen(`<form id="onb" class="view onb2" novalidate><div class="onb-top">${step>1?`<button class="btn ghost icon-btn" type="button" id="o-back" aria-label="Volver">${icon('arrow-left')}</button>`:'<span></span>'}<div class="brand">Auxili<b>OS</b></div><span class="onb-n">${step} de ${ONB_STEPS}</span></div>${stepsBar(step)}<div class="card">${body}<p id="o-err" class="err" role="alert" hidden></p></div>
     <button class="btn pri block" type="submit">${step<ONB_STEPS?'Seguir':'Empezar'}</button></form>`);
   const $=x=>document.getElementById(x),er=$('o-err'),fail=x=>{er.textContent=errText(x);er.hidden=false;er.scrollIntoView({block:'nearest',behavior:'smooth'});};
   $('o-back')?.addEventListener('click',()=>{keep();renderOnboarding(step-1);});
+  // Al corregir, el aviso de error se va.
+  $('onb').addEventListener('input',()=>{er.hidden=true;});$('onb').addEventListener('change',()=>{er.hidden=true;});
   // Chips: una opción o varias; «No las llevo» deja solo esa.
   document.querySelectorAll('#onb .q').forEach(fs=>{const k=fs.dataset.q,q=ONB_Q[k];
     fs.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const v=b.dataset.v;
@@ -294,8 +305,16 @@ function renderOnboarding(step){
   function keep(){const g=id=>$(id)?.value?.trim();
     if(step===1){onb.name=g('o-name')??onb.name;onb.phoneRaw=g('o-phone')??onb.phoneRaw;onb.biz=g('o-biz')??onb.biz;onb.province=g('o-prov')??onb.province;onb.city=g('o-city')??onb.city;}
     if(step===3)onb.providersOther=g('o-other')??onb.providersOther;
-    if(step===4){onb.plate=g('o-plate')?.toUpperCase()??onb.plate;onb.brand=g('o-brand')??onb.brand;onb.model=g('o-model')??onb.model;onb.km=g('o-km')??onb.km;}
+    if(step===4){onb.plate=g('o-plate')?.toUpperCase()??onb.plate;onb.brandSel=g('o-brand')??onb.brandSel;onb.brandOther=g('o-brand-x')??onb.brandOther;
+      onb.modelSel=$('o-model')&&!$('o-model').disabled?$('o-model').value:onb.modelSel;onb.modelOther=g('o-model-x')??onb.modelOther;onb.year=g('o-year')??onb.year;onb.km=g('o-km')??onb.km;
+      onb.brand=onb.brandSel===OTHER?(onb.brandOther||''):(onb.brandSel||'');onb.model=onb.brandSel===OTHER||onb.modelSel===OTHER?(onb.modelOther||''):(onb.modelSel||'');}
     onbSave();}
+  // Modelo según la marca elegida; «Otro» (o marca «Otra») abre el campo para escribirlo.
+  function fillModels(){const sel=$('o-model');if(!sel)return;const br=$('o-brand').value,list=TRUCKS[br]||[];
+    if(!br||br===OTHER){sel.innerHTML='<option value="">'+(br===OTHER?'Escribilo abajo':'Primero elegí la marca')+'</option>';sel.disabled=true;}
+    else{sel.disabled=false;sel.innerHTML='<option value="">Elegí el modelo…</option>'+list.map(m=>`<option ${onb.modelSel===m?'selected':''}>${esc(m)}</option>`).join('')+`<option value="${OTHER}" ${onb.modelSel===OTHER?'selected':''}>Otro modelo</option>`;}
+    $('o-brand-x-wrap').hidden=br!==OTHER;$('o-model-x-wrap').hidden=!(br===OTHER||sel.value===OTHER);}
+  if(step===4){fillModels();$('o-brand').addEventListener('change',()=>{onb.modelSel='';fillModels();keep();});$('o-model').addEventListener('change',()=>{$('o-model-x-wrap').hidden=$('o-model').value!==OTHER;keep();});}
   const finish=async()=>{const b=$('onb').querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class="spin" aria-hidden="true"></span>Armando tu cuenta…';
     try{
       const {data:part}=await db.from('solo_clients').select('id,name,kind');
@@ -310,7 +329,7 @@ function renderOnboarding(step){
       const add=[...new Set(names)].filter(n=>!have.has(n.toLowerCase())).map(name=>({name,payment_days:30}));
       if(add.length){const {error}=await db.from('solo_clients').insert(add);if(error)throw error;}
       const {data:trucks}=await db.from('solo_trucks').select('id').limit(1);
-      if(!trucks?.length){const {error}=await db.from('solo_trucks').insert({plate:onb.plate,brand:onb.brand||null,model:onb.model||null,km:num(onb.km)||null});if(error)throw error;}
+      if(!trucks?.length){const {error}=await db.from('solo_trucks').insert({plate:onb.plate,brand:onb.brand||null,model:onb.model||null,year:num(onb.year)||null,km:num(onb.km)||null});if(error)throw error;}
       const row={full_name:onb.name,business_name:onb.biz||null,phone:onb.phone,province:onb.province,city:onb.city,
         fleet_size:onb.fleet,tow_types:onb.types,drivers_mode:onb.drivers,years_in_trade:onb.years,monthly_services:onb.monthly,
         providers:onb.providers,providers_other:(onb.providers||[]).includes('otra')?(onb.providersOther||null):null,current_tools:onb.tools,pains:onb.pains||[],heard_from:onb.heard,onboarding_version:2};
@@ -338,6 +357,9 @@ function renderOnboarding(step){
       if(step===3&&onb.providers.includes('otra')&&(onb.providersOther||'').length<2){$('o-other').focus();return fail('Escribí cuál es la otra prestadora.');}
       return renderOnboarding(step+1);}
     if((onb.plate||'').replace(/\s/g,'').length<5){$('o-plate').focus();return fail('Escribí la patente de la grúa.');}
+    if(!onb.brandSel){$('o-brand').focus();return fail('Elegí la marca de la grúa.');}
+    if(onb.brandSel===OTHER&&(onb.brandOther||'').length<2){$('o-brand-x').focus();return fail('Escribí la marca de la grúa.');}
+    if(!onb.model){(onb.brandSel===OTHER||onb.modelSel===OTHER?$('o-model-x'):$('o-model')).focus();return fail('Elegí o escribí el modelo de la grúa.');}
     finish();
   };
   if(matchMedia('(hover:hover) and (pointer:fine)').matches)document.querySelector('#onb input:not([type=checkbox]),#onb select')?.focus({preventScroll:true});

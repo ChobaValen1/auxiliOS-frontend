@@ -324,6 +324,6 @@ test('Solo: alta v2 en 4 pasos con datos del gruero (zona, trabajo, prestadoras,
   const onb=js.slice(js.indexOf('const ONB_STEPS='),js.indexOf('function renderOnboarding(')+12000);
   assert.match(onb,/const ONB_STEPS=4/);for(const k of ['fleet','types','drivers','years','monthly','providers','tools','pains','heard'])assert.match(onb,new RegExp(k+':\\{label:'));
   assert.match(onb,/onboarding_version:2/);assert.match(onb,/localStorage\.setItem\(onbKey\(\)/,'si cierra a mitad sigue donde estaba');
-  assert.match(onb,/function waNormalize/);assert.match(onb,/if\(!trucks\?\.length\)/,'no duplica la grúa');
+  assert.match(onb,/function waNormalize/);assert.match(onb,/heard:\{label:'¿Cómo nos conociste\?',multi:true/);assert.match(onb,/Podés marcar varias\./);assert.match(onb,/const TRUCKS=\{'Iveco':\[/);assert.match(onb,/year:num\(onb\.year\)\|\|null/);assert.match(onb,/if\(!trucks\?\.length\)/,'no duplica la grúa');
   const m=fs.readFileSync('migrations/20261103180000_solo_perfil_alta_v2.sql','utf8');assert.match(m,/solo_profiles_alta_v2_chk/);
 });
