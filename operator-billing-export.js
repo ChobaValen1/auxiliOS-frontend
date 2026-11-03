@@ -25,7 +25,8 @@ function mapsRoute(r){
   const origin=text(r.origin_formatted_address||r.origin),destination=text(r.destination_formatted_address||r.destination);
   const lat=Number(r.billing_base_latitude),lng=Number(r.billing_base_longitude);
   const base=r.billing_base_latitude!=null&&r.billing_base_longitude!=null&&Number.isFinite(lat)&&Number.isFinite(lng)?`${lat},${lng}`:text(r.billing_base_address);
-  const mode=r.billing_route_mode||'origin_destination';
+  /* Activado Origen: solo de la base hasta el origen. */
+  const mode=r.driver_activated&&r.activation_kind==='origin'?'base_origin':(r.billing_route_mode||'origin_destination');
   let stops=mode==='base_origin_destination_base'&&base?[base,origin,destination,base]:mode==='base_origin'&&base?[base,origin]:[origin,destination];
   stops=stops.filter(Boolean).filter((stop,i,list)=>i===0||stop!==list[i-1]);
   if(stops.length<2)return'';
