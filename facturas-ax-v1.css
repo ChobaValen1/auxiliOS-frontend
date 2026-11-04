@@ -149,3 +149,12 @@
   #screen-facturas .oi-table thead th:last-child { background: var(--ax-surface); z-index: 3; }
   #screen-facturas .oi-table tbody tr:hover td.oi-actions { background: var(--ax-surface-3); }
 }
+
+/* ── Excedentes que cobra la Prestadora (v2) ── */
+#screen-facturas .oi-excess-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: var(--ax-radius-pill); background: var(--ax-info-soft); color: var(--ax-info); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-excess-line { border-left: 3px solid color-mix(in srgb, var(--ax-info) 55%, transparent); }
+#screen-facturas .oi-excess-line.released { border-left-color: var(--ax-border-strong); }
+#screen-facturas .oi-excess-concepts { display: grid; gap: 3px; margin: 2px 0 0; padding: 0; list-style: none; }
+#screen-facturas .oi-excess-concepts li { display: flex; justify-content: space-between; gap: 12px; font-size: var(--ax-fs-sm); color: var(--ax-text); }
+#screen-facturas .oi-excess-concepts li b { font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-section h4 small { margin-left: 6px; color: var(--ax-text-3); font-weight: var(--ax-fw-medium); font-size: var(--ax-fs-xs); }

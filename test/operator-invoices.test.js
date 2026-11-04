@@ -11,7 +11,7 @@ const workflowMigration=fs.readFileSync('migrations/20260824221500_operator_invo
 
 test('Facturación expone una sola cola y una única acción directa FACTURAR',()=>{
   assert.match(billing,/tab:\s*'services'/);
-  assert.match(billing,/data-ob-tab="services">Servicios/);
+  assert.match(billing,/tabButton\('services', 'Servicios'/);
   assert.doesNotMatch(billing,/data-ob-tab="pending"|data-ob-tab="reviewed"/);
   assert.doesNotMatch(billing,/approve-selection|openApproval|approveSelection|review_operator_billing_services_bulk_v2/);
   assert.match(billing,/data-ob="invoice-selection"/);
