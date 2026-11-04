@@ -49,7 +49,7 @@ const typed = (taps: Tap[], f: number) => {
 };
 
 // Toque corto: círculo que baja y suelta una onda (para tipear rápido sin que se pisen)
-const TapDot: React.FC<{ f: number; at: number; x: number; y: number }> = ({ f, at, x, y }) => {
+export const TapDot: React.FC<{ f: number; at: number; x: number; y: number }> = ({ f, at, x, y }) => {
   if (f < at - 7 || f > at + 12) return null;
   const come = ramp(f, at - 7, at);
   const out = ramp(f, at, at + 12);

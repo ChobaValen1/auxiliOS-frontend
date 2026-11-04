@@ -9,7 +9,7 @@ import { money, pop, ramp, SAFE } from "./common";
 const W = SAFE.right - SAFE.left;
 const AMBER = "#f5a623";
 
-const Sin: React.FC<{ children: React.ReactNode; shake?: number }> = ({ children, shake = 0 }) => {
+export const Sin: React.FC<{ children: React.ReactNode; shake?: number }> = ({ children, shake = 0 }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: "repeating-linear-gradient(0deg, #1b1c1f 0 6px, #1d1e21 6px 12px)", overflow: "hidden", translate: `${shake}px 0px` }}>
@@ -27,7 +27,7 @@ const Sin: React.FC<{ children: React.ReactNode; shake?: number }> = ({ children
   );
 };
 
-const Titulo: React.FC<{ f: number; at?: number; children: React.ReactNode; size?: number; top?: number }> = ({ f, at = 0, children, size = 104, top = SAFE.top + 56 }) => {
+export const Titulo: React.FC<{ f: number; at?: number; children: React.ReactNode; size?: number; top?: number }> = ({ f, at = 0, children, size = 104, top = SAFE.top + 56 }) => {
   const e = ramp(f, at, at + 12);
   return (
     <div style={{ position: "absolute", top, left: SAFE.left, width: W, fontFamily: display, fontSize: size, lineHeight: 0.95, color: "#e4e6ea", opacity: e, translate: `0px ${(1 - e) * 30}px`, textShadow: "0 6px 30px rgba(0,0,0,.6)" }}>
@@ -36,7 +36,7 @@ const Titulo: React.FC<{ f: number; at?: number; children: React.ReactNode; size
   );
 };
 
-const golpe = (f: number, at: number, fuerza = 14) => {
+export const golpe = (f: number, at: number, fuerza = 14) => {
   const t = f - at;
   return t >= 0 && t < 12 ? Math.sin(t * 3.2) * fuerza * (1 - t / 12) : 0;
 };
