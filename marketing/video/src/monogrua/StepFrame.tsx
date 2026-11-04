@@ -3,7 +3,7 @@ import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
 import { C, clamp, display, mono, sans } from "../theme";
 
 export const AMBER = "#f5a623";
-export const TOTAL_PASOS = 6;
+export const TOTAL_PASOS = 3;
 
 // Zona segura de Reels (1080×1920): arriba ~14 % lo tapa el nombre de la cuenta, abajo ~35 % el texto,
 // el audio y el botón del anuncio, y a la derecha la columna de íconos. Lo importante va en SAFE.
