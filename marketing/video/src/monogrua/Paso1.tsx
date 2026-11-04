@@ -7,15 +7,15 @@ import { P2QuePrestadora, P3QueServicio } from "../solo/ScreensPrestadora";
 import { PASO_T, PasoPreview } from "./PasoPreview";
 import { KeyCard, PhoneBox, SAFE, StepFrame } from "./StepFrame";
 
-export const PASO1_SIN = 48;
-export const PASO1_CON = 104;
+export const PASO1_SIN = 96;
+export const PASO1_CON = 205;
 export const PASO1_DUR = PASO1_SIN + PASO1_CON - PASO_T;
 
 // ❌ La asistencia llama y la tarifa queda en un papelito con dudas
 export const Paso1Sin: React.FC = () => {
   const f = useCurrentFrame();
   const ring = Math.sin(f * 1.2) * 4;
-  const nota = interpolate(f, [8, 18], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
+  const nota = interpolate(f, [22, 34], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
   const lines = ["Asist. del Sur", "Remolque → Lomas", "¿$ 40.000? ¿45?", "¿km incluidos??"];
   return (
     <StepFrame n={1} mode="sin" title="Te pasan el servicio">
@@ -38,7 +38,7 @@ export const Paso1Sin: React.FC = () => {
         }}
       >
         {lines.map((l, i) => (
-          <div key={l} style={{ fontFamily: hand, fontWeight: 700, fontSize: 82, lineHeight: 1.2, color: i >= 2 ? "#b3261e" : "#2c3550", opacity: interpolate(f, [14 + i * 4, 18 + i * 4], [0, 1], clamp) }}>
+          <div key={l} style={{ fontFamily: hand, fontWeight: 700, fontSize: 82, lineHeight: 1.2, color: i >= 2 ? "#b3261e" : "#2c3550", opacity: interpolate(f, [36 + i * 9, 42 + i * 9], [0, 1], clamp) }}>
             {l}
           </div>
         ))}
@@ -49,9 +49,9 @@ export const Paso1Sin: React.FC = () => {
 
 // ✅ Nuevo servicio → Prestadora → Asistencia del Sur → Remolque, con su tarifa
 const steps: Step[] = [
-  { from: 0, tap: 22, render: () => <A2ParaQuien pick="prestadora" time="15:12" /> },
-  { from: 32, tap: 54, render: () => <P2QuePrestadora /> },
-  { from: 64, tap: 84, render: () => <P3QueServicio /> },
+  { from: 0, tap: 40, render: () => <A2ParaQuien pick="prestadora" time="15:12" /> },
+  { from: 52, tap: 96, render: () => <P2QuePrestadora /> },
+  { from: 108, tap: 150, render: () => <P3QueServicio /> },
 ];
 
 export const Paso1Con: React.FC = () => {
@@ -62,7 +62,7 @@ export const Paso1Con: React.FC = () => {
         <Flow steps={steps} />
       </PhoneBox>
       <KeyCard
-        show={interpolate(f, [88, 98], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.5)) })}
+        show={interpolate(f, [156, 168], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.5)) })}
         label="✓ TARIFA DE ASISTENCIA DEL SUR"
         title="Base $ 45.000 · 20 km incluidos"
         sub="$ 1.500 por km de más · paga a 30 días"

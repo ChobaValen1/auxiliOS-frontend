@@ -7,8 +7,8 @@ import { Ripple } from "../solo/ui";
 import { PASO_T, PasoPreview } from "./PasoPreview";
 import { KeyCard, PhoneBox, StepFrame } from "./StepFrame";
 
-export const PASO2_SIN = 48;
-export const PASO2_CON = 128;
+export const PASO2_SIN = 96;
+export const PASO2_CON = 250;
 export const PASO2_DUR = PASO2_SIN + PASO2_CON - PASO_T;
 
 const HINT = "Asistencia del Sur · Remolque";
@@ -30,8 +30,8 @@ const Garabato: React.FC<{ from: number; to: number }> = ({ from, to }) => {
 // ❌ Remito de talonario: a mano, sin fotos y con la firma apurada
 export const Paso2Sin: React.FC = () => {
   const f = useCurrentFrame();
-  const sheet = interpolate(f, [0, 10], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
-  const stamp = interpolate(f, [34, 42], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.8)) });
+  const sheet = interpolate(f, [0, 14], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const stamp = interpolate(f, [74, 82], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.8)) });
   const lines = ["Asist. del Sur", "Pat. AB 123 C…", "Luis Guillón → Lomas", "Fotos: —"];
   return (
     <StepFrame n={2} mode="sin" title="El remito">
@@ -48,13 +48,13 @@ export const Paso2Sin: React.FC = () => {
           <span style={{ color: "#a33" }}>N° 0482</span>
         </div>
         {lines.map((l, i) => (
-          <div key={l} style={{ fontFamily: hand, fontWeight: 700, fontSize: 64, lineHeight: 1.25, color: "#2a3a8a", marginTop: i === 0 ? 14 : 0, opacity: interpolate(f, [8 + i * 5, 12 + i * 5], [0, 1], clamp) }}>
+          <div key={l} style={{ fontFamily: hand, fontWeight: 700, fontSize: 64, lineHeight: 1.25, color: "#2a3a8a", marginTop: i === 0 ? 14 : 0, opacity: interpolate(f, [16 + i * 10, 22 + i * 10], [0, 1], clamp) }}>
             {l}
           </div>
         ))}
         <div style={{ position: "absolute", left: 44, right: 44, bottom: 40, borderTop: "2px dashed #8a8372", paddingTop: 6, fontFamily: mono, fontSize: 24, color: "#5b574c" }}>Firma</div>
         <div style={{ position: "absolute", left: 70, bottom: 70 }}>
-          <Garabato from={26} to={32} />
+          <Garabato from={58} to={66} />
         </div>
       </div>
       <div
@@ -70,18 +70,19 @@ export const Paso2Sin: React.FC = () => {
 };
 
 // ✅ Evidencia con tus fotos → firma con tu trazo → Finalizar
-const SHOTS = [10, 18, 26, 34];
-const FIRMA_FROM = 58; // en la pantalla de firma la firma va a velocidad real (1,14 s)
+const SHOTS = [20, 38, 56, 74];
+const FIRMA_FROM = 128; // a la mitad de la velocidad real: 1,14 s → 2,3 s (termina en el cuadro ~196)
+const FIRMA_SLOW = 0.5;
 const steps: Step[] = [
   { from: 0, render: (f) => <B3Evidencia hint={HINT} time="15:58" count={SHOTS.filter((t) => f >= t).length} /> },
-  { from: 50, render: (f) => <B4Firma hint={HINT} time="16:01" ms={Math.max(0, ((f - (FIRMA_FROM - 50)) / 30) * 1000)} /> },
+  { from: 110, render: (f) => <B4Firma hint={HINT} time="16:01" ms={Math.max(0, ((f - (FIRMA_FROM - 110)) / 30) * 1000 * FIRMA_SLOW)} /> },
 ];
-const NEXT_TAPS = [44, 100];
+const NEXT_TAPS = [100, 206];
 
 export const Paso2Con: React.FC = () => {
   const f = useCurrentFrame();
   // sube para mostrar la segunda fila de fotos y, en la firma, el recuadro de firma
-  const scroll = f < 50 ? interpolate(f, [22, 30], [0, 260], { ...clamp, easing: Easing.inOut(Easing.cubic) }) : 430;
+  const scroll = f < 110 ? interpolate(f, [48, 62], [0, 260], { ...clamp, easing: Easing.inOut(Easing.cubic) }) : 430;
   return (
     <StepFrame n={2} mode="con" title="El remito">
       <PhoneBox scroll={scroll}>
@@ -93,7 +94,7 @@ export const Paso2Con: React.FC = () => {
         ))}
       </PhoneBox>
       <KeyCard
-        show={interpolate(f, [106, 116], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.5)) })}
+        show={interpolate(f, [212, 224], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.5)) })}
         label="✓ REMITO N.º 0482 FIRMADO"
         title="4 fotos y la firma del socio"
         sub="Con código para verificar que es original"

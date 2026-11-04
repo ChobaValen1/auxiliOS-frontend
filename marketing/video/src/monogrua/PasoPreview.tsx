@@ -5,7 +5,7 @@ import React from "react";
 import { AbsoluteFill, staticFile } from "remotion";
 import { ReelsGuide } from "./StepFrame";
 
-export const PASO_T = 12; // barrido sin → con
+export const PASO_T = 18; // barrido sin → con
 
 // Vista previa de un paso: escena sin → barrido con sonido → escena con
 export const PasoPreview: React.FC<{ sin: React.ReactNode; con: React.ReactNode; sinDur: number; conDur: number; guia?: boolean }> = ({ sin, con, sinDur, conDur, guia }) => (
