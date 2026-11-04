@@ -37,34 +37,90 @@ export const Gancho: React.FC = () => {
   );
 };
 
-export const TABLERO_DUR = 110;
-const FILAS = ["Te pasan el servicio", "El remito", "Cobrar el servicio"];
-// Tablero: los 3 pasos, papel contra AuxiliOS
+export const TABLERO_DUR = 120;
+const SIN_ITEMS: [string, string][] = [
+  ["📝", "La tarifa, de memoria"],
+  ["🧾", "Remito sin fotos ni copia"],
+  ["📒", "¿Me pagaron? ¿Cuánto quedó?"],
+];
+const CON_ITEMS = ["Tarifa cargada", "Fotos y firma del socio", "Cobrado y contado"];
+
+const Lado: React.FC<{ con: boolean; f: number }> = ({ con, f }) => {
+  const enter = ramp(f, con ? 6 : 0, con ? 22 : 16);
+  const win = ramp(f, 54, 70);
+  const pulse = con ? 0.5 + 0.5 * Math.sin(Math.max(0, f - 70) / 6) : 0;
+  return (
+    <div
+      style={{
+        width: 430, height: 560, borderRadius: 40, padding: "28px 26px", display: "flex", flexDirection: "column", gap: 18,
+        background: con ? "linear-gradient(170deg, rgba(245,166,35,.22), #171b24 55%)" : "repeating-linear-gradient(0deg, #232428 0 6px, #25262a 6px 12px)",
+        border: `4px solid ${con ? "#f5a623" : "#3a3c42"}`,
+        boxShadow: con ? `0 0 ${40 + win * 50 + pulse * 20}px rgba(245,166,35,${0.2 + win * 0.25})` : "0 20px 50px rgba(0,0,0,.4)",
+        translate: `${(1 - enter) * (con ? 600 : -600)}px 0px`, opacity: con ? 1 : 1 - win * 0.45,
+        scale: con ? 1 + win * 0.05 : 1 - win * 0.05, filter: con ? "none" : `grayscale(${0.3 + win * 0.6})`,
+        rotate: `${(1 - enter) * (con ? 8 : -8)}deg`,
+      }}
+    >
+      <span
+        style={{
+          alignSelf: "flex-start", fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 2, padding: "8px 18px", borderRadius: 999,
+          background: con ? "#f5a623" : "#3a3c42", color: con ? "#14161b" : "#c9ccd2",
+        }}
+      >
+        {con ? "CON AUXILIOS" : "SIN AUXILIOS"}
+      </span>
+      {(con ? CON_ITEMS.map((t) => ["", t] as [string, string]) : SIN_ITEMS).map(([emoji, t], i) => {
+        const at = (con ? 26 : 18) + i * 8;
+        const e = pop(f, at, at + 12);
+        return (
+          <div key={t} style={{ flex: 1, display: "flex", alignItems: "center", gap: 18, opacity: e, translate: `0px ${(1 - e) * 30}px`, borderTop: i ? `2px solid ${con ? "rgba(245,166,35,.25)" : "#34363c"}` : "none", paddingTop: i ? 14 : 0 }}>
+            <span
+              style={{
+                width: 84, height: 84, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 44, position: "relative",
+                background: con ? C.green : "#33353b", color: "#06180f", fontFamily: sans, fontWeight: 700, scale: 0.6 + e * 0.4,
+              }}
+            >
+              {con ? "✓" : emoji}
+              {con ? null : (
+                <span style={{ position: "absolute", right: -8, bottom: -8, width: 40, height: 40, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 26, display: "grid", placeItems: "center" }}>✕</span>
+              )}
+            </span>
+            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 36, lineHeight: 1.15, color: con ? C.text : "#b9bcc4" }}>{t}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Tablero: cara a cara del mismo servicio, papel contra AuxiliOS
 export const Tablero: React.FC = () => {
   const f = useCurrentFrame();
   return (
-    <AbsoluteFill style={{ background: C.bg }}>
+    <AbsoluteFill style={{ background: `radial-gradient(ellipse at 75% 55%, rgba(245,166,35,${0.06 + ramp(f, 54, 70) * 0.12}), transparent 60%), ${C.bg}` }}>
       <Stripe />
-      <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, fontFamily: display, fontSize: 130, color: C.text, opacity: ramp(f, 0, 10) }}>El mismo servicio</div>
-      <div style={{ position: "absolute", top: SAFE.top + 160, left: SAFE.left, right: 1080 - SAFE.right }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", fontFamily: mono, fontWeight: 700, fontSize: 28, letterSpacing: 2, opacity: ramp(f, 6, 14) }}>
-          <span style={{ width: 160, textAlign: "center", color: "#9a9ea6" }}>SIN</span>
-          <span style={{ width: 160, textAlign: "center", color: "#f5a623" }}>CON</span>
+      <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, right: 1080 - SAFE.right, fontFamily: display, fontSize: 118, lineHeight: 0.95, color: C.text, opacity: ramp(f, 0, 10), translate: `0px ${(1 - ramp(f, 0, 12)) * 30}px` }}>
+        El mismo servicio
+      </div>
+      <div style={{ position: "absolute", top: SAFE.top + 140, left: 60, right: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Lado con={false} f={f} />
+        <Lado con f={f} />
+      </div>
+      <div style={{ position: "absolute", top: SAFE.top + 730, left: SAFE.left, right: 1080 - SAFE.right, fontFamily: display, fontSize: 82, lineHeight: 0.95 }}>
+        <div style={{ color: C.text, opacity: ramp(f, 66, 74), translate: `0px ${(1 - ramp(f, 66, 78)) * 30}px` }}>Lo cargás una vez.</div>
+        <div style={{ color: "#f5a623", opacity: ramp(f, 76, 84), translate: `0px ${(1 - ramp(f, 76, 88)) * 30}px` }}>
+          La plata la seguís
+          <br />
+          hasta que entra.
         </div>
-        {FILAS.map((r, i) => {
-          const at = 12 + i * 12;
-          return (
-            <div key={r} style={{ display: "flex", alignItems: "center", height: 150, borderBottom: `3px solid ${C.border}`, opacity: ramp(f, at, at + 8), translate: `${(1 - ramp(f, at, at + 12)) * -80}px 0px` }}>
-              <span style={{ flex: 1, fontFamily: sans, fontWeight: 700, fontSize: 50, color: C.text }}>{r}</span>
-              <span style={{ width: 160, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 80, color: C.red, scale: pop(f, at + 6, at + 16) }}>✕</span>
-              <span style={{ width: 160, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 80, color: C.green, scale: pop(f, at + 10, at + 20) }}>✓</span>
-            </div>
-          );
-        })}
       </div>
-      <div style={{ position: "absolute", top: 1060, left: SAFE.left, right: 1080 - SAFE.right, fontFamily: sans, fontWeight: 700, fontSize: 50, lineHeight: 1.2, color: C.text, opacity: ramp(f, 56, 68) }}>
-        Lo cargás una vez. <span style={{ color: "#f5a623" }}>La plata la seguís hasta que entra.</span>
+      {/* fondo de la zona que tapa Reels: grúa grande apagada y franja */}
+      <div style={{ position: "absolute", left: 160, top: 1420, scale: 1.9, opacity: 0.1, translate: `${interpolate(f, [0, 120], [40, -40])}px 0px` }}>
+        <Truck solo wheelTurn={f * 4} />
       </div>
+      <Stripe bottom />
+      <Audio name="Tarjetas" src={staticFile("sfx/whoosh.wav")} from={2} volume={0.5} />
+      <Audio name="Gana AuxiliOS" src={staticFile("sfx/ding.wav")} from={56} volume={0.45} />
     </AbsoluteFill>
   );
 };
