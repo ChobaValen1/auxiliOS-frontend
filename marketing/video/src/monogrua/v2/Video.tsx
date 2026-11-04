@@ -2,9 +2,10 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { AbsoluteFill } from "remotion";
-import { Paso1Sin, PASO1_SIN } from "../Paso1";
-import { Paso2Sin, PASO2_SIN } from "../Paso2";
-import { Paso3Sin, PASO3_SIN } from "../Paso3";
+import { PASO1_SIN } from "../Paso1";
+import { PASO2_SIN } from "../Paso2";
+import { PASO3_SIN } from "../Paso3";
+import { Paso1SinV2, Paso2SinV2, Paso3SinV2 } from "./SinScenes";
 import { PASO_T, PasoPreview } from "../PasoPreview";
 import { ReelsGuide } from "../StepFrame";
 import { Cierre, CIERRE_DUR, Gancho, GANCHO_DUR, Tablero, TABLERO_DUR } from "./Extras";
@@ -20,9 +21,9 @@ const SWIPE = 15; // entre pasos: deslizamiento hacia arriba, como al pasar de R
 const FADE = 12;
 export const MONOGRUA_DUR = GANCHO_DUR + MG_P1 + MG_P2 + MG_P3 + TABLERO_DUR + CIERRE_DUR - 4 * SWIPE - FADE;
 
-export const MGPaso1: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso1Sin />} con={<Paso1Con />} sinDur={PASO1_SIN} conDur={P1_CON} guia={guia} />;
-export const MGPaso2: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso2Sin />} con={<Paso2Con />} sinDur={PASO2_SIN} conDur={P2_CON} guia={guia} />;
-export const MGPaso3: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso3Sin />} con={<Paso3Con />} sinDur={PASO3_SIN} conDur={P3_CON} guia={guia} />;
+export const MGPaso1: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso1SinV2 />} con={<Paso1Con />} sinDur={PASO1_SIN} conDur={P1_CON} guia={guia} />;
+export const MGPaso2: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso2SinV2 />} con={<Paso2Con />} sinDur={PASO2_SIN} conDur={P2_CON} guia={guia} />;
+export const MGPaso3: React.FC<{ guia?: boolean }> = ({ guia }) => <PasoPreview sin={<Paso3SinV2 />} con={<Paso3Con />} sinDur={PASO3_SIN} conDur={P3_CON} guia={guia} />;
 
 const up = () => <TransitionSeries.Transition presentation={slide({ direction: "from-bottom" })} timing={linearTiming({ durationInFrames: SWIPE })} />;
 
