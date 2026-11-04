@@ -7,7 +7,7 @@ import { P2QuePrestadora, P3QueServicio } from "../solo/ScreensPrestadora";
 import { PASO_T, PasoPreview } from "./PasoPreview";
 import { KeyCard, PhoneBox, SAFE, StepFrame } from "./StepFrame";
 
-export const PASO1_SIN = 96;
+export const PASO1_SIN = 120; // 3 s de escena + 1 s de la ✕
 export const PASO1_CON = 205;
 export const PASO1_DUR = PASO1_SIN + PASO1_CON - PASO_T;
 

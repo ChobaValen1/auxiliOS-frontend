@@ -32,7 +32,7 @@ export const StepFrame: React.FC<{ n: number; title: string; mode: "sin" | "con"
       {children}
       <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, right: 1080 - SAFE.right, display: "flex", alignItems: "center", gap: 16, opacity: enter, zIndex: 20 }}>
         <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 2, padding: "8px 18px", borderRadius: 999, background: sin ? "#3a3c42" : AMBER, color: sin ? "#c9ccd2" : "#14161b" }}>
-          {sin ? "SIN AUXILIOS" : "CON AUXILIOS SOLO"}
+          {sin ? "SIN AUXILIOS" : "CON AUXILIOS"}
         </span>
         <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 2, color: sin ? "#8a8f98" : C.muted }}>
           PASO {n} DE {TOTAL_PASOS}
@@ -85,12 +85,12 @@ export const ReelsGuide: React.FC = () => (
   <AbsoluteFill style={{ pointerEvents: "none", zIndex: 100 }}>
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: SAFE.top, background: "linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.15))" }}>
       <div style={{ position: "absolute", left: 40, top: 120, display: "flex", alignItems: "center", gap: 18, fontFamily: sans, fontWeight: 700, fontSize: 34, color: "#fff" }}>
-        <span style={{ width: 64, height: 64, borderRadius: "50%", background: "#888" }} /> auxilios.solo · Publicidad
+        <span style={{ width: 64, height: 64, borderRadius: "50%", background: "#888" }} /> auxilios · Publicidad
       </div>
     </div>
     <div style={{ position: "absolute", left: 0, right: 0, top: SAFE.bottom, bottom: 0, background: "linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.7))" }}>
       <div style={{ position: "absolute", left: 40, right: 200, top: 180, fontFamily: sans, color: "#fff", fontSize: 32, lineHeight: 1.35 }}>
-        <b>auxilios.solo</b> Un servicio de asistencia. Dos formas de cobrarlo… <span style={{ opacity: 0.7 }}>más</span>
+        <b>auxilios</b> Un servicio de asistencia. Dos formas de cobrarlo… <span style={{ opacity: 0.7 }}>más</span>
       </div>
       <div style={{ position: "absolute", left: 40, right: 200, top: 360, height: 90, borderRadius: 16, background: "rgba(255,255,255,.92)", color: "#111", fontFamily: sans, fontWeight: 700, fontSize: 34, display: "grid", placeItems: "center" }}>
         Más información

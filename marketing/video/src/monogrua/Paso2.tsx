@@ -3,12 +3,13 @@ import { Easing, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { C, clamp, hand, mono } from "../theme";
 import { Flow, Step } from "../solo/Flow";
 import { B3Evidencia, B4Firma } from "../solo/Screens";
+import { RemitoFirmado } from "../solo/ScreensPrestadora";
 import { Ripple } from "../solo/ui";
 import { PASO_T, PasoPreview } from "./PasoPreview";
-import { KeyCard, PhoneBox, StepFrame } from "./StepFrame";
+import { PhoneBox, StepFrame } from "./StepFrame";
 
-export const PASO2_SIN = 96;
-export const PASO2_CON = 250;
+export const PASO2_SIN = 120; // 3 s de escena + 1 s de la ✕
+export const PASO2_CON = 245;
 export const PASO2_DUR = PASO2_SIN + PASO2_CON - PASO_T;
 
 const HINT = "Asistencia del Sur · Remolque";
@@ -71,18 +72,23 @@ export const Paso2Sin: React.FC = () => {
 
 // ✅ Evidencia con tus fotos → firma con tu trazo → Finalizar
 const SHOTS = [20, 38, 56, 74];
-const FIRMA_FROM = 128; // a la mitad de la velocidad real: 1,14 s → 2,3 s (termina en el cuadro ~196)
-const FIRMA_SLOW = 0.5;
+const FIRMA_FROM = 122; // a velocidad real: 1,14 s, termina en el cuadro ~156
 const steps: Step[] = [
   { from: 0, render: (f) => <B3Evidencia hint={HINT} time="15:58" count={SHOTS.filter((t) => f >= t).length} /> },
-  { from: 110, render: (f) => <B4Firma hint={HINT} time="16:01" ms={Math.max(0, ((f - (FIRMA_FROM - 110)) / 30) * 1000 * FIRMA_SLOW)} /> },
+  { from: 110, render: (f) => <B4Firma hint={HINT} time="16:01" ms={Math.max(0, ((f - (FIRMA_FROM - 110)) / 30) * 1000)} /> },
+  { from: 192, render: (f) => <RemitoFirmado pop={interpolate(f, [6, 18], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) })} /> },
 ];
-const NEXT_TAPS = [100, 206];
+const NEXT_TAPS = [100, 182]; // Siguiente (Evidencia) y Finalizar (Firma)
 
 export const Paso2Con: React.FC = () => {
   const f = useCurrentFrame();
   // sube para mostrar la segunda fila de fotos y, en la firma, el recuadro de firma
-  const scroll = f < 110 ? interpolate(f, [48, 62], [0, 260], { ...clamp, easing: Easing.inOut(Easing.cubic) }) : 430;
+  const scroll =
+    f < 110
+      ? interpolate(f, [48, 62], [0, 260], { ...clamp, easing: Easing.inOut(Easing.cubic) })
+      : f < 192
+        ? interpolate(f, [160, 172], [430, 720], { ...clamp, easing: Easing.inOut(Easing.cubic) }) // baja hasta «Finalizar»
+        : 0;
   return (
     <StepFrame n={2} mode="con" title="El remito">
       <PhoneBox scroll={scroll}>
@@ -93,12 +99,6 @@ export const Paso2Con: React.FC = () => {
           </div>
         ))}
       </PhoneBox>
-      <KeyCard
-        show={interpolate(f, [212, 224], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.5)) })}
-        label="✓ REMITO N.º 0482 FIRMADO"
-        title="4 fotos y la firma del socio"
-        sub="Con código para verificar que es original"
-      />
       {SHOTS.map((t) => (
         <Audio key={`s${t}`} name="Foto" src={staticFile("sfx/shutter.wav")} from={t} volume={0.35} />
       ))}

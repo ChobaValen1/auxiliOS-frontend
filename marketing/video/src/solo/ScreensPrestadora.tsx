@@ -35,3 +35,25 @@ export const P3QueServicio: React.FC<{ on?: boolean }> = ({ on = true }) => (
     </div>
   </Screen>
 );
+
+// Confirmación al finalizar el remito
+export const RemitoFirmado: React.FC<{ pop?: number }> = ({ pop = 1 }) => (
+  <Screen time="16:02">
+    <Top title="Remito N.º 0482" hint="Asistencia del Sur · Remolque" />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: k(14), marginTop: k(40) }}>
+      <div style={{ width: k(120), height: k(120), borderRadius: "50%", background: T.ok, color: "#06180f", display: "grid", placeItems: "center", scale: 0.5 + pop * 0.5 }}>
+        <Ico n="check" s={64} w={3.2} />
+      </div>
+      <div style={{ fontSize: k(26), fontWeight: 700, opacity: pop }}>Remito firmado</div>
+      <div style={{ fontSize: k(14), color: T.text2, textAlign: "center", opacity: pop }}>Con 4 fotos, la firma del socio y su código de verificación.</div>
+    </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: k(10), marginTop: k(26), opacity: pop }}>
+      <div style={{ minHeight: k(48), borderRadius: k(12), background: T.accent, color: T.accentFg, display: "flex", alignItems: "center", justifyContent: "center", gap: k(8), fontWeight: 700, fontSize: k(15) }}>
+        <Ico n="msg" s={18} /> Enviar remito
+      </div>
+      <div style={{ minHeight: k(48), borderRadius: k(12), border: `${k(1)}px solid ${T.strong}`, background: T.s2, display: "flex", alignItems: "center", justifyContent: "center", gap: k(8), fontWeight: 700, fontSize: k(15) }}>
+        <Ico n="file" s={18} /> Ver PDF
+      </div>
+    </div>
+  </Screen>
+);
