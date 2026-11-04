@@ -133,7 +133,7 @@ const Cuenta: React.FC = () => {
       <Stripe />
       <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, width: W, fontFamily: display, fontSize: 112, color: C.text, opacity: ramp(f, 0, 10) }}>Hagamos la cuenta</div>
       <div style={{ position: "absolute", top: SAFE.top + 106, left: SAFE.left, width: W, fontFamily: sans, fontWeight: 700, fontSize: 38, color: C.muted, opacity: ramp(f, 6, 16) }}>
-        {SERVICIOS} servicios en el mes · {money(FACTURADO)}
+        {money(FACTURADO)} facturados en {SERVICIOS} servicios
       </div>
       {/* ticket */}
       <div
@@ -242,7 +242,9 @@ const Mes: React.FC = () => {
           ))}
         </div>
         <div style={{ position: "absolute", inset: 0, fontFamily: mono, fontWeight: 700, fontSize: 32, lineHeight: 1.4, color: C.muted, opacity: ramp(f, 228, 240) }}>
-          Gastos {money(GASTOS)} ÷ {money(POR_DIA)} que facturás por día
+          Gastos del mes {money(GASTOS)}
+          <br />
+          ÷ {money(POR_DIA)} por día del mes
           <br />
           <span style={{ color: C.text }}>= {DIAS_GASTOS} días de laburo solo para gastos</span>
         </div>
@@ -262,7 +264,7 @@ const CHIPS: [string, string, string, string, number][] = [
   ["🛞", "Gomería · $ 120.000", "📷 Foto del ticket", "✓ Cargado", 40],
   ["🛡️", "Seguro de la grúa", "Vence en 7 días", "🔔 Aviso", 56],
 ];
-const CHIP_TOP = 470, CHIP_H = 112, CHIP_GAP = 20;
+const CHIP_TOP = 530, CHIP_H = 112, CHIP_GAP = 20;
 const MERGE = 96, BOOM = 110;
 const CX = 540, CY = 780;
 
@@ -315,6 +317,9 @@ const Calcula: React.FC = () => {
       <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, width: W }}>
         <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 2, padding: "8px 18px", borderRadius: 999, background: AMBER, color: INK, opacity: ramp(f, 0, 8) }}>CON AUXILIOS</span>
         <div style={{ fontFamily: display, fontSize: 104, color: C.text, marginTop: 12, opacity: ramp(f, 4, 14), translate: `0px ${(1 - ramp(f, 4, 18)) * 30}px` }}>Te lo calcula solo</div>
+        <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 36, color: C.muted, marginTop: 4, opacity: ramp(f, 10, 20) }}>
+          Sacale foto al ticket. <span style={{ color: C.text }}>El resto lo hace la app.</span>
+        </div>
       </div>
 
       {/* gastos que cargás: entran, se confirman y se juntan en un solo número */}
