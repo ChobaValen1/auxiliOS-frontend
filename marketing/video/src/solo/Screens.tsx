@@ -222,9 +222,9 @@ export const B2Adicionales: React.FC<{ sel?: string }> = ({ sel = "Transferencia
 );
 
 // B3 · Evidencia
-export const B3Evidencia: React.FC<{ count?: number }> = ({ count = 4 }) => (
-  <Screen time="18:27">
-    <RmTop title="Remito nuevo" hint="Particular · Remolque" />
+export const B3Evidencia: React.FC<{ count?: number; hint?: string; time?: string }> = ({ count = 4, hint = "Particular · Remolque", time = "18:27" }) => (
+  <Screen time={time}>
+    <RmTop title="Remito nuevo" hint={hint} />
     <RmSteps cur={4} />
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -266,9 +266,9 @@ export const B3Evidencia: React.FC<{ count?: number }> = ({ count = 4 }) => (
 );
 
 // B4 · Firma
-export const B4Firma: React.FC<{ ms?: number }> = ({ ms }) => (
-  <Screen time="18:31">
-    <RmTop title="Remito nuevo" hint="Particular · Remolque" />
+export const B4Firma: React.FC<{ ms?: number; hint?: string; time?: string }> = ({ ms, hint = "Particular · Remolque", time = "18:31" }) => (
+  <Screen time={time}>
+    <RmTop title="Remito nuevo" hint={hint} />
     <RmSteps cur={5} />
     <Card>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: k(8) }}>

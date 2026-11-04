@@ -50,8 +50,9 @@ export const StepFrame: React.FC<{ n: number; title: string; mode: "sin" | "con"
   );
 };
 
-// La pantalla de la app (1080×1920) achicada dentro de un celular que sigue hacia abajo
-export const PhoneBox: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+// La pantalla de la app (1080×1920) achicada dentro de un celular que sigue hacia abajo.
+// `scroll` (px del video) sube el contenido para que lo que importa quede en la zona segura.
+export const PhoneBox: React.FC<{ children: React.ReactNode; scroll?: number }> = ({ children, scroll = 0 }) => (
   <div
     style={{
       position: "absolute", left: BOX.left - 14, top: BOX.top - 14, width: BOX.w + 28, height: 1920 * SCALE + 28, borderRadius: 70,
@@ -59,7 +60,7 @@ export const PhoneBox: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }}
   >
     <div style={{ position: "absolute", left: 14, top: 14, width: BOX.w, height: 1920 * SCALE, borderRadius: 56, overflow: "hidden" }}>
-      <div style={{ width: 1080, height: 1920, scale: SCALE, transformOrigin: "0 0", position: "relative" }}>{children}</div>
+      <div style={{ width: 1080, height: 1920, translate: `0px ${-scroll}px`, scale: SCALE, transformOrigin: "0 0", position: "relative" }}>{children}</div>
     </div>
   </div>
 );

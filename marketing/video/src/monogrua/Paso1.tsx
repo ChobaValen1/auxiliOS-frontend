@@ -1,16 +1,14 @@
 import { Audio } from "@remotion/media";
-import { linearTiming, TransitionSeries } from "@remotion/transitions";
-import { wipe } from "@remotion/transitions/wipe";
-import { AbsoluteFill, Easing, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { Easing, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { clamp, hand, sans } from "../theme";
 import { Flow, Step } from "../solo/Flow";
 import { A2ParaQuien } from "../solo/Screens";
 import { P2QuePrestadora, P3QueServicio } from "../solo/ScreensPrestadora";
-import { KeyCard, PhoneBox, ReelsGuide, SAFE, StepFrame } from "./StepFrame";
+import { PASO_T, PasoPreview } from "./PasoPreview";
+import { KeyCard, PhoneBox, SAFE, StepFrame } from "./StepFrame";
 
 export const PASO1_SIN = 48;
 export const PASO1_CON = 104;
-export const PASO_T = 12; // transición sin → con
 export const PASO1_DUR = PASO1_SIN + PASO1_CON - PASO_T;
 
 // ❌ La asistencia llama y la tarifa queda en un papelito con dudas
@@ -78,17 +76,5 @@ export const Paso1Con: React.FC = () => {
 
 // El paso completo: sin → barrido → con
 export const Paso1: React.FC<{ guia?: boolean }> = ({ guia = false }) => (
-  <AbsoluteFill>
-    <TransitionSeries>
-      <TransitionSeries.Sequence name="Sin" durationInFrames={PASO1_SIN}>
-        <Paso1Sin />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition presentation={wipe({ direction: "from-left" })} timing={linearTiming({ durationInFrames: PASO_T })} />
-      <TransitionSeries.Sequence name="Con" durationInFrames={PASO1_CON}>
-        <Paso1Con />
-      </TransitionSeries.Sequence>
-    </TransitionSeries>
-    <Audio name="Barrido" src={staticFile("sfx/whoosh.wav")} from={PASO1_SIN - PASO_T} volume={0.6} />
-    {guia ? <ReelsGuide /> : null}
-  </AbsoluteFill>
+  <PasoPreview sin={<Paso1Sin />} con={<Paso1Con />} sinDur={PASO1_SIN} conDur={PASO1_CON} guia={guia} />
 );
