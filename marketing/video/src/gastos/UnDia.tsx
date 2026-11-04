@@ -9,6 +9,7 @@ import { Logo } from "../scenes/Logo";
 import { ReelsGuide } from "../monogrua/StepFrame";
 import { Ico, money, Phone, pop, ramp, Shot, Shots, U } from "../monogrua/v2/ui";
 import { SAFE, Stripe } from "./common";
+import { BORRA_DUR, CUESTA_DUR, ServicioCuesta, TicketBorra, VENCE_DUR, VtvVencida } from "./Problema";
 
 // Reel de solución de gastos: un día del gruero cargando gastos en AuxiliOS y, a la noche, sus números.
 // Mismos datos de ejemplo que «¿Cuántos días laburás para vos?» (noviembre, 32 servicios, $ 3.600.000).
@@ -252,13 +253,12 @@ const taps = (g: Gasto) => {
 const seq = (keys: string[], start: number, every: number): Tap[] => keys.map((k, i) => ({ k, at: start + i * every }));
 
 const GASOIL: Gasto = { kind: "dia", ticketAt: 24, pick: { open: 54, at: 78, i: 0 }, taps: seq(["9", "5", "000"], 102, 9), saveAt: 142, saved: "⛽ Combustible · $ 95.000" };
-const COMIDA: Gasto = { kind: "dia", cat: CATS_DIA[5], taps: [...seq(["8", "5", "0", "0"], 26, 6), { k: "+", at: 52 }, ...seq(["4", "2", "0", "0"], 60, 6)], saveAt: 100, saved: "🍔 Comida · $ 12.700" };
-const SEGURO: Gasto = { kind: "fijo", toggleAt: 16, pick: { open: 40, at: 62, i: 0 }, taps: seq(["3", "8", "4", "0", "000"], 84, 7), saveAt: 132, saved: "🛡️ Seguro · $ 320.000 por mes" };
 
 // ── Mis números: punto de equilibrio a mitad de mes y el cierre del mes ─
 const SERV_FIJOS = 9;
 const FIJOS = 622000;
 const QUEDA = 1810000;
+const KM = 1216; // 32 servicios de 38 km en promedio
 const SKIP = 110; // salto del 12 al 30 de noviembre
 const NOTI = 222;
 const Numeros: React.FC<{ f: number }> = ({ f }) => {
@@ -325,8 +325,17 @@ const Numeros: React.FC<{ f: number }> = ({ f }) => {
       <div style={{ position: "absolute", left: 44, right: 44, top: 466, opacity: ramp(f, 160, 170), translate: `0px ${(1 - ramp(f, 160, 174)) * 30}px` }}>
         <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: U.muted }}>Este mes te quedan</div>
         <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 112, color: AMBER, lineHeight: 1.1, textShadow: "0 0 40px rgba(245,166,35,.3)" }}>{money(queda)}</div>
-        <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: U.text, marginTop: 6, opacity: ramp(f, 196, 206) }}>
-          32 servicios · <span style={{ color: AMBER }}>{money(QUEDA / 32)}</span> limpios cada uno
+        <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+          {[
+            ["Por servicio", money(QUEDA / 32)],
+            ["Por km", money(QUEDA / KM)],
+            ["Servicios", "32"],
+          ].map(([l, v], i) => (
+            <div key={l} style={{ flex: 1, background: U.card, border: `3px solid ${i === 1 ? AMBER : U.line}`, borderRadius: 20, padding: "10px 16px", opacity: pop(f, 196 + i * 5, 206 + i * 5) }}>
+              <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 22, color: U.muted }}>{l}</div>
+              <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 32, color: i === 1 ? AMBER : U.text }}>{v}</div>
+            </div>
+          ))}
         </div>
       </div>
       {/* aviso de vencimiento */}
@@ -353,27 +362,21 @@ const Numeros: React.FC<{ f: number }> = ({ f }) => {
 };
 
 // ── El día: un celular que no se va y la hora que avanza ─────────────
-const B0 = 0, C0 = 200, D0 = 350, E0 = 515;
-const DIA_DUR = 815;
+const B0 = 0, E0 = 200;
+const DIA_DUR = 500;
 const MOMENTOS: { from: number; hora: string; titulo: string }[] = [
-  { from: B0, hora: "08:10", titulo: "Cargás el gasoil" },
-  { from: C0, hora: "13:30", titulo: "Sumás los tickets" },
-  { from: D0, hora: "18:20", titulo: "El seguro, por mes" },
-  { from: E0, hora: "21:00", titulo: "Tus números, al día" },
-  { from: E0 + NOTI, hora: "21:00", titulo: "Y te avisa a tiempo" },
+  { from: B0, hora: "08:10", titulo: "Le sacás foto al ticket" },
+  { from: E0, hora: "21:00", titulo: "Ves cuánto te deja" },
+  { from: E0 + NOTI, hora: "21:00", titulo: "Y te avisa antes" },
 ];
 const CRONO: { from: number; start: number; end: number }[] = [
   { from: B0, start: B0 + 22, end: B0 + GASOIL.saveAt },
-  { from: C0, start: C0 + 26, end: C0 + COMIDA.saveAt },
-  { from: D0, start: D0 + 14, end: D0 + SEGURO.saveAt },
 ];
 const shots: Shot[] = [
   { from: B0, render: (f) => <NuevoGasto f={f} g={GASOIL} /> },
-  { from: C0, render: (f) => <NuevoGasto f={f} g={COMIDA} /> },
-  { from: D0, render: (f) => <NuevoGasto f={f} g={SEGURO} /> },
   { from: E0, render: (f) => <Numeros f={f} /> },
 ];
-const GASTOS: [Gasto, number][] = [[GASOIL, B0], [COMIDA, C0], [SEGURO, D0]];
+const GASTOS: [Gasto, number][] = [[GASOIL, B0]];
 
 const Titulo: React.FC<{ f: number }> = ({ f }) => {
   const cur = MOMENTOS.reduce((k, m, i) => (f >= m.from ? i : k), 0);
@@ -409,24 +412,6 @@ const Dia: React.FC = () => {
         <Shots shots={shots} />
         {GASTOS.flatMap(([g, from]) => taps(g).map((t, i) => <TapDot key={`${from}-${i}`} f={f} at={from + t.at} x={t.x} y={t.y} />))}
       </Phone>
-      {/* dos tickets de la calle que entran al celular */}
-      {[-1, 1].map((side, i) => {
-        const k = ramp(f, C0 + 2 + i * 4, C0 + 22 + i * 4, Easing.in(Easing.cubic));
-        if (f < C0 || k >= 1) return null;
-        return (
-          <div
-            key={side}
-            style={{
-              position: "absolute", left: 540 - 90 + side * (420 - k * 420), top: 760 - k * 120, width: 180, height: 250, background: "#f4f1ea", borderRadius: 6, padding: 16,
-              rotate: `${side * (18 - k * 18)}deg`, scale: 1 - k * 0.6, opacity: 1 - k * 0.6, boxShadow: "0 20px 40px rgba(0,0,0,.5)", zIndex: 30,
-              clipPath: "polygon(0 0,100% 0,100% 94%,90% 100%,80% 94%,70% 100%,60% 94%,50% 100%,40% 94%,30% 100%,20% 94%,10% 100%,0 94%)",
-            }}
-          >
-            {[0.9, 0.6, 0.8, 0.5, 0.7].map((w, j) => <div key={j} style={{ height: 8, width: `${w * 100}%`, background: "#b9b3a4", borderRadius: 4, marginBottom: 12 }} />)}
-            <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 30, color: INK, marginTop: 10 }}>{i === 0 ? "$ 8.500" : "$ 4.200"}</div>
-          </div>
-        );
-      })}
       {/* chip, hora y cronómetro */}
       <div style={{ position: "absolute", top: SAFE.top, left: SAFE.left, width: W, display: "flex", alignItems: "center", gap: 14, zIndex: 20, opacity: ramp(f, 0, 8) }}>
         <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 2, padding: "8px 18px", borderRadius: 999, background: AMBER, color: INK }}>CON AUXILIOS</span>
@@ -451,7 +436,6 @@ const Dia: React.FC = () => {
         <Audio key={`ok${from}`} name="Guardado" src={staticFile("sfx/ding.wav")} from={from + g.saveAt + 2} volume={0.45} />
       ))}
       <Audio name="Foto" src={staticFile("sfx/shutter.wav")} from={B0 + GASOIL.ticketAt! + 1} volume={0.5} />
-      <Audio name="Tickets" src={staticFile("sfx/whoosh.wav")} from={C0} volume={0.4} />
       <Audio name="Mes" src={staticFile("sfx/whoosh.wav")} from={E0 + SKIP} volume={0.45} />
       <Audio name="Cubierto" src={staticFile("sfx/whip.wav")} from={E0 + SKIP + 6} volume={0.55} />
       <Audio name="Aviso" src={staticFile("sfx/ding.wav")} from={E0 + NOTI} volume={0.5} />
@@ -559,7 +543,7 @@ const Cierre: React.FC = () => {
 };
 
 const T = 15;
-export const UN_DIA_DUR = G_DUR + DIA_DUR + E_DUR - 2 * T;
+export const UN_DIA_DUR = G_DUR + BORRA_DUR + CUESTA_DUR + VENCE_DUR + DIA_DUR + E_DUR - 5 * T;
 
 // Reel de solución de gastos: «Un día, todos tus gastos»
 export const UnDia: React.FC<{ guia?: boolean }> = ({ guia = false }) => (
@@ -567,6 +551,18 @@ export const UnDia: React.FC<{ guia?: boolean }> = ({ guia = false }) => (
     <TransitionSeries>
       <TransitionSeries.Sequence name="Guantera" durationInFrames={G_DUR}>
         <Guantera />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition presentation={slide({ direction: "from-right" })} timing={linearTiming({ durationInFrames: T })} />
+      <TransitionSeries.Sequence name="El ticket se borra" durationInFrames={BORRA_DUR}>
+        <TicketBorra />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition presentation={slide({ direction: "from-right" })} timing={linearTiming({ durationInFrames: T })} />
+      <TransitionSeries.Sequence name="El servicio que cuesta" durationInFrames={CUESTA_DUR}>
+        <ServicioCuesta />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition presentation={slide({ direction: "from-right" })} timing={linearTiming({ durationInFrames: T })} />
+      <TransitionSeries.Sequence name="La VTV vencida" durationInFrames={VENCE_DUR}>
+        <VtvVencida />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={slide({ direction: "from-bottom" })} timing={linearTiming({ durationInFrames: T })} />
       <TransitionSeries.Sequence name="Un día" durationInFrames={DIA_DUR}>
