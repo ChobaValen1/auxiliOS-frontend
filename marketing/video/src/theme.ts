@@ -8,6 +8,7 @@ const fonts: [string, string, string][] = [
   ["DM Sans", "700", "dm-sans-latin-700-normal.woff2"],
   ["JetBrains Mono", "500", "jetbrains-mono-latin-500-normal.woff2"],
   ["JetBrains Mono", "700", "jetbrains-mono-latin-700-normal.woff2"],
+  ["Caveat", "700", "caveat-latin-700-normal.woff2"],
 ];
 for (const [family, weight, file] of fonts) {
   loadFont({ family, weight, url: staticFile(`fonts/${file}`) });
@@ -16,6 +17,7 @@ for (const [family, weight, file] of fonts) {
 export const display = "'Bebas Neue', sans-serif";
 export const sans = "'DM Sans', sans-serif";
 export const mono = "'JetBrains Mono', monospace";
+export const hand = "'Caveat', cursive";
 
 export const C = {
   bg: "#0f1115",

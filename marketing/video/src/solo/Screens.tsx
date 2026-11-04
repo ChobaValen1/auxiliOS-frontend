@@ -4,12 +4,12 @@ import { Firma } from "./Firma";
 import { mono } from "../theme";
 import { Bars, Btn, Card, Field, Group, Ico, k, RmFooter, RmSteps, RmTop, Screen, SoloMark, T, TapIn, Top } from "./ui";
 
-const Pick: React.FC<{ icon?: string; title: string; sub: string; em?: string; emOk?: boolean; big?: boolean; tap?: boolean; on?: boolean }> = ({ icon, title, sub, em, emOk, big, tap, on }) => (
+export const Pick: React.FC<{ icon?: string; title: string; sub: string; em?: string; emOk?: boolean; emWait?: boolean; big?: boolean; tap?: boolean; on?: boolean; dashed?: boolean }> = ({ icon, title, sub, em, emOk, emWait, big, tap, on, dashed }) => (
   <div
     style={{
       position: "relative", display: "grid", alignContent: big ? "center" : "start", justifyItems: big ? "center" : "start", textAlign: big ? "center" : "left",
       gap: k(big ? 8 : 4), minHeight: k(big ? 150 : 104), padding: big ? `${k(18)}px ${k(12)}px` : k(14), borderRadius: k(16),
-      border: `${k(1)}px solid ${on ? T.accent : T.strong}`, background: on ? T.accentSoft : T.s2,
+      border: `${k(1)}px ${dashed ? "dashed" : "solid"} ${on ? T.accent : T.strong}`, background: on ? T.accentSoft : dashed ? "none" : T.s2,
     }}
   >
     {icon ? (
@@ -19,7 +19,7 @@ const Pick: React.FC<{ icon?: string; title: string; sub: string; em?: string; e
     ) : null}
     <b style={big ? { fontFamily: "'Bebas Neue'", fontWeight: 400, fontSize: k(28), lineHeight: 1, letterSpacing: k(1.1), textTransform: "uppercase" } : { fontSize: k(16), lineHeight: 1.2 }}>{title}</b>
     <span style={{ fontSize: k(13), color: T.text2, lineHeight: 1.3 }}>{sub}</span>
-    {em ? <em style={{ fontStyle: "normal", fontSize: k(12), fontWeight: 700, color: emOk ? T.ok : T.text3 }}>{em}</em> : null}
+    {em ? <em style={{ fontStyle: "normal", fontSize: k(12), fontWeight: 700, color: emOk ? T.ok : emWait ? T.accent : T.text3 }}>{em}</em> : null}
     {tap ? <TapIn dx={big ? k(130) : k(48)} dy={big ? k(30) : k(18)} /> : null}
   </div>
 );
@@ -81,13 +81,13 @@ export const A1Servicios: React.FC = () => (
 );
 
 // A2 · ¿Para quién es?
-export const A2ParaQuien: React.FC = () => (
-  <Screen>
+export const A2ParaQuien: React.FC<{ pick?: "particular" | "prestadora"; time?: string }> = ({ pick = "particular", time }) => (
+  <Screen time={time}>
     <Top title="¿Para quién es?" hint="Paso 1 de 3" />
     <Bars n={1} of={3} />
     <div style={{ display: "flex", flexDirection: "column", gap: k(10), marginTop: k(6) }}>
-      <Pick big icon="building" title="Prestadora" sub="Te lo pasó una empresa. Se cobra con tu tarifa." em="3 cargadas" />
-      <Pick big icon="user" title="Particular" sub="Un cliente que te paga en el momento." em="Precio que acordás" tap on />
+      <Pick big icon="building" title="Prestadora" sub="Te lo pasó una empresa. Se cobra con tu tarifa." em="3 cargadas" tap={pick === "prestadora"} on={pick === "prestadora"} />
+      <Pick big icon="user" title="Particular" sub="Un cliente que te paga en el momento." em="Precio que acordás" tap={pick === "particular"} on={pick === "particular"} />
     </div>
   </Screen>
 );
