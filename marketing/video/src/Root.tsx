@@ -3,6 +3,7 @@ import { FirmaPreview } from "./solo/FirmaPreview";
 import { Paso1, Paso1Con, Paso1Sin, PASO1_CON, PASO1_DUR, PASO1_SIN } from "./monogrua/Paso1";
 import { Paso2, PASO2_DUR } from "./monogrua/Paso2";
 import { Paso3, PASO3_DUR } from "./monogrua/Paso3";
+import { MG_P1, MG_P2, MG_P3, MGPaso1, MGPaso2, MGPaso3, MONOGRUA_DUR, MonoGruaVideo } from "./monogrua/v2/Video";
 import * as SoloRef from "./solo/Screens";
 import { AdVideo, AD_DURATION } from "./AdVideo";
 import { HookScene } from "./scenes/HookScene";
@@ -53,6 +54,13 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Chat-Cierre" component={CierreChatScene} width={W} height={H} fps={FPS} durationInFrames={CIERRE_CHAT_DUR} />
     </Folder>
     <Composition id="DelChatAlRemito" component={DelChatAlRemito} width={W} height={H} fps={FPS} durationInFrames={DEL_CHAT_DUR} />
+    <Composition id="MonoGrua" component={MonoGruaVideo} width={W} height={H} fps={FPS} durationInFrames={MONOGRUA_DUR} defaultProps={{ guia: false }} />
+    <Composition id="MonoGrua-Guia" component={MonoGruaVideo} width={W} height={H} fps={FPS} durationInFrames={MONOGRUA_DUR} defaultProps={{ guia: true }} />
+    <Folder name="MonoGrua-v2">
+      <Composition id="MG2-Paso1" component={MGPaso1} width={W} height={H} fps={FPS} durationInFrames={MG_P1} defaultProps={{ guia: true }} />
+      <Composition id="MG2-Paso2" component={MGPaso2} width={W} height={H} fps={FPS} durationInFrames={MG_P2} defaultProps={{ guia: true }} />
+      <Composition id="MG2-Paso3" component={MGPaso3} width={W} height={H} fps={FPS} durationInFrames={MG_P3} defaultProps={{ guia: true }} />
+    </Folder>
     <Folder name="MonoGrua-Pasos">
       <Composition id="MG-Paso1" component={Paso1} width={W} height={H} fps={FPS} durationInFrames={PASO1_DUR} defaultProps={{ guia: false }} />
       <Composition id="MG-Paso1-Guia" component={Paso1} width={W} height={H} fps={FPS} durationInFrames={PASO1_DUR} defaultProps={{ guia: true }} />

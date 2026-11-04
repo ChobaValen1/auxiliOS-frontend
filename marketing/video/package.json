@@ -38,7 +38,8 @@
     "render:comparacion": "remotion render ComparacionSolo out/auxilios-solo-comparacion.mp4 --codec=h264 --crf=18",
     "render:mapa": "remotion render MapaRecorrido out/auxilios-recorrido-mapa.mp4 --codec=h264 --crf=18",
     "mapa": "node scripts/render_map.js data/osrm public/mapa-recorrido.png src/mapa/route.json",
-    "upgrade": "remotion upgrade"
+    "upgrade": "remotion upgrade",
+    "render:monogrua": "remotion render MonoGrua out/auxilios-monogrua.mp4 --codec=h264 --crf=18"
   },
   "allowScripts": {
     "esbuild": false
