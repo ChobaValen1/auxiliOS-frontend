@@ -257,6 +257,55 @@ const Mes: React.FC = () => {
   );
 };
 
+// ── C2 · La pregunta antes de la solución: perdés guita y no lo ves ──
+const P_DUR = 135;
+const P_LINE = 44;
+const BILLS = Array.from({ length: 22 }).map((_, i) => ({
+  x: SAFE.left + 20 + random(`bx${i}`) * (W - 40),
+  at: P_LINE + 10 + i * 3 + Math.floor(random(`ba${i}`) * 6),
+  size: 46 + random(`bs${i}`) * 34,
+  spin: (random(`br${i}`) - 0.5) * 16,
+}));
+const Pregunta: React.FC = () => {
+  const f = useCurrentFrame();
+  const q = ramp(f, 0, 8, Easing.out(Easing.cubic));
+  const t = f - 4;
+  const shake = t >= 0 && t < 10 ? Math.sin(t * 3) * 12 * (1 - t / 10) : 0;
+  const l1 = ramp(f, P_LINE, P_LINE + 12, Easing.out(Easing.cubic));
+  const l2 = ramp(f, P_LINE + 14, P_LINE + 26, Easing.out(Easing.cubic));
+  const under = ramp(f, P_LINE + 30, P_LINE + 44);
+  return (
+    <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 35%, #1a1f2b, ${C.bg} 70%)`, translate: `${shake}px 0px` }}>
+      <Stripe />
+      {/* la guita que se escapa */}
+      {BILLS.map((b, i) => {
+        const k = f - b.at;
+        if (k < 0 || k > 42) return null;
+        return (
+          <div key={i} style={{ position: "absolute", left: b.x, top: 1000 + 0.32 * k * k, fontFamily: mono, fontWeight: 700, fontSize: b.size, color: AMBER, opacity: (1 - k / 42) * 0.55, rotate: `${b.spin * k}deg` }}>$</div>
+        );
+      })}
+      <div style={{ position: "absolute", top: 420, left: SAFE.left, width: W, fontFamily: display, fontSize: 140, lineHeight: 0.92, color: C.text, opacity: q * (1 - l1 * 0.45), scale: interpolate(f, [0, 8], [1.5, 1], { ...clamp, easing: Easing.out(Easing.cubic) }), transformOrigin: "0 50%" }}>
+        ¿Vos lo tenías
+        <br />
+        <span style={{ color: AMBER }}>calculado?</span>
+      </div>
+      <div style={{ position: "absolute", top: 740, left: SAFE.left, width: W, fontFamily: display, fontSize: 96, lineHeight: 1 }}>
+        <div style={{ color: C.text, clipPath: `inset(0 ${100 - l1 * 100}% 0 0)`, translate: `${(1 - l1) * -30}px 0px` }}>Che, estás perdiendo guita</div>
+        <div style={{ position: "relative", display: "inline-block", color: AMBER, clipPath: `inset(-20px ${100 - l2 * 100}% -20px 0)`, translate: `${(1 - l2) * -30}px 0px` }}>
+          y no te estás
+          <br />
+          dando cuenta.
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: -6, height: 6, borderRadius: 3, background: AMBER, transformOrigin: "0 50%", scale: `${under} 1` }} />
+        </div>
+      </div>
+      <Audio name="Pregunta" src={staticFile("sfx/record-scratch.wav")} from={0} volume={0.5} />
+      <Audio name="Che" src={staticFile("sfx/whoosh.wav")} from={P_LINE} volume={0.45} />
+      <Audio name="Cuenta" src={staticFile("sfx/whip.wav")} from={P_LINE + 14} volume={0.5} />
+    </AbsoluteFill>
+  );
+};
+
 // ── D · Te lo calcula solo: cargás el gasto y el número se arma solo ─
 const D_DUR = 285;
 const CHIPS: [string, string, string, string, number][] = [
@@ -432,7 +481,7 @@ const Cierre: React.FC = () => {
 };
 
 const T = 15;
-export const LA_MITAD_DUR = A_DUR + B_DUR + C_DUR + D_DUR + E_DUR - 4 * T;
+export const LA_MITAD_DUR = A_DUR + B_DUR + C_DUR + P_DUR + D_DUR + E_DUR - 5 * T;
 
 // Creativo de gastos 1 (v2): «¿Cuántos días del mes laburás para vos?»
 export const LaMitad: React.FC<{ guia?: boolean }> = ({ guia = false }) => (
@@ -448,6 +497,10 @@ export const LaMitad: React.FC<{ guia?: boolean }> = ({ guia = false }) => (
       <TransitionSeries.Transition presentation={slide({ direction: "from-right" })} timing={linearTiming({ durationInFrames: T })} />
       <TransitionSeries.Sequence name="30 días" durationInFrames={C_DUR}>
         <Mes />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: T })} />
+      <TransitionSeries.Sequence name="La pregunta" durationInFrames={P_DUR}>
+        <Pregunta />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition presentation={slide({ direction: "from-bottom" })} timing={linearTiming({ durationInFrames: T })} />
       <TransitionSeries.Sequence name="Te lo calcula solo" durationInFrames={D_DUR}>
