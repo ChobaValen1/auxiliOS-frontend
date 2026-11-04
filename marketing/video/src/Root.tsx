@@ -5,6 +5,7 @@ import { Paso2, PASO2_DUR } from "./monogrua/Paso2";
 import { Paso3, PASO3_DUR } from "./monogrua/Paso3";
 import { PrimerosCuatro, PRIMEROS_CUATRO_DUR } from "./gastos/PrimerosCuatro";
 import { LaMitad, LA_MITAD_DUR } from "./gastos/LaMitad";
+import { UnDia, UN_DIA_DUR } from "./gastos/UnDia";
 import { MG_P1, MG_P2, MG_P3, MGPaso1, MGPaso2, MGPaso3, MONOGRUA_DUR, MonoGruaVideo } from "./monogrua/v2/Video";
 import * as SoloRef from "./solo/Screens";
 import { AdVideo, AD_DURATION } from "./AdVideo";
@@ -56,6 +57,8 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Chat-Cierre" component={CierreChatScene} width={W} height={H} fps={FPS} durationInFrames={CIERRE_CHAT_DUR} />
     </Folder>
     <Composition id="DelChatAlRemito" component={DelChatAlRemito} width={W} height={H} fps={FPS} durationInFrames={DEL_CHAT_DUR} />
+    <Composition id="Gastos2-UnDia" component={UnDia} width={W} height={H} fps={FPS} durationInFrames={UN_DIA_DUR} defaultProps={{ guia: false }} />
+    <Composition id="Gastos2-UnDia-Guia" component={UnDia} width={W} height={H} fps={FPS} durationInFrames={UN_DIA_DUR} defaultProps={{ guia: true }} />
     <Composition id="Gastos1-Dias" component={LaMitad} width={W} height={H} fps={FPS} durationInFrames={LA_MITAD_DUR} defaultProps={{ guia: false }} />
     <Composition id="Gastos1-Dias-Guia" component={LaMitad} width={W} height={H} fps={FPS} durationInFrames={LA_MITAD_DUR} defaultProps={{ guia: true }} />
     <Composition id="Gastos1-PrimerosCuatro" component={PrimerosCuatro} width={W} height={H} fps={FPS} durationInFrames={PRIMEROS_CUATRO_DUR} defaultProps={{ guia: false }} />
