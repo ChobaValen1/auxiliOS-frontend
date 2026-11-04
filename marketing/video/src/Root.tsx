@@ -1,6 +1,6 @@
 import { Composition, Folder, Still } from "remotion";
 import { FirmaPreview } from "./solo/FirmaPreview";
-import { Paso1, Paso1Con, Paso1Sin, PASO1_CON, PASO1_SIN } from "./monogrua/Paso1";
+import { Paso1, Paso1Con, Paso1Sin, PASO1_CON, PASO1_DUR, PASO1_SIN } from "./monogrua/Paso1";
 import * as SoloRef from "./solo/Screens";
 import { AdVideo, AD_DURATION } from "./AdVideo";
 import { HookScene } from "./scenes/HookScene";
@@ -52,7 +52,8 @@ export const RemotionRoot: React.FC = () => (
     </Folder>
     <Composition id="DelChatAlRemito" component={DelChatAlRemito} width={W} height={H} fps={FPS} durationInFrames={DEL_CHAT_DUR} />
     <Folder name="MonoGrua-Pasos">
-      <Composition id="MG-Paso1" component={Paso1} width={W} height={H} fps={FPS} durationInFrames={PASO1_SIN + PASO1_CON} />
+      <Composition id="MG-Paso1" component={Paso1} width={W} height={H} fps={FPS} durationInFrames={PASO1_DUR} defaultProps={{ guia: false }} />
+      <Composition id="MG-Paso1-Guia" component={Paso1} width={W} height={H} fps={FPS} durationInFrames={PASO1_DUR} defaultProps={{ guia: true }} />
       <Composition id="MG-Paso1-Sin" component={Paso1Sin} width={W} height={H} fps={FPS} durationInFrames={PASO1_SIN} />
       <Composition id="MG-Paso1-Con" component={Paso1Con} width={W} height={H} fps={FPS} durationInFrames={PASO1_CON} />
     </Folder>
