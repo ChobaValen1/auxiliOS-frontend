@@ -6,7 +6,7 @@ const billing=fs.readFileSync('operator-billing.js','utf8');
 const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
 
 test('Excel aparece con una selección de servicios, o en Peajes cuando hay peajes',()=>{
-  assert.match(billing,/excelControl\s*=\s*\(S\.tab === 'tolls' \? \(S\.tollRows \|\| \[\]\)\.length : S\.selected\.size\)\s*\?/);
+  assert.match(billing,/excelControl\s*=\s*\(S\.tab === 'tolls' \? \(S\.tollRows \|\| \[\]\)\.length : S\.tab === 'extras' \? \(S\.extraRows \|\| \[\]\)\.length : S\.selected\.size\)\s*\?/);
   assert.match(billing,/\$\{excelControl\}<button class="ob-button ob-filter-action"/);
   assert.match(billing,/function toggleSelection\(id,\s*on\)/);
   assert.match(billing,/S\.selected\.add\(String\(id\)\)/);

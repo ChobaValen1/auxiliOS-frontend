@@ -495,3 +495,7 @@
   #screen-facturacion .ob-selection-hint { flex-wrap: wrap; }
   #screen-facturacion .ob-selection-hint .ob-hint-action { width: 100%; }
 }
+
+/* Excel: opción de la hoja «Excedentes» en el selector de columnas. */
+#obx-picker-backdrop .obx-excess-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#obx-picker-backdrop .obx-excess-toggle input { width: 16px; height: 16px; accent-color: var(--ax-accent); }

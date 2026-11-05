@@ -333,11 +333,16 @@
 
   function excelMenuMarkup() {
     const serviceCount = S.selected.size;
+    // Adicionales: lo visible (con el filtro de quién cobra) y, aparte, el Excel completo.
+    if (S.tab === 'extras') return `<div class="obx-menu" role="menu">
+      <button type="button" data-ob="excel-extras"><b>Adicionales visibles</b><small>${visibleExtraRows().length} excedentes con quién cobra, medio y facturación</small></button>
+      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes + Excedentes</small></button>
+    </div>`;
     // En Peajes no hay selección de servicios: solo «Peajes visibles» y «Todo lo filtrado».
     return `<div class="obx-menu" role="menu">
       ${S.tab === 'tolls' ? '' : `<button type="button" data-ob="excel-selected"><b>Selección de servicios</b><small>${serviceCount} servicios seleccionados</small></button>`}
       <button type="button" data-ob="excel-current"><b>${S.tab === 'tolls' ? 'Peajes' : 'Servicios'} visibles</b><small>${S.tab === 'tolls' ? S.tollRows.length : S.rows.length} registros con estos filtros</small></button>
-      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes</small></button>
+      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes + Excedentes</small></button>
     </div>`;
   }
 
@@ -860,7 +865,7 @@
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
     document.querySelector('.topbar-right #obx-wrap')?.remove();
     // Servicios: aparece al tildar servicios. Peajes: siempre que haya peajes con estos filtros.
-    const excelControl = (S.tab === 'tolls' ? (S.tollRows || []).length : S.selected.size)
+    const excelControl = (S.tab === 'tolls' ? (S.tollRows || []).length : S.tab === 'extras' ? (S.extraRows || []).length : S.selected.size)
       ? `<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">${ico('download')}Excel</button></div>`
       : '';
     const overlayOpen = S.invoiceOpen || S.rowAction || S.detail || S.detailLoading;
@@ -1226,6 +1231,7 @@
       if (excelAction === 'excel-current') return window.OperatorBillingExcel?.exportCurrent?.();
       if (excelAction === 'excel-selected') return window.OperatorBillingExcel?.exportSelected?.();
       if (excelAction === 'excel-all') return window.OperatorBillingExcel?.exportAllFiltered?.();
+      if (excelAction === 'excel-extras') return window.OperatorBillingExcel?.exportExtras?.();
       return;
     }
 
