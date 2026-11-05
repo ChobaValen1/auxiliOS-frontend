@@ -7,6 +7,7 @@ import { ReelsGuide } from "../monogrua/StepFrame";
 import { Logo } from "../scenes/Logo";
 import { Ico } from "../solo/ui";
 import { Grano } from "./Gancho";
+import { Chofer } from "./Chofer";
 
 // Reel nuevo, parte 3: el cierre. Fondo claro, el logo con los íconos que se juntan,
 // la frase y el botón. 60 fps.
@@ -20,7 +21,8 @@ const pop = (f: number, a: number, b: number) => interpolate(f, [a, b], [0, 1], 
 export const CIERRE_DUR = 300;
 const VOZ_AT = 14;
 const ICONOS = ["file", "cash", "gauge", "route"];
-const LOGO_Y = 520;
+const LOGO_Y = 760;
+const PULGAR = 74;
 
 export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
   const f = useCurrentFrame();
@@ -28,11 +30,13 @@ export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
   const inn = r(f, 0, 16);
   const logo = pop(f, 6, 30);
   const junta = r(f, 10, 40, Easing.in(Easing.cubic));
-  const sub = r(f, 34, 48);
-  const l1 = r(f, 50, 64);
-  const l2 = r(f, 62, 76);
-  const cta = pop(f, 92, 112);
-  const pulso = f > 120 ? 1 + 0.04 * Math.max(0, Math.sin((f - 120) / 9)) : 1;
+  const chofer = pop(f, 30, 56);
+  const pulgar = interpolate(f, [PULGAR, PULGAR + 18], [0, 1], { ...clamp, easing: Easing.out(Easing.back(2)) });
+  const sub = r(f, 60, 74);
+  const l1 = r(f, 78, 92);
+  const l2 = r(f, 90, 104);
+  const cta = pop(f, 120, 140);
+  const pulso = f > 150 ? 1 + 0.04 * Math.max(0, Math.sin((f - 150) / 9)) : 1;
   return (
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 38%, #ffffff 0%, #eef0f4 62%, #e2e5ec 100%)", overflow: "hidden" }}>
       <AbsoluteFill style={{ filter: inn < 1 ? `blur(${(1 - inn) * 26}px)` : undefined, scale: 1 + (1 - inn) * 0.15, opacity: Math.min(1, inn * 1.5) }}>
@@ -44,7 +48,7 @@ export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
             <div
               key={n}
               style={{
-                position: "absolute", left: 540 + Math.cos(a) * 380 * rad - 60, top: LOGO_Y + Math.sin(a) * 250 * rad - 60, width: 120, height: 120, borderRadius: 36,
+                position: "absolute", left: 540 + Math.cos(a) * 380 * rad - 60, top: LOGO_Y + Math.sin(a) * 200 * rad - 60, width: 120, height: 120, borderRadius: 36,
                 background: INK, color: AMBER, display: "grid", placeItems: "center", opacity: 1 - junta, scale: 1 - junta * 0.6, boxShadow: "0 24px 50px rgba(10,12,18,.3)",
               }}
             >
@@ -52,22 +56,34 @@ export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
             </div>
           );
         })}
-        <div style={{ position: "absolute", left: 0, right: 0, top: LOGO_Y - 85, display: "flex", justifyContent: "center", scale: 0.6 + logo * 0.3, opacity: Math.min(1, logo * 1.3) }}>
-          <Logo size={0.95} ink={INK} />
+        {/* el chofer que levanta el pulgar */}
+        <div style={{ position: "absolute", left: 540 - 190, top: 300, width: 380, height: 380, opacity: Math.min(1, chofer * 1.4), scale: 0.7 + chofer * 0.3, translate: `0px ${(1 - chofer) * 80}px`, transformOrigin: "50% 100%" }}>
+          <Chofer pulgar={pulgar} size={380} parpadeo={f >= 200 && f < 206} />
+        </div>
+        {/* chispas del pulgar */}
+        {f >= PULGAR + 12 && f < PULGAR + 40
+          ? Array.from({ length: 8 }).map((_, i) => {
+              const a = (i / 8) * Math.PI * 2;
+              const d = 30 + r(f, PULGAR + 12, PULGAR + 40) * 70;
+              return <div key={i} style={{ position: "absolute", left: 540 + 120 + Math.cos(a) * d, top: 300 + 120 + Math.sin(a) * d, width: 12, height: 12, borderRadius: 3, background: i % 2 ? AMBER : INK, rotate: "45deg", opacity: 1 - r(f, PULGAR + 12, PULGAR + 40) }} />;
+            })
+          : null}
+        <div style={{ position: "absolute", left: 0, right: 0, top: LOGO_Y - 60, display: "flex", justifyContent: "center", scale: 0.6 + logo * 0.4, opacity: Math.min(1, logo * 1.3) }}>
+          <Logo size={0.62} ink={INK} />
         </div>
         {/* onda cuando se juntan */}
         {f >= 38 && f < 70 ? (
           <div style={{ position: "absolute", left: 540 - 300 * r(f, 38, 70), top: LOGO_Y - 300 * r(f, 38, 70), width: 600 * r(f, 38, 70), height: 600 * r(f, 38, 70), borderRadius: "50%", border: `5px solid ${AMBER}`, opacity: 1 - r(f, 38, 70) }} />
         ) : null}
-        <div style={{ position: "absolute", top: 700, left: SAFE.left, width: W, textAlign: "center", fontFamily: mono, fontWeight: 700, fontSize: 34, letterSpacing: 1, color: "#6b7285", opacity: sub, translate: `0px ${(1 - sub) * 16}px` }}>
+        <div style={{ position: "absolute", top: 860, left: SAFE.left, width: W, textAlign: "center", fontFamily: mono, fontWeight: 700, fontSize: 34, letterSpacing: 1, color: "#6b7285", opacity: sub, translate: `0px ${(1 - sub) * 16}px` }}>
           Para el gruero independiente.
         </div>
-        <div style={{ position: "absolute", top: 780, left: SAFE.left, width: W, textAlign: "center", fontFamily: display, fontSize: 116, lineHeight: 0.95, color: INK }}>
+        <div style={{ position: "absolute", top: 912, left: SAFE.left, width: W, textAlign: "center", fontFamily: display, fontSize: 104, lineHeight: 0.95, color: INK }}>
           <div style={{ opacity: l1, translate: `0px ${(1 - l1) * 40}px` }}>Laburá tranquilo.</div>
           <div style={{ color: AMBER, opacity: l2, translate: `0px ${(1 - l2) * 40}px` }}>Sabé cuánto ganás.</div>
         </div>
-        <div style={{ position: "absolute", top: 1070, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
-          <div style={{ background: AMBER, color: INK, fontFamily: sans, fontWeight: 700, fontSize: 52, padding: "26px 56px", borderRadius: 999, opacity: Math.min(1, cta * 1.4), scale: (0.7 + cta * 0.3) * pulso, boxShadow: "0 22px 50px rgba(245,166,35,.45)" }}>
+        <div style={{ position: "absolute", top: 1124, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+          <div style={{ background: AMBER, color: INK, fontFamily: sans, fontWeight: 700, fontSize: 46, padding: "22px 50px", borderRadius: 999, opacity: Math.min(1, cta * 1.4), scale: (0.7 + cta * 0.3) * pulso, boxShadow: "0 22px 50px rgba(245,166,35,.45)" }}>
             Tocá «Más información» ↓
           </div>
         </div>
@@ -76,7 +92,9 @@ export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       <Audio name="Auxilios. Para el gruero independiente." src={staticFile("vo/cierre-l1.wav")} from={VOZ_AT} volume={1} />
       <Audio name="Corte" src={staticFile("sfx/whoosh.wav")} from={0} volume={0.4} />
       <Audio name="Logo" src={staticFile("sfx/ding.wav")} from={40} volume={0.5} />
-      <Audio name="Botón" src={staticFile("sfx/mouse-click.wav")} from={94} volume={0.35} />
+      <Audio name="Pulgar" src={staticFile("sfx/whoosh.wav")} from={PULGAR} volume={0.35} />
+      <Audio name="Pulgar arriba" src={staticFile("sfx/ding.wav")} from={PULGAR + 14} volume={0.45} />
+      <Audio name="Botón" src={staticFile("sfx/mouse-click.wav")} from={122} volume={0.35} />
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
   );
