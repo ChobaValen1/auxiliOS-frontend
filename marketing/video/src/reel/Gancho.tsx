@@ -22,10 +22,10 @@ const VOZ: { src: string; at: number; dur: number; texto: string; cap: boolean }
   { src: "vo/gancho-l2.wav", at: 120, dur: 61, texto: "Cobros que se atrasan.", cap: true },
   { src: "vo/gancho-l3.wav", at: 222, dur: 78, texto: "Gastos que nunca anotás.", cap: true },
   { src: "vo/gancho-l4.wav", at: 336, dur: 51, texto: "Y a fin de mes…", cap: true },
-  { src: "vo/gancho-l5.wav", at: 410, dur: 43, texto: "¿cuánto te quedó?", cap: false },
+  { src: "vo/gancho-l5.wav", at: 430, dur: 43, texto: "¿cuánto te quedó?", cap: false },
 ];
 const CORTES = [114, 216, 330];
-export const GANCHO_DUR = 510;
+export const GANCHO_DUR = 560;
 
 // ── Herramientas de cámara y terminación ────────────────────────────
 // Cada toma entra y sale desenfocada y con un empujón de escala (corte «whip»)
@@ -249,39 +249,100 @@ const Gastos: React.FC<{ f: number }> = ({ f }) => (
 );
 
 // ── 4 · Y a fin de mes… ¿cuánto te quedó? ───────────────────────────
-const SLAM = 408;
+const SLAM = 428;
+const CAL0 = CORTES[2] + 6, CAL1 = SLAM - 10;
+const DIA0 = 20, DIA1 = 30;
+// El almanaque arranca despacio y se acelera hasta el 30
+const diaEn = (f: number) => DIA0 + Math.floor(interpolate(f, [CAL0, CAL1], [0, DIA1 - DIA0 + 0.999], { ...clamp, easing: Easing.in(Easing.quad) }));
+const Hoja: React.FC<{ dia: number; children?: React.ReactNode; style?: React.CSSProperties }> = ({ dia, children, style }) => (
+  <div style={{ position: "absolute", left: 0, top: 80, width: 340, height: 250, background: "#e9e7e1", display: "grid", placeItems: "center", fontFamily: display, fontSize: 210, color: "#22242a", transformOrigin: "50% 0", backfaceVisibility: "hidden", ...style }}>
+    {dia}
+    {children}
+  </div>
+);
+// Los billetes: una pila gruesa que se va quedando sin plata
+const BILLETES = 14;
+const SE_VAN = ["Gasoil", "Seguro", "Taller", "Peajes", "Cubiertas", "Monotributo", "Comida", "Patente", "Repuestos", "GPS", "VTV", "Lavado"];
+const VUELA0 = SLAM + 26, VUELA_CADA = 7;
+const Billete: React.FC<{ style?: React.CSSProperties; label?: string }> = ({ style, label }) => (
+  <div
+    style={{
+      position: "absolute", width: 560, height: 250, borderRadius: 14, background: "linear-gradient(135deg, #d7dccd 0%, #c3cbb6 55%, #d3d8c8 100%)",
+      border: "3px solid #9aa58c", boxShadow: "0 10px 24px rgba(0,0,0,.45)", overflow: "hidden", ...style,
+    }}
+  >
+    <div style={{ position: "absolute", inset: 12, borderRadius: 8, border: "2px solid rgba(70,82,62,.35)" }} />
+    <div style={{ position: "absolute", left: 30, top: 24, fontFamily: display, fontSize: 64, color: "#46523e", lineHeight: 1 }}>$</div>
+    <div style={{ position: "absolute", right: 30, bottom: 18, fontFamily: display, fontSize: 64, color: "#46523e", lineHeight: 1 }}>$</div>
+    <div style={{ position: "absolute", left: 200, top: 45, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(70,82,62,.28), rgba(70,82,62,.08) 70%)", border: "2px solid rgba(70,82,62,.3)" }} />
+    <div style={{ position: "absolute", left: 30, right: 30, top: 118, height: 14, background: "repeating-linear-gradient(90deg, rgba(70,82,62,.3) 0 6px, transparent 6px 10px)" }} />
+    {label ? <div style={{ position: "absolute", left: 0, right: 0, bottom: 30, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 40, color: "#2f3829" }}>{label}</div> : null}
+  </div>
+);
 const Pregunta: React.FC<{ f: number }> = ({ f }) => {
-  // el almanaque llega a fin de mes
-  const dias = [27, 28, 29, 30];
-  const di = Math.min(dias.length - 1, Math.max(0, Math.floor((f - (CORTES[2] + 8)) / 9)));
   const alm = r(f, CORTES[2], CORTES[2] + 14);
+  const dia = diaEn(f);
+  // cuándo cambió la hoja por última vez, para arrancarla
+  let cambio = f;
+  while (cambio > CAL0 && diaEn(cambio - 1) === dia) cambio--;
+  const arranca = dia > DIA0 ? r(f, cambio, cambio + 7, Easing.in(Easing.quad)) : 1;
+  const sale = r(f, SLAM - 6, SLAM + 6);
   const slam = interpolate(f, [SLAM, SLAM + 8], [2.2, 1], { ...clamp, easing: Easing.in(Easing.cubic) });
   const t = f - SLAM - 8;
   const shake = t >= 0 && t < 16 ? Math.sin(t * 2.6) * 18 * (1 - t / 16) : 0;
-  // la plata que no termina de cerrar: los dígitos no se quedan quietos
-  const seed = Math.floor(f / 4);
-  const digitos = Array.from({ length: 7 }).map((_, i) =>
-    f > SLAM + 30 && i > 2 ? "?" : String(i === 0 ? 1 + Math.floor(random(`d${seed}-${i}`) * 3) : Math.floor(random(`d${seed}-${i}`) * 10)),
-  );
-  const monto = `$ ${digitos[0]}.${digitos.slice(1, 4).join("")}.${digitos.slice(4).join("")}`;
+  const pila = r(f, SLAM + 6, SLAM + 22, Easing.out(Easing.back(1.3)));
+  const quedan = BILLETES - SE_VAN.filter((_, i) => f >= VUELA0 + i * VUELA_CADA).length;
+  const tiembla = quedan <= 2 ? Math.sin(f * 1.7) * 4 : 0;
   return (
     <Camara f={f} zoom={[1.15, 1]} from={CORTES[2]} to={GANCHO_DUR}>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1d2029, #050608 72%)", translate: `${shake}px 0px` }}>
-        {/* almanaque */}
-        <div style={{ position: "absolute", left: 540 - 170, top: 380, width: 340, height: 330, borderRadius: 26, background: "#e9e7e1", overflow: "hidden", boxShadow: "0 40px 80px rgba(0,0,0,.6)", opacity: alm * (1 - r(f, SLAM - 6, SLAM + 4) * 0.75), scale: 0.9 + alm * 0.1 - r(f, SLAM - 6, SLAM + 6) * 0.15, filter: `blur(${r(f, SLAM - 6, SLAM + 6) * 10}px)` }}>
-          <div style={{ height: 80, background: "#3a3d45", color: "#e4e6ea", fontFamily: mono, fontWeight: 700, fontSize: 32, letterSpacing: 4, display: "grid", placeItems: "center" }}>NOVIEMBRE</div>
-          <div style={{ height: 250, display: "grid", placeItems: "center", fontFamily: display, fontSize: 210, color: "#22242a" }}>{dias[di]}</div>
+        {/* almanaque que se arranca hoja por hoja */}
+        <div style={{ position: "absolute", inset: 0, perspective: 1400 }}>
+          <div
+            style={{
+              position: "absolute", left: 540 - 170, top: 420, width: 340, height: 330, borderRadius: 26, overflow: "visible", opacity: alm * (1 - sale),
+              scale: 0.9 + alm * 0.1 - sale * 0.15, filter: sale > 0 ? `blur(${sale * 12}px)` : undefined, boxShadow: "0 40px 80px rgba(0,0,0,.6)",
+            }}
+          >
+            <div style={{ position: "absolute", left: 0, top: 0, width: 340, height: 330, borderRadius: 26, overflow: "hidden", background: "#e9e7e1" }}>
+              <div style={{ height: 80, background: "#3a3d45", color: "#e4e6ea", fontFamily: mono, fontWeight: 700, fontSize: 32, letterSpacing: 4, display: "grid", placeItems: "center" }}>NOVIEMBRE</div>
+              <Hoja dia={dia} style={{ color: dia === DIA1 ? "#b06f0a" : "#22242a" }} />
+            </div>
+            {dia > DIA0 && arranca < 1 ? <Hoja dia={dia - 1} style={{ borderRadius: "0 0 26px 26px", rotate: `x ${-arranca * 110}deg`, opacity: 1 - arranca * 0.6, boxShadow: "0 20px 40px rgba(0,0,0,.35)" }} /> : null}
+          </div>
         </div>
         {f >= SLAM ? (
-          <div style={{ position: "absolute", top: 560, left: SAFE.left - 20, width: W + 40, textAlign: "center", fontFamily: display, fontSize: 190, lineHeight: 0.88, color: "#f2f3f6", scale: slam, opacity: r(f, SLAM, SLAM + 4), textShadow: "0 12px 50px rgba(0,0,0,.7)" }}>
+          <div style={{ position: "absolute", top: 330, left: SAFE.left - 20, width: W + 40, textAlign: "center", fontFamily: display, fontSize: 180, lineHeight: 0.88, color: "#f2f3f6", scale: slam, opacity: r(f, SLAM, SLAM + 4), textShadow: "0 12px 50px rgba(0,0,0,.7)", zIndex: 20 }}>
             ¿Cuánto
             <br />
             te <span style={{ color: AMBER }}>quedó?</span>
           </div>
         ) : null}
-        <div style={{ position: "absolute", top: 960, left: SAFE.left, width: W, textAlign: "center", fontFamily: mono, fontWeight: 700, fontSize: 92, color: "rgba(230,232,238,.55)", opacity: r(f, SLAM + 16, SLAM + 26), filter: `blur(${Math.abs(Math.sin(f / 3)) * 1.6}px)` }}>
-          {monto}
-        </div>
+        {/* la pila de billetes que se vacía */}
+        {f >= SLAM + 6 ? (
+          <div style={{ position: "absolute", left: 540 - 280, top: 860, width: 560, height: 260, opacity: pila, scale: 0.7 + pila * 0.3, translate: `${tiembla}px 0px` }}>
+            {Array.from({ length: BILLETES }).map((_, i) => {
+              // los de arriba son los primeros en irse
+              const idx = BILLETES - 1 - i;
+              const vuela = idx < SE_VAN.length ? VUELA0 + idx * VUELA_CADA : Infinity;
+              const k = f - vuela;
+              if (k > 40) return null;
+              const lado = idx % 2 ? 1 : -1;
+              const y = -i * 11;
+              if (k < 0) return <Billete key={i} style={{ left: 0, top: y, filter: `brightness(${0.75 + (i / BILLETES) * 0.3})` }} />;
+              const p = k / 40;
+              return (
+                <Billete
+                  key={i}
+                  label={SE_VAN[idx]}
+                  style={{
+                    left: lado * p * 820, top: y - p * 140 + p * p * 620, rotate: `${lado * p * 80}deg`, scale: 1 - p * 0.35, opacity: 1 - Math.max(0, p - 0.6) / 0.4, zIndex: 10,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : null}
       </AbsoluteFill>
     </Camara>
   );
@@ -324,6 +385,14 @@ export const Gancho: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
         <Audio key={`t${t.at}`} name="Tickets" src={staticFile("sfx/page-turn.wav")} from={t.at} volume={0.3} />
       ))}
       <Audio name="Pregunta" src={staticFile("sfx/whip.wav")} from={SLAM + 4} volume={0.8} />
+      {Array.from({ length: DIA1 - DIA0 }).map((_, i) => {
+        let at = CAL0;
+        while (at < CAL1 && diaEn(at) < DIA0 + i + 1) at++;
+        return <Audio key={`h${i}`} name="Hoja" src={staticFile("sfx/page-turn.wav")} from={at} volume={0.18 + i * 0.02} />;
+      })}
+      {SE_VAN.map((g, i) => (
+        <Audio key={g} name="Billete" src={staticFile("sfx/whoosh.wav")} from={VUELA0 + i * VUELA_CADA} volume={0.22} />
+      ))}
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
   );
