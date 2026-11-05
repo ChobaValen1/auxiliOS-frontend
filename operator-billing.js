@@ -19,6 +19,9 @@
     allTollRows: [],
     selected: new Set(),
     selectedTolls: new Set(),
+    // Excedentes que cobra la Prestadora: se seleccionan por servicio (una línea de factura por servicio).
+    selectedExcesses: new Set(),
+    extraCollector: 'all',
     loading: false,
     detail: null,
     detailLoading: false,
@@ -174,34 +177,74 @@
   function clearSelection() {
     S.selected.clear();
     S.selectedTolls.clear();
+    S.selectedExcesses.clear();
   }
+
+  /* ── Excedentes que cobra la Prestadora ──
+     Cada fila de Adicionales es un excedente; para facturar se agrupan por servicio,
+     igual que la línea de factura que arma la base. */
+  const isProviderExcess = row => row.collector_agent === 'provider';
+  const excessInvoiceable = row => isProviderExcess(row) && row.invoiceable === true;
+  function excessGroups(rows = S.extraRows || []) {
+    const groups = new Map();
+    for (const row of rows) {
+      if (!excessInvoiceable(row)) continue;
+      const id = String(row.service_id);
+      const g = groups.get(id) || { service_id: id, company_id: row.company_id, company_name: row.company_name, currency: row.currency || 'ARS', rows: [], total: 0, first: row };
+      g.rows.push(row);
+      g.total += num(row.total_amount);
+      groups.set(id, g);
+    }
+    return groups;
+  }
+  const selectedExcessGroups = () => [...excessGroups().values()].filter(g => S.selectedExcesses.has(g.service_id));
 
   const selectedRows = () => S.rows.filter(row => S.selected.has(String(row.service_id)));
   const selectedTollRows = () => S.tollRows.filter(row => S.selectedTolls.has(String(row.service_toll_id)));
-  const selectedCount = () => S.selected.size + S.selectedTolls.size;
+  const selectedCount = () => S.selected.size + S.selectedTolls.size + S.selectedExcesses.size;
 
   function selectedCompanies() {
     return new Map([
       ...selectedRows().map(row => [String(row.company_id), row.company_name || 'Prestadora']),
-      ...selectedTollRows().map(row => [String(row.company_id), row.company_name || 'Prestadora'])
+      ...selectedTollRows().map(row => [String(row.company_id), row.company_name || 'Prestadora']),
+      ...selectedExcessGroups().map(g => [String(g.company_id), g.company_name || 'Prestadora'])
     ]);
   }
 
   function selectedCurrencies() {
     return new Set([
       ...selectedRows().map(row => String(row.currency || 'ARS')),
-      ...selectedTollRows().map(row => String(row.currency || 'ARS'))
+      ...selectedTollRows().map(row => String(row.currency || 'ARS')),
+      ...selectedExcessGroups().map(g => String(g.currency || 'ARS'))
     ]);
   }
 
+  const selectedExcessTotal = () => selectedExcessGroups().reduce((total, g) => total + g.total, 0);
   function selectedTotal() {
     return selectedRows().reduce((total, row) => total + num(row.current_company_amount), 0)
-      + selectedTollRows().reduce((total, row) => total + num(row.amount), 0);
+      + selectedTollRows().reduce((total, row) => total + num(row.amount), 0)
+      + selectedExcessTotal();
   }
 
   function selectedCurrency() {
-    return selectedRows()[0]?.currency || selectedTollRows()[0]?.currency || 'ARS';
+    return selectedRows()[0]?.currency || selectedTollRows()[0]?.currency || selectedExcessGroups()[0]?.currency || 'ARS';
   }
+
+  /* Servicios tildados que tienen excedentes de la Prestadora sin sumar a la factura. */
+  function relatedPendingExcesses() {
+    const groups = excessGroups();
+    return selectedRows().map(row => groups.get(String(row.service_id))).filter(g => g && !S.selectedExcesses.has(g.service_id));
+  }
+
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  function selectionParts() {
+    return [
+      S.selected.size ? plural(S.selected.size, 'servicio', 'servicios') : '',
+      S.selectedTolls.size ? plural(S.selectedTolls.size, 'peaje', 'peajes') : '',
+      S.selectedExcesses.size ? plural(S.selectedExcesses.size, 'excedente', 'excedentes') : ''
+    ].filter(Boolean);
+  }
+  const joinParts = parts => parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : (parts[0] || '');
 
   function invoiceGroupCounts(rows = selectedRows()) {
     const counts = { liviano: 0, semipesado: 0, uml: 0, otros: 0 };
@@ -231,6 +274,8 @@
     S.extraRows = (S.allExtraRows || []).filter(row => !S.base || row.billing_base_name === S.base);
     for (const id of [...S.selected]) if (!S.rows.some(row => String(row.service_id) === id)) S.selected.delete(id);
     for (const id of [...S.selectedTolls]) if (!S.tollRows.some(row => String(row.service_toll_id) === id)) S.selectedTolls.delete(id);
+    const groups = excessGroups();
+    for (const id of [...S.selectedExcesses]) if (!groups.has(id)) S.selectedExcesses.delete(id);
   }
 
   function activeFilterCount() {
@@ -335,7 +380,7 @@
   }
 
   function selectionMarkup() {
-    if (!selectedCount()) return '';
+    if (!selectedCount()) { S.selectionShown = false; return ''; }
     const companies = selectedCompanies();
     const currencies = selectedCurrencies();
     const singleCompany = companies.size === 1;
@@ -351,12 +396,20 @@
       : !singleCurrency
         ? 'La selección debe tener una sola moneda'
         : invalidPricing ? 'Corregí los errores tarifarios antes de facturar' : '';
-    return `<section class="ob-selection">
-      <div><b>${S.selected.size} servicios · ${S.selectedTolls.size} peajes</b><small>${esc(summary)}</small></div>
+    const related = singleCompany ? relatedPendingExcesses() : [];
+    const relatedTotal = related.reduce((t, g) => t + g.total, 0);
+    const hint = related.length
+      ? `<div class="ob-selection-hint" role="note">${ico('circle-alert')}<span>${related.length === 1 ? 'Un servicio seleccionado tiene' : `${related.length} servicios seleccionados tienen`} excedentes que cobra la Prestadora sin facturar · <b class="ob-money">${esc(money(relatedTotal, selectedCurrency()))}</b></span><button class="ob-button ob-hint-action" type="button" data-ob="add-related-excess" ${S.invoiceBusy ? 'disabled' : ''}>${ico('plus')}Sumar a la factura</button></div>`
+      : '';
+    const enter = S.selectionShown ? '' : ' is-entering';
+    S.selectionShown = true;
+    return `<section class="ob-selection${enter}" aria-live="polite">
+      <div><b>${esc(joinParts(selectionParts()))}</b><small>${esc(summary)}</small></div>
       <div class="ob-selection-actions">
         <button class="ob-button" data-ob="clear-selection" ${S.invoiceBusy ? 'disabled' : ''}>Limpiar</button>
         ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
       </div>
+      ${hint}
     </section>`;
   }
 
@@ -371,7 +424,12 @@
       .filter(([, n]) => n > 0).map(([label, n]) => `<span><b>${n}</b>${label}</span>`).join('');
     const subServicios = services.reduce((t, row) => t + num(row.current_company_amount), 0);
     const subPeajes = tolls.reduce((t, row) => t + num(row.amount), 0);
-    return `<section role="dialog" aria-modal="true" aria-labelledby="ob-invoice-title" class="ob-invoice-modal">
+    const excesses = selectedExcessGroups();
+    const subExcedentes = excesses.reduce((t, g) => t + g.total, 0);
+    const includes = joinParts(selectionParts());
+    const enter = S.invoiceShown ? '' : ' is-entering';
+    S.invoiceShown = true;
+    return `<section role="dialog" aria-modal="true" aria-labelledby="ob-invoice-title" class="ob-invoice-modal${enter}">
       <header class="ob-invoice-head">
         <div><small>Facturación</small><h3 id="ob-invoice-title">Crear factura</h3><p>${esc(company)}</p></div>
         <button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>${ico('x')}Cerrar</button>
@@ -398,26 +456,27 @@
           <dl>
             <div><dt>Servicios</dt><dd>${services.length}</dd></div>
             <div><dt>Peajes</dt><dd>${tolls.length}</dd></div>
+            ${excesses.length ? `<div><dt>Excedentes de la Prestadora</dt><dd>${excesses.length}</dd></div>` : ''}
           </dl>
           ${tipoChips ? `<div class="ob-invoice-types" aria-label="Servicios por tipo">${tipoChips}</div>` : ''}
         </section>
        </div>
        <div class="ob-invoice-side">
         <section class="ob-invoice-lines" aria-label="Qué se factura">
-          <h4>Se factura <small>${services.length} ${services.length === 1 ? 'servicio' : 'servicios'}${tolls.length ? ` y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'}` : ''}</small></h4>
+          <h4>Se factura <small>${esc(includes)}</small></h4>
           <div class="ob-invoice-table-wrap"><table class="ob-invoice-table">
             <thead><tr><th>Servicio</th><th>Fecha</th><th>Recorrido</th><th>Importe</th></tr></thead>
-            <tbody>${services.map(row => `<tr><td><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, row.customer_name].filter(Boolean).join(' · ') || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc(row.origin || '—')}</span><span>${esc(row.destination || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></td></tr>`).join('')}${tolls.map(row => `<tr class="is-toll"><td><b>${esc(row.toll_name || 'Peaje')}</b><small>Peaje · ${esc(row.service_order_number || row.service_number || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc([row.road, row.direction].filter(Boolean).join(' · ') || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.amount, row.currency))}</span></td></tr>`).join('')}</tbody>
+            <tbody>${services.map(row => `<tr><td><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, row.customer_name].filter(Boolean).join(' · ') || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc(row.origin || '—')}</span><span>${esc(row.destination || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></td></tr>`).join('')}${tolls.map(row => `<tr class="is-toll"><td><b>${esc(row.toll_name || 'Peaje')}</b><small>Peaje · ${esc(row.service_order_number || row.service_number || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc([row.road, row.direction].filter(Boolean).join(' · ') || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.amount, row.currency))}</span></td></tr>`).join('')}${excesses.map(g => `<tr class="is-excess"><td><b>${esc(g.rows.map(r => r.concept_name || 'Adicional').join(' · '))}</b><small>Excedente · cobra la Prestadora · ${esc(orderCode(g.first))}</small></td><td class="ob-it-date">${esc(dateParts(g.first.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc(g.first.customer_name || g.first.vehicle_plate || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(g.total, g.currency))}</span></td></tr>`).join('')}</tbody>
           </table></div>
         </section>
         <section class="ob-invoice-total">
-          ${tolls.length ? `<dl class="ob-invoice-subtotals"><div><dt>Servicios</dt><dd>${esc(money(subServicios, currency))}</dd></div><div><dt>Peajes</dt><dd>${esc(money(subPeajes, currency))}</dd></div></dl>` : ''}
+          ${tolls.length || excesses.length ? `<dl class="ob-invoice-subtotals">${services.length ? `<div><dt>Servicios</dt><dd>${esc(money(subServicios, currency))}</dd></div>` : ''}${tolls.length ? `<div><dt>Peajes</dt><dd>${esc(money(subPeajes, currency))}</dd></div>` : ''}${excesses.length ? `<div><dt>Excedentes</dt><dd>${esc(money(subExcedentes, currency))}</dd></div>` : ''}</dl>` : ''}
           <div class="ob-invoice-total-row"><div><small>Total a facturar</small><b>${esc(money(selectedTotal(), currency))}</b></div><span>${esc(currency)}</span></div>
         </section>
        </div>
       </div>
       <footer class="ob-invoice-footer">
-        <small>Al crear la factura, ${services.length} ${services.length === 1 ? 'servicio' : 'servicios'} y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'} ${services.length + tolls.length === 1 ? 'quedará facturado' : 'quedarán facturados'} con importes congelados.</small>
+        <small>Al crear la factura, ${esc(includes)} ${selectedCount() === 1 ? 'quedará facturado' : 'quedarán facturados'} con importes congelados.</small>
         <div><button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>Cancelar</button><button class="ob-button success" type="button" data-ob="confirm-invoice" ${S.invoiceBusy ? 'disabled' : ''}>${S.invoiceBusy ? 'Creando factura…' : 'Crear factura'}</button></div>
       </footer>
     </section>`;
@@ -430,6 +489,18 @@
   const MEDIO = { cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', mercado_pago: 'Mercado Pago', other: 'Otro' };
   const PAGA = { customer: 'Cliente', company: 'Prestadora', provider: 'Prestadora' };
   const ESTADO_FACT = { pending: 'Pendiente', reviewed: 'Pendiente', invoiced: 'Facturado', excluded: 'Excluido' };
+  const ORIGEN = { administrative: 'Corrección administrativa', actual: 'Real del remito', planned: 'Planificado' };
+  const COBRA = { provider: 'Prestadora', company: 'Empresa' };
+  const collectorPill = row => {
+    const key = isProviderExcess(row) ? 'provider' : 'company';
+    return `<span class="ob-collector is-${key}" title="${key === 'provider' ? 'Lo cobra la Prestadora: se le factura' : 'Lo cobra la Empresa al cliente'}">${esc(COBRA[key])}</span>`;
+  };
+  function extraBillingState(row) {
+    if (!isProviderExcess(row)) return '<span class="ob-state is-muted">Cobro al cliente</span><small>No se factura a la Prestadora</small>';
+    if (row.invoice_number) return `<span class="ob-state is-done">Facturado</span><small>${esc(row.invoice_number)}</small>`;
+    if (row.invoiceable === true) return '<span class="ob-state is-pending">Para facturar</span>';
+    return '<span class="ob-state is-pending">Sin datos de facturación</span><small>Actualizá la base de Facturación</small>';
+  }
   const IVA = { consumidor_final: 'Consumidor final', monotributo: 'Monotributo', responsable_inscripto: 'Responsable inscripto', exento: 'Exento' };
 
   /* ── Columnas: cada pestaña tiene su catálogo y cada usuario elige cuáles ve (table-columns-v1.js) ── */
@@ -476,12 +547,14 @@
       { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
       { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.vehicle_plate || '') },
       { key: 'company', label: 'Prestadora', td: row => stacked(row.company_name || '—', row.billing_base_name || '') },
-      { key: 'concept', label: 'Adicional', td: row => `<b>${esc(row.concept_name || 'Adicional')}</b>` },
+      { key: 'concept', label: 'Adicional', td: row => stacked(row.concept_name || 'Adicional', ORIGEN[row.origin] || '') },
+      { key: 'client', label: 'Cliente', optional: true, td: row => esc(row.customer_name || '—') },
       { key: 'quantity', label: 'Cant.', td: row => esc(num(row.quantity).toLocaleString('es-AR')) },
-      { key: 'amount', label: 'Importe', td: row => `<b class="ob-money">${esc(money(row.total_amount, row.currency))}</b>` },
-      { key: 'payer', label: 'Paga', td: row => esc(PAGA[row.payer_agent] || row.payer_agent || '—') },
-      { key: 'collect', label: 'Cobro', td: row => esc(paymentLabel(row.customer_payment_method)) },
-      { key: 'billing', label: 'Facturación', td: row => `<span class="ob-state ${row.billing_status === 'invoiced' ? '' : 'is-pending'}">${esc(ESTADO_FACT[row.billing_status] || row.billing_status || '—')}</span>` }
+      { key: 'amount', label: 'Importe', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.total_amount, row.currency))}</b>` },
+      { key: 'collector', label: 'Cobra', td: collectorPill },
+      { key: 'collect', label: 'Cobro', td: row => isProviderExcess(row) ? '<small>Se factura a la Prestadora</small>' : esc(paymentLabel(row.customer_payment_method)) },
+      { key: 'payer', label: 'Paga', optional: true, td: row => esc(PAGA[row.payer_agent] || row.payer_agent || '—') },
+      { key: 'billing', label: 'Facturación', td: extraBillingState }
     ],
     private: [
       { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
@@ -516,16 +589,60 @@
       }).join('')}</tbody></table></div>`;
   }
 
+  const visibleExtraRows = () => (S.extraRows || []).filter(row => S.extraCollector === 'all'
+    || (S.extraCollector === 'provider' ? isProviderExcess(row) : !isProviderExcess(row)));
+
+  /* Resumen de Adicionales: qué falta facturar a la Prestadora, qué ya se facturó y qué cobra la Empresa. */
+  function extraSummaryMarkup(rows, enter) {
+    const all = S.extraRows || [];
+    const cur = all[0]?.currency || 'ARS';
+    const sum = list => list.reduce((t, r) => t + num(r.total_amount), 0);
+    const pending = all.filter(excessInvoiceable);
+    const invoiced = all.filter(r => isProviderExcess(r) && r.invoice_number);
+    const company = all.filter(r => !isProviderExcess(r));
+    const card = (cls, label, list, note) => `<article class="ob-kpi ${cls}"><small>${label}</small><b class="ob-money" data-ob-tween="${sum(list)}" data-ob-currency="${esc(cur)}">${esc(money(sum(list), cur))}</b><span>${note(list.length)}</span></article>`;
+    const seg = (value, label, count) => `<button type="button" class="ob-seg-btn${S.extraCollector === value ? ' active' : ''}" data-ob-extra-filter="${value}" aria-pressed="${S.extraCollector === value}">${label}<span class="ob-tab-count">${count}</span></button>`;
+    return `<div class="ob-extras-head${enter}">
+      <div class="ob-kpis" role="group" aria-label="Resumen de adicionales">
+        ${card('is-pending', 'Para facturar a la Prestadora', pending, n => plural(n, 'excedente', 'excedentes'))}
+        ${card('is-done', 'Ya facturado a la Prestadora', invoiced, n => plural(n, 'excedente', 'excedentes'))}
+        ${card('is-company', 'Cobra la Empresa al cliente', company, n => plural(n, 'adicional', 'adicionales'))}
+      </div>
+      <div class="ob-seg" role="group" aria-label="Quién cobra">
+        ${seg('all', 'Todos', all.length)}${seg('provider', 'Cobra la Prestadora', all.filter(isProviderExcess).length)}${seg('company', 'Cobra la Empresa', company.length)}
+      </div>
+    </div>`;
+  }
+
+  function extraRowMarkup(row) {
+    const id = String(row.service_id);
+    const selectable = excessInvoiceable(row) && canInvoice();
+    const checked = selectable && S.selectedExcesses.has(id);
+    const check = selectable
+      ? `<input type="checkbox" data-ob-excess-select="${esc(id)}" ${checked ? 'checked' : ''} aria-label="Facturar excedentes del servicio ${esc(orderCode(row))}">`
+      : '';
+    const cls = [checked ? 'selected' : '', isProviderExcess(row) ? 'is-provider' : 'is-company'].filter(Boolean).join(' ');
+    return `<tr data-billing-extra="${esc(row.line_key || row.excess_charge_id)}" class="${cls}">
+      <td class="ob-check">${check}</td>${bodyCells('extras', row)}</tr>`;
+  }
+
   function extraTableMarkup() {
-    const rows = S.extraRows || [];
-    if (!rows.length) return '<div class="ob-empty">No hay adicionales en los servicios finalizados de este período.</div>';
+    const enter = S.extrasShown ? '' : ' is-entering';
+    S.extrasShown = true;
+    if (!(S.extraRows || []).length) return '<div class="ob-empty">No hay adicionales en los servicios finalizados de este período.</div>';
+    const rows = visibleExtraRows();
+    const head = extraSummaryMarkup(rows, enter);
+    if (!rows.length) return `${head}<div class="ob-empty">No hay adicionales con este filtro.</div>`;
     const total = rows.reduce((t, r) => t + num(r.total_amount), 0);
     const defs = visibleDefs('extras');
+    const groups = excessGroups(rows);
+    const allSelected = groups.size > 0 && [...groups.keys()].every(id => S.selectedExcesses.has(id));
+    const selectAll = groups.size && canInvoice()
+      ? `<input type="checkbox" data-ob-excess-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos los excedentes de la Prestadora">` : '';
     const foot = defs.map((c, i) => c.key === 'amount'
-      ? `<td><b class="ob-money">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td>`
-      : i === 0 ? '<td><b>Total adicionales</b></td>' : '<td></td>').join('');
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>${headCells('extras')}</tr></thead><tbody>${rows.map(row =>
-        `<tr data-billing-extra="${esc(row.excess_charge_id)}">${bodyCells('extras', row)}</tr>`).join('')}</tbody><tfoot><tr>${foot}</tr></tfoot></table></div>`;
+      ? `<td class="ob-money-cell" data-col="amount"><b class="ob-money" data-ob-tween="${total}" data-ob-currency="${esc(rows[0]?.currency || 'ARS')}">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td>`
+      : i === 0 ? `<td><b>Total ${S.extraCollector === 'provider' ? 'que cobra la Prestadora' : S.extraCollector === 'company' ? 'que cobra la Empresa' : 'adicionales'}</b></td>` : '<td></td>').join('');
+    return `${head}<div class="ob-table-wrap"><table class="ob-table ob-extras-table"><thead><tr><th class="ob-check">${selectAll}</th>${headCells('extras')}</tr></thead><tbody>${rows.map(extraRowMarkup).join('')}</tbody><tfoot><tr><td></td>${foot}</tr></tfoot></table></div>`;
   }
 
   function tableMarkup() {
@@ -692,9 +809,53 @@
     </div></aside>`;
   }
 
+  /* Cada render redibuja la mesa entera: se conserva el scroll de la tabla y el foco del
+     control que se usó, así tildar una fila no te manda al principio. */
+  function captureView(screen) {
+    const wrap = screen.querySelector('.ob-table-wrap');
+    const active = document.activeElement;
+    const key = active && screen.contains(active)
+      ? ['data-ob-select', 'data-ob-toll-select', 'data-ob-excess-select', 'data-ob-extra-filter', 'data-ob-tab', 'data-ob']
+        .map(name => active.hasAttribute(name) ? `[${name}="${CSS.escape(active.getAttribute(name))}"]` : '').find(Boolean)
+      : '';
+    return { top: wrap?.scrollTop || 0, left: wrap?.scrollLeft || 0, focus: key || '', tab: S.tab };
+  }
+  function restoreView(screen, view) {
+    if (!view) return;
+    const wrap = screen.querySelector('.ob-table-wrap');
+    if (wrap && view.tab === S.tab) { wrap.scrollTop = view.top; wrap.scrollLeft = view.left; }
+    if (view.focus) screen.querySelector(view.focus)?.focus({ preventScroll: true });
+  }
+
+  /* Montos que cambian (selección, resumen) se deslizan del valor anterior al nuevo.
+     Con movimiento reducido se muestran directo. */
+  const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const tweenMemory = new Map();
+  function tweenAmounts(screen) {
+    screen.querySelectorAll('[data-ob-tween]').forEach((el, index) => {
+      const key = el.closest('[data-ob-tween-key]')?.dataset.obTweenKey || `${S.tab}:${index}`;
+      const to = num(el.dataset.obTween), from = tweenMemory.has(key) ? tweenMemory.get(key) : 0;
+      tweenMemory.set(key, to);
+      if (reducedMotion() || from === to || typeof requestAnimationFrame !== 'function') return;
+      const cur = el.dataset.obCurrency || 'ARS', start = performance.now(), dur = 520;
+      const frame = now => {
+        if (!el.isConnected) return;
+        const p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = money(from + (to - from) * e, cur);
+        if (p < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+
+  const tabButton = (key, label, count, picked) => `<button class="ob-tab ${S.tab === key ? 'active' : ''}" type="button" data-ob-tab="${key}">${label}${count ? ` <span class="ob-tab-count">${count}</span>` : ''}${picked ? `<span class="ob-tab-picked" title="${picked} seleccionados">${picked}</span>` : ''}</button>`;
+
   function render() {
     const screen = ensureShell();
     if (!screen) return;
+    const view = screen.firstElementChild ? captureView(screen) : null;
+    if (S.renderedTab !== S.tab) { S.extrasShown = false; S.tabChanged = Boolean(S.renderedTab); S.renderedTab = S.tab; }
+    if (!S.invoiceOpen) S.invoiceShown = false;
     closeRowActionMenu();
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
     document.querySelector('.topbar-right #obx-wrap')?.remove();
@@ -714,11 +875,24 @@
     // derecha, que es de donde sale.
     const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
-      <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios${serviceRows().length ? ` <span class="ob-tab-count">${serviceRows().length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes${S.tollRows.length ? ` <span class="ob-tab-count">${S.tollRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'extras' ? 'active' : ''}" type="button" data-ob-tab="extras">Adicionales${(S.extraRows || []).length ? ` <span class="ob-tab-count">${S.extraRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'private' ? 'active' : ''}" type="button" data-ob-tab="private">Particulares${(S.privRows || []).length ? ` <span class="ob-tab-count">${S.privRows.length}</span>` : ''}</button></div>
+      <div class="ob-toolbar"><div class="ob-tabs" role="tablist" aria-label="Qué facturar">${tabButton('services', 'Servicios', serviceRows().length, S.tab === 'services' ? 0 : S.selected.size)}${tabButton('tolls', 'Peajes', S.tollRows.length, S.tab === 'tolls' ? 0 : S.selectedTolls.size)}${tabButton('extras', 'Adicionales', (S.extraRows || []).length, S.tab === 'extras' ? 0 : S.selectedExcesses.size)}${tabButton('private', 'Particulares', (S.privRows || []).length, 0)}</div>
       <div class="ob-filters auxf-bar">${filtersMarkup()}<button class="ob-button ob-columns${colsFor(S.tab).isCustom() ? ' is-custom' : ''}" type="button" data-ob="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button>${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div>
-      ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
+      ${selectionMarkup()}<div class="ob-table-card${S.tabChanged ? ' is-switching' : ''}">${S.loading ? '<div class="ob-empty ob-loading"><span class="ob-spinner" aria-hidden="true"></span>Actualizando Facturación…</div>' : tableMarkup()}</div>
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;
+    S.tabChanged = false;
+    restoreView(screen, view);
+    tweenAmounts(screen);
+  }
+
+  /* Adicionales v2 trae quién cobra y el estado de facturación de cada excedente, sin
+     duplicar planificado y real. Si la base todavía no tiene la v2, se usa la v1 (sólo lectura). */
+  async function loadExtras(params) {
+    const v2 = await db().rpc('list_operator_billing_extras_v2', params);
+    if (!v2.error) return v2;
+    const v1 = await db().rpc('list_operator_billing_extras_v1', params);
+    if (v1.error || !Array.isArray(v1.data)) return v1;
+    return { data: v1.data.map(row => ({ ...row, line_key: row.excess_charge_id, invoiceable: false })), error: null };
   }
 
   async function load() {
@@ -731,7 +905,7 @@
         db().rpc('list_operator_billing_services_v3_km_v1', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
         db().rpc('list_operator_billing_tolls_v2', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
         db().rpc('list_operator_billing_private_v1_km_v1', { p_search: S.search || null, p_period_start: bounds.start, p_period_end: bounds.end }),
-        db().rpc('list_operator_billing_extras_v1', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end })
+        loadExtras({ p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end })
       ]);
       if (services.error) throw services.error;
       if (tolls.error) throw tolls.error;
@@ -823,10 +997,31 @@
     render();
   }
 
+  function toggleExcessSelection(id, on) {
+    if (S.invoiceBusy || !canInvoice() || !excessGroups().has(String(id))) return;
+    if (on) S.selectedExcesses.add(String(id)); else S.selectedExcesses.delete(String(id));
+    render();
+  }
+
+  function toggleAllExcesses(on) {
+    if (S.invoiceBusy || !canInvoice()) return;
+    for (const id of excessGroups(visibleExtraRows()).keys()) on ? S.selectedExcesses.add(id) : S.selectedExcesses.delete(id);
+    render();
+  }
+
+  function addRelatedExcesses() {
+    const related = relatedPendingExcesses();
+    if (!related.length || S.invoiceBusy) return;
+    related.forEach(g => S.selectedExcesses.add(g.service_id));
+    notify(`${plural(related.length, 'excedente sumado', 'excedentes sumados')} a la factura`, 'success');
+    render();
+  }
+
   function validateSelection() {
     const services = selectedRows();
     const tolls = selectedTollRows();
-    if (!services.length && !tolls.length) return 'Seleccioná al menos un servicio o peaje';
+    if (!services.length && !tolls.length && !S.selectedExcesses.size) return 'Seleccioná al menos un servicio, peaje o excedente';
+    if (selectedExcessGroups().length !== S.selectedExcesses.size) return 'La selección contiene excedentes que ya no están disponibles para facturar';
     if (!services.every(row => ['pending', 'reviewed'].includes(row.billing_status))) return 'La selección contiene servicios que ya no están disponibles para facturar';
     if (services.some(row => row.pricing_error)) return 'Corregí los errores tarifarios antes de facturar';
     if (tolls.some(row => row.invoiceable === false)) return 'La selección contiene peajes que ya no están disponibles para facturar';
@@ -872,11 +1067,12 @@
 
     const serviceIds = selectedRows().map(row => String(row.service_id));
     const tollIds = selectedTollRows().map(row => String(row.service_toll_id));
+    const excessIds = selectedExcessGroups().map(g => g.service_id);
     const form = S.invoiceForm;
     S.invoiceBusy = true;
     render();
     try {
-      const { data, error } = await db().rpc('create_operator_invoice_v4_km_v1', {
+      const payload = {
         p_service_ids: serviceIds,
         p_service_toll_ids: tollIds,
         p_document_type: form.document_type,
@@ -884,12 +1080,20 @@
         p_document_number: form.document_number.trim(),
         p_issued_on: form.issued_on,
         p_notes: form.notes.trim() || null
-      });
+      };
+      // Con excedentes de la Prestadora se usa la v5; sin ellos, la factura de siempre.
+      const { data, error } = excessIds.length
+        ? await db().rpc('create_operator_invoice_v5_km_v1', { ...payload, p_excess_service_ids: excessIds })
+        : await db().rpc('create_operator_invoice_v4_km_v1', payload);
       if (error) throw error;
       S.invoiceOpen = false;
       S.invoiceForm = null;
       clearSelection();
-      notify(`${data?.invoice_number || 'Factura'} creada · ${data?.service_count || 0} servicios · ${data?.toll_count || 0} peajes`, 'success');
+      const created = [
+        `${data?.service_count || 0} servicios`, `${data?.toll_count || 0} peajes`,
+        data?.excess_count ? `${data.excess_count} excedentes` : ''
+      ].filter(Boolean).join(' · ');
+      notify(`${data?.invoice_number || 'Factura'} creada · ${created}`, 'success');
       await load();
       if (window.OperatorInvoices?.open) window.OperatorInvoices.open(data?.invoice_id || null);
     } catch (error) {
@@ -996,6 +1200,8 @@
     if (event.target.matches('[data-ob-select-all]')) return toggleAll(event.target.checked);
     if (event.target.matches('[data-ob-toll-select]')) return toggleTollSelection(event.target.dataset.obTollSelect, event.target.checked);
     if (event.target.matches('[data-ob-toll-select-all]')) return toggleAllTolls(event.target.checked);
+    if (event.target.matches('[data-ob-excess-select]')) return toggleExcessSelection(event.target.dataset.obExcessSelect, event.target.checked);
+    if (event.target.matches('[data-ob-excess-select-all]')) return toggleAllExcesses(event.target.checked);
   }
 
   function onClick(event) {
@@ -1039,14 +1245,20 @@
 
     const tab = event.target.closest('[data-ob-tab]');
     if (tab) {
-      if (S.tab !== tab.dataset.obTab) clearSelection();
+      // La selección se conserva entre pestañas: una factura junta servicios, peajes y excedentes.
+      // Particulares se factura de a uno, así que entrar ahí sí la limpia.
+      if (S.tab !== tab.dataset.obTab && tab.dataset.obTab === 'private') clearSelection();
       S.tab = tab.dataset.obTab;
       S.invoiceOpen = false;
       return render();
     }
 
+    const extraFilter = event.target.closest('[data-ob-extra-filter]');
+    if (extraFilter) { S.extraCollector = extraFilter.dataset.obExtraFilter || 'all'; return render(); }
+
     const action = event.target.closest('[data-ob]')?.dataset.ob;
     if (!action) return;
+    if (action === 'add-related-excess') return addRelatedExcesses();
     if (action === 'refresh') return clearAndLoad();
     if (action === 'clear-selection') { clearSelection(); return render(); }
     if (action === 'invoice-selection') return openInvoice();
@@ -1087,7 +1299,8 @@
 
   Object.assign(B, {
     open, load, render, openDetail, clearSelection, canRead, canInvoice, canCorrect,
-    openInvoice, createInvoice, selectedRows, selectedTollRows
+    openInvoice, createInvoice, selectedRows, selectedTollRows, selectedExcessGroups,
+    _test: { excessGroups, extraBillingState, collectorPill, joinParts, selectionParts }
   });
   Object.assign(window, { abrirFacturacionOperador: open, cargarFacturacionOperador: load });
   document.readyState === 'loading'

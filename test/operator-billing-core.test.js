@@ -164,7 +164,7 @@ test('Facturación incorpora Peajes sin duplicar la carga operativa',()=>{
   assert.match(tollDesk,/operator_service_tolls/);
   assert.match(tollDesk,/cfg\.toll_billing_mode='separate'/);
   assert.match(tollDesk,/t\.payer_agent='provider'/);
-  assert.match(billing,/data-ob-tab="tolls">Peajes/);
+  assert.match(billing,/tabButton\('tolls', 'Peajes'/);
   assert.match(billing,/function tollTableMarkup/);
   assert.match(billing,/function tollRowMarkup/);
   assert.match(billing,/list_operator_billing_tolls_v2/);

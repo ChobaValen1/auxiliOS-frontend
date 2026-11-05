@@ -10,8 +10,8 @@ const sql = fs.readFileSync('migrations/20260928210000_facturacion_particulares_
 const config = fs.readFileSync('config.js', 'utf8');
 
 test('Facturación tiene las pestañas Adicionales y Particulares', () => {
-  assert.match(billing, /data-ob-tab="extras">Adicionales/);
-  assert.match(billing, /data-ob-tab="private">Particulares/);
+  assert.match(billing, /tabButton\('extras', 'Adicionales'/);
+  assert.match(billing, /tabButton\('private', 'Particulares'/);
   assert.match(billing, /list_operator_billing_private_v1/);
   assert.match(billing, /list_operator_billing_extras_v1/);
   // Los particulares salen de Servicios.

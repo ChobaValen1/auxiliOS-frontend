@@ -142,7 +142,7 @@
     const title = document.getElementById('topbar-title');
     const sub = document.getElementById('topbar-sub');
     if (title) title.textContent = 'Facturas';
-    if (sub) sub.textContent = 'Comprobantes · servicios · peajes · archivos · notas de crédito';
+    if (sub) sub.textContent = 'Comprobantes · servicios · peajes · excedentes · archivos · notas de crédito';
   }
 
   async function open(invoiceId = null) {
@@ -231,6 +231,7 @@
     { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
     { key: 'services', label: 'Servicios', td: row => esc(row.service_count || 0) },
     { key: 'tolls', label: 'Peajes', td: row => esc(row.toll_count || 0) },
+    { key: 'excesses', label: 'Excedentes', td: row => num(row.excess_count) ? `<span class="oi-excess-count">${esc(row.excess_count)}</span>` : '<span class="oi-muted">0</span>' },
     { key: 'total', label: 'Total', td: row => `<b class="oi-money">${esc(money(row.total_amount, row.currency))}</b>` },
     { key: 'status', label: 'Estado', td: row => `<span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span>` },
     { key: 'pdf', label: 'PDF', td: row => row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>' },
@@ -296,8 +297,20 @@
     </article>`;
   }
 
+  /* Excedentes que cobra la Prestadora: una línea por servicio con sus conceptos congelados. */
+  function excessLineMarkup(line) {
+    const service = line.service_snapshot || {};
+    const concepts = Array.isArray(line.excess_snapshot) ? line.excess_snapshot : [];
+    const detail = concepts.map(c => `<li><span>${esc(c.concept_name || 'Adicional')}${num(c.quantity) !== 1 ? ` × ${esc(num(c.quantity).toLocaleString('es-AR'))}` : ''}</span><b>${esc(money(c.total_amount, c.currency || line.currency))}</b></li>`).join('');
+    return `<article class="oi-line oi-excess-line ${released(line) ? 'released' : ''}">
+      <div class="oi-line-main"><b>${esc(service.service_order_number || service.service_number || 'Servicio')}</b><small>${esc(date(service.scheduled_for))} · ${esc(service.customer_name || 'Sin cliente')}</small><small>${esc(service.vehicle_plate || 'Sin patente')}</small>${releaseChip(line)}</div>
+      <div class="oi-line-route"><small>Conceptos · cobra la Prestadora</small><ul class="oi-excess-concepts">${detail || '<li><span>Excedentes</span></li>'}</ul></div>
+      <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.amount, line.currency))}</b><small>${esc(num(line.line_count) === 1 ? '1 concepto' : `${num(line.line_count)} conceptos`)}</small></div>
+    </article>`;
+  }
+
   /* Cuánto aporta cada tipo de servicio a la factura (sin contar lo liberado por anulación). */
-  function groupsMarkup(lines, tollLines, invoice) {
+  function groupsMarkup(lines, tollLines, invoice, excessLines = []) {
     const cur = invoice.currency;
     const groups = new Map();
     for (const line of lines.filter(l => !released(l))) {
@@ -311,9 +324,12 @@
     const rows = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es'))
       .map(([name, g]) => `<tr><td>${esc(name)}</td><td>${g.count}</td><td class="oi-money">${esc(money(g.amount, cur))}</td></tr>`);
     if (tolls.length) rows.push(`<tr><td>Peajes</td><td>${tolls.length}</td><td class="oi-money">${esc(money(tollAmount, cur))}</td></tr>`);
+    const excesses = excessLines.filter(l => !released(l));
+    const excessAmount = excesses.reduce((t, l) => t + num(l.amount), 0);
+    if (excesses.length) rows.push(`<tr><td>Excedentes de la Prestadora</td><td>${excesses.length}</td><td class="oi-money">${esc(money(excessAmount, cur))}</td></tr>`);
     if (!rows.length) return '';
-    const active = [...groups.values()].reduce((t, g) => t + g.amount, 0) + tollAmount;
-    const releasedCount = lines.filter(released).length + tollLines.filter(released).length;
+    const active = [...groups.values()].reduce((t, g) => t + g.amount, 0) + tollAmount + excessAmount;
+    const releasedCount = lines.filter(released).length + tollLines.filter(released).length + excessLines.filter(released).length;
     return `<section class="oi-section oi-groups"><h4>Qué incluye</h4><table class="oi-groups-table"><thead><tr><th>Tipo</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>${rows.join('')}</tbody><tfoot><tr><td colspan="2">${releasedCount ? 'Vigente' : 'Total'}</td><td class="oi-money">${esc(money(releasedCount ? active : invoice.total_amount, cur))}</td></tr></tfoot></table>${releasedCount ? `<p class="oi-groups-note">${releasedCount} ${releasedCount === 1 ? 'línea liberada' : 'líneas liberadas'} por anulación no se cuentan.</p>` : ''}</section>`;
   }
 
@@ -322,6 +338,7 @@
     const invoice = detail.invoice || {};
     const lines = Array.isArray(detail.lines) ? detail.lines : [];
     const tollLines = Array.isArray(detail.toll_lines) ? detail.toll_lines : [];
+    const excessLines = Array.isArray(detail.excess_lines) ? detail.excess_lines : [];
     const creditNote = detail.credit_note || null;
     const creditSection = creditNote
       ? `<section class="oi-section oi-credit"><h4>Nota de Crédito</h4><div class="oi-grid"><div><small>Comprobante</small><b>${esc(creditNumber(creditNote))}</b></div><div><small>Fecha</small><b>${esc(invoiceDate(creditNote.issued_on, creditNote.created_at))}</b></div><div><small>Importe</small><b>${esc(money(creditNote.amount, creditNote.currency))}</b></div><div><small>Alcance</small><b>Total</b></div></div></section>`
@@ -330,19 +347,22 @@
     return `<aside class="oi-detail">
       <div class="oi-detail-head"><div><small>Factura · ${esc(statusLabel(invoice.status))}</small><h3>${esc(invoice.invoice_number || 'Factura')}</h3></div><div class="oi-detail-head-actions"><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(invoice.invoice_id)}" aria-haspopup="menu" aria-expanded="false">Acciones ${ico('ellipsis')}</button><button class="oi-button" type="button" data-oi="close-detail">${ico('x')}Cerrar</button></div></div>
       <div class="oi-detail-body">
-        <div class="oi-summary"><article><small>Prestadora</small><b>${esc(invoice.company_name || '—')}</b></article><article><small>Servicios</small><b>${esc(invoice.service_count || 0)}</b></article><article><small>Peajes</small><b>${esc(invoice.toll_count || 0)}</b></article><article><small>Total</small><b>${esc(money(invoice.total_amount, invoice.currency))}</b></article></div>
+        <div class="oi-summary"><article><small>Prestadora</small><b>${esc(invoice.company_name || '—')}</b></article><article><small>Servicios</small><b>${esc(invoice.service_count || 0)}</b></article><article><small>Peajes</small><b>${esc(invoice.toll_count || 0)}</b></article>${num(invoice.excess_count) || excessLines.length ? `<article><small>Excedentes</small><b>${esc(invoice.excess_count || excessLines.length)}</b></article>` : ''}<article><small>Total</small><b>${esc(money(invoice.total_amount, invoice.currency))}</b></article></div>
         <section class="oi-section"><h4>Datos de factura</h4><div class="oi-grid"><div><small>Fecha de emisión</small><b>${esc(invoiceDate(invoice.issued_on, invoice.created_at))}</b></div><div><small>Creada por</small><b>${esc(invoice.created_by_name || 'Usuario')}</b></div><div><small>Estado</small><b>${esc(statusLabel(invoice.status))}</b></div><div><small>Moneda</small><b>${esc(invoice.currency || 'ARS')}</b></div><div><small>PDF</small><b>${invoice.pdf_path ? esc(invoice.pdf_name || 'Adjunto') : 'Sin PDF'}</b></div>${invoice.notes ? `<div><small>Observaciones</small><b>${esc(invoice.notes)}</b></div>` : ''}${invoice.cancellation_reason ? `<div class="oi-wide"><small>Motivo de anulación</small><b>${esc(invoice.cancellation_reason)}</b></div>` : ''}</div></section>
         ${creditSection}
-        ${groupsMarkup(lines, tollLines, invoice)}
+        ${groupsMarkup(lines, tollLines, invoice, excessLines)}
         ${lines.length ? `<section class="oi-section"><h4>Servicios facturados</h4><div class="oi-lines">${lines.map(lineMarkup).join('')}</div></section>` : ''}
         ${tollLines.length ? `<section class="oi-section"><h4>Peajes facturados</h4><div class="oi-lines">${tollLines.map(tollLineMarkup).join('')}</div></section>` : ''}
-        ${!lines.length && !tollLines.length ? '<section class="oi-section"><div class="oi-empty">La factura no tiene líneas.</div></section>' : ''}
+        ${excessLines.length ? `<section class="oi-section"><h4>Excedentes facturados <small>cobra la Prestadora</small></h4><div class="oi-lines">${excessLines.map(excessLineMarkup).join('')}</div></section>` : ''}
+        ${!lines.length && !tollLines.length && !excessLines.length ? '<section class="oi-section"><div class="oi-empty">La factura no tiene líneas.</div></section>' : ''}
       </div>
     </aside>`;
   }
 
   function conceptCountText(row) {
-    return `${num(row.service_count)} servicios y ${num(row.toll_count)} peajes`;
+    const parts = [`${num(row.service_count)} servicios`, `${num(row.toll_count)} peajes`];
+    if (num(row.excess_count)) parts.push(`${num(row.excess_count)} excedentes`);
+    return parts.length > 2 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts.join(' y ');
   }
 
   function actionModalMarkup() {
@@ -384,7 +404,7 @@
 
   function filtersMarkup(opts) {
     const F = window.AuxFilters;
-    const searchInput = `<label class="auxf-search"><span aria-hidden="true">${ico('search')}</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">${ico('search')}</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio, peaje o excedente…" value="${esc(S.search)}"></label>`;
     if (!F) return `${searchInput}<select class="oi-filter" id="oi-company-filter">${opts.companies}</select><select class="oi-filter" id="oi-period-filter">${opts.periods}</select>`;
     const count = [S.search.trim(), S.company, S.periodSel.mode !== 'all'].filter(Boolean).length;
     return searchInput
@@ -499,7 +519,8 @@
       if (error) throw error;
       S.action = null;
       S.detail = null;
-      notify(`Factura anulada · ${num(data?.released_service_count)} servicios y ${num(data?.released_toll_count)} peajes volvieron a Facturación`, 'success');
+      const excessText = num(data?.released_excess_count) ? `, ${num(data.released_excess_count)} excedentes` : '';
+      notify(`Factura anulada · ${num(data?.released_service_count)} servicios${excessText} y ${num(data?.released_toll_count)} peajes volvieron a Facturación`, 'success');
       await load();
     } catch (error) {
       notify(error.message || 'No se pudo anular la factura', 'error');
@@ -597,6 +618,7 @@
       const invoice = detail?.invoice || {};
       const lines = Array.isArray(detail?.lines) ? detail.lines : [];
       const tollLines = Array.isArray(detail?.toll_lines) ? detail.toll_lines : [];
+      const excessLines = Array.isArray(detail?.excess_lines) ? detail.excess_lines : [];
       const excel = window.AuxiliosExcelExport;
       if (!excel) throw new Error('El exportador Excel todavía no está disponible');
       excel.ensureReady?.();
@@ -612,6 +634,7 @@
         { label: 'Estado', value: statusLabel(invoice.status) },
         { label: 'Servicios', value: String(invoice.service_count || lines.length) },
         { label: 'Peajes', value: String(invoice.toll_count || tollLines.length) },
+        { label: 'Excedentes de la Prestadora', value: String(invoice.excess_count || excessLines.length) },
         { label: 'Total', value: num(invoice.total_amount) },
         { label: 'Moneda', value: invoice.currency || 'ARS' }
       ];
@@ -683,6 +706,38 @@
         sheets.push({ name: 'Peajes', columns: tollColumns, rows: tollRows });
       }
 
+      if (excessLines.length) {
+        // Una fila por concepto, para que la factura se pueda armar renglón por renglón.
+        const excessColumns = [
+          { header: 'Línea', width: 9, key: 'line_number', type: 'number' },
+          { header: 'N° Orden', width: 18, key: 'order' },
+          { header: 'Servicio', width: 18, key: 'service_number' },
+          { header: 'Fecha', width: 14, key: 'scheduled_for' },
+          { header: 'Cliente', width: 24, key: 'customer' },
+          { header: 'Patente', width: 14, key: 'plate' },
+          { header: 'Concepto', width: 28, key: 'concept' },
+          { header: 'Cantidad', width: 10, key: 'quantity', type: 'number' },
+          { header: 'Precio unitario', width: 16, key: 'unit_amount', type: 'number' },
+          { header: 'Importe', width: 16, key: 'amount', type: 'number' },
+          { header: 'Moneda', width: 10, key: 'currency' },
+          { header: 'Estado vínculo', width: 18, key: 'link_status' }
+        ];
+        const excessRows = excessLines.flatMap(line => {
+          const service = line.service_snapshot || {};
+          const concepts = Array.isArray(line.excess_snapshot) && line.excess_snapshot.length ? line.excess_snapshot : [{ concept_name: 'Excedentes', quantity: 1, unit_amount: line.amount, total_amount: line.amount }];
+          return concepts.map(c => ({
+            line_number: line.line_number,
+            order: service.service_order_number || '', service_number: service.service_number || '',
+            scheduled_for: invoiceDate(String(service.scheduled_for || '').slice(0, 10), service.scheduled_for),
+            customer: service.customer_name || '', plate: service.vehicle_plate || '',
+            concept: c.concept_name || 'Adicional', quantity: num(c.quantity || 1), unit_amount: num(c.unit_amount),
+            amount: num(c.total_amount), currency: c.currency || line.currency || invoice.currency || 'ARS',
+            link_status: line.released_at ? 'Liberado por anulación' : 'Facturado'
+          }));
+        });
+        sheets.push({ name: 'Excedentes', columns: excessColumns, rows: excessRows });
+      }
+
       excel.download({ filename: `AuxiliOS_${cleanFilePart(invoice.invoice_number || 'Factura')}`, sheets, detalle: `Factura ${invoice.invoice_number || ''}`.trim() });
     } catch (error) {
       notify(error.message || 'No se pudo descargar el Excel', 'error');
@@ -703,6 +758,7 @@
       { id: 'company', header: 'Prestadora', width: 26, value: row => row.company_name || '' },
       { id: 'services', header: 'Servicios', width: 10, type: 'number', value: row => num(row.service_count) },
       { id: 'tolls', header: 'Peajes', width: 10, type: 'number', value: row => num(row.toll_count) },
+      { id: 'excesses', header: 'Excedentes', width: 12, type: 'number', value: row => num(row.excess_count) },
       { id: 'total', header: 'Total', width: 16, type: 'number', value: row => num(row.total_amount) },
       { id: 'currency', header: 'Moneda', width: 8, value: row => row.currency || 'ARS' },
       { id: 'status', header: 'Estado', width: 14, value: row => statusLabel(row.status) },
