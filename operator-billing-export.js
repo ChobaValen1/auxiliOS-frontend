@@ -82,7 +82,6 @@ const collectorOf=r=>r?.collector_agent==='provider'?'provider':'company';
 function excessState(r){if(collectorOf(r)==='company')return'Cobro al cliente';if(r.invoice_number)return'Facturado a la Prestadora';return r.invoiceable===true?'Para facturar a la Prestadora':'Sin datos de facturación'}
 const excessColumns=[
  serviceColumn('order','N° Orden',18,r=>r.service_order_number||r.service_number||''),
- serviceColumn('service_number','N° Interno',20,r=>r.service_number||''),
  serviceColumn('date','Fecha',12,r=>parts(r.scheduled_for).date),
  serviceColumn('time','Hora',8,r=>parts(r.scheduled_for).time),
  serviceColumn('company','Prestadora',24,r=>r.company_name||''),
