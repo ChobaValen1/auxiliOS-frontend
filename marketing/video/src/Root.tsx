@@ -11,6 +11,7 @@ import { Adivina, ADIVINA_DUR } from "./gastos/Adivina";
 import { FPS60, Gancho, GANCHO_DUR } from "./reel/Gancho";
 import { Desarrollo, DESARROLLO_DUR } from "./reel/Desarrollo";
 import { COMPLETO_DUR, ReelCompleto } from "./reel/Completo";
+import { Cierre, CIERRE_DUR } from "./reel/Cierre";
 import { MG_P1, MG_P2, MG_P3, MGPaso1, MGPaso2, MGPaso3, MONOGRUA_DUR, MonoGruaVideo } from "./monogrua/v2/Video";
 import * as SoloRef from "./solo/Screens";
 import { AdVideo, AD_DURATION } from "./AdVideo";
@@ -66,6 +67,8 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Reel-Gancho" component={Gancho} width={W} height={H} fps={FPS60} durationInFrames={GANCHO_DUR} defaultProps={{ guia: false }} />
       <Composition id="Reel-Gancho-Guia" component={Gancho} width={W} height={H} fps={FPS60} durationInFrames={GANCHO_DUR} defaultProps={{ guia: true }} />
       <Composition id="Reel-Completo" component={ReelCompleto} width={W} height={H} fps={FPS60} durationInFrames={COMPLETO_DUR} defaultProps={{ guia: false }} />
+      <Composition id="Reel-Completo-Guia" component={ReelCompleto} width={W} height={H} fps={FPS60} durationInFrames={COMPLETO_DUR} defaultProps={{ guia: true }} />
+      <Composition id="Reel-Cierre-Guia" component={Cierre} width={W} height={H} fps={FPS60} durationInFrames={CIERRE_DUR} defaultProps={{ guia: true }} />
       <Composition id="Reel-Desarrollo" component={Desarrollo} width={W} height={H} fps={FPS60} durationInFrames={DESARROLLO_DUR} defaultProps={{ guia: false }} />
       <Composition id="Reel-Desarrollo-Guia" component={Desarrollo} width={W} height={H} fps={FPS60} durationInFrames={DESARROLLO_DUR} defaultProps={{ guia: true }} />
     </Folder>
