@@ -14,9 +14,13 @@ import { Billete, Camara, Grano, Toma } from "./Gancho";
 const W = SAFE.right - SAFE.left;
 const AMBER = "#f5a623";
 const INK = "#14161b";
-const MUTED = "#6b7285";
-const LINE = "#e3e6ec";
-const CARD: React.CSSProperties = { background: "#fff", borderRadius: 44, boxShadow: "0 40px 90px rgba(23,28,45,.16), 0 6px 18px rgba(23,28,45,.06)" };
+// Las tarjetas de la app van en negro sobre el fondo claro
+const TXT = "#f2f3f6";
+const MUTED = "#9aa3b8";
+const LINE = "#2a2f3a";
+const SOFT = "#1f232c";
+const OKBG = "rgba(245,166,35,.16)";
+const CARD: React.CSSProperties = { background: "#14161b", borderRadius: 44, boxShadow: "0 40px 90px rgba(10,12,18,.35), 0 6px 18px rgba(10,12,18,.2)", border: "1px solid rgba(255,255,255,.06)" };
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
 const r = (f: number, a: number, b: number, e = ease) => interpolate(f, [a, b], [0, 1], { ...clamp, easing: e });
@@ -25,7 +29,7 @@ const money = (n: number) => "$ " + Math.round(n).toString().replace(/\B(?=(\d{3
 
 // Voz en off (prueba), en cuadros a 60 fps
 const VOZ: { src: string; at: number; dur: number; texto: string }[] = [
-  { src: "vo/desarrollo-l1.wav", at: 96, dur: 149, texto: "Con AuxiliOS, cada servicio queda en tu celular." },
+  { src: "vo/desarrollo-l1.wav", at: 96, dur: 147, texto: "Con AuxiliOS, cada servicio queda en tu celular." },
   { src: "vo/desarrollo-l2.wav", at: 312, dur: 122, texto: "El remito, con fotos y firma, al toque." },
   { src: "vo/desarrollo-l3.wav", at: 576, dur: 60, texto: "Te avisa quién te debe." },
   { src: "vo/desarrollo-l4.wav", at: 756, dur: 110, texto: "Y sabés cuánto te deja cada servicio." },
@@ -153,21 +157,21 @@ const Servicios: React.FC<{ f: number }> = ({ f }) => {
   return (
     <div style={{ position: "absolute", left: SAFE.left, width: W, top: 470, height: 640, ...CARD, padding: "36px 40px", opacity: e, translate: `0px ${(1 - e) * 80}px` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 44, color: INK }}>Hoy</span>
+        <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 44, color: TXT }}>Hoy</span>
         <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: MUTED }}>jueves 5 · 3 servicios</span>
       </div>
       {SERVICIOS.map(([h, quien, ruta, monto, ok], i) => {
         const k = r(f, S0 + 44 + i * 14, S0 + 64 + i * 14);
         return (
           <div key={h} style={{ display: "flex", alignItems: "center", gap: 22, height: 164, borderTop: i ? `2px solid ${LINE}` : "none", marginTop: i ? 0 : 18, opacity: k, translate: `${(1 - k) * 60}px 0px` }}>
-            <span style={{ width: 84, height: 84, borderRadius: 26, background: ok ? "#fff4df" : AMBER, color: ok ? AMBER : INK, display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <span style={{ width: 84, height: 84, borderRadius: 26, background: ok ? OKBG : AMBER, color: ok ? AMBER : INK, display: "grid", placeItems: "center", flexShrink: 0 }}>
               <Ico n={ok ? "check" : "route"} s={20} w={2.8} />
             </span>
             <span style={{ flex: 1 }}>
-              <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: INK }}>{quien}</div>
+              <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: TXT }}>{quien}</div>
               <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 27, color: MUTED }}>{h} · {ruta}</div>
             </span>
-            <span style={{ fontFamily: ok ? mono : sans, fontWeight: 700, fontSize: ok ? 32 : 26, color: ok ? INK : AMBER, padding: ok ? 0 : "8px 16px", borderRadius: 999, border: ok ? "none" : `3px solid ${AMBER}`, opacity: ok ? 1 : 0.6 + 0.4 * Math.abs(Math.sin(f / 14)) }}>{monto}</span>
+            <span style={{ fontFamily: ok ? mono : sans, fontWeight: 700, fontSize: ok ? 32 : 26, color: ok ? TXT : AMBER, padding: ok ? 0 : "8px 16px", borderRadius: 999, border: ok ? "none" : `3px solid ${AMBER}`, opacity: ok ? 1 : 0.6 + 0.4 * Math.abs(Math.sin(f / 14)) }}>{monto}</span>
           </div>
         );
       })}
@@ -190,7 +194,7 @@ const Remito: React.FC<{ f: number }> = ({ f }) => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>
           <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 24, letterSpacing: 3, color: MUTED }}>REMITO N.º 0483</div>
-          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 38, color: INK, marginTop: 4 }}>Chevrolet Vectra · Martín Gómez</div>
+          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 38, color: TXT, marginTop: 4 }}>Chevrolet Vectra · Martín Gómez</div>
         </span>
       </div>
       {/* fotos del vehículo */}
@@ -200,24 +204,24 @@ const Remito: React.FC<{ f: number }> = ({ f }) => {
           const k = pop(f, at, at + 14);
           const flash = interpolate(f, [at, at + 2, at + 12], [0, 1, 0], clamp);
           return (
-            <div key={n} style={{ position: "relative", height: 168, borderRadius: 24, overflow: "hidden", background: "#f1f2f5", border: `2px dashed ${f >= at ? "transparent" : LINE}` }}>
-              {f >= at ? <Img src={staticFile(`fotos/${n}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover", scale: 0.85 + k * 0.15, opacity: Math.min(1, k * 1.2) }} /> : <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#b8bdc9" }}><Ico n="camera" s={22} /></div>}
+            <div key={n} style={{ position: "relative", height: 168, borderRadius: 24, overflow: "hidden", background: SOFT, border: `2px dashed ${f >= at ? "transparent" : LINE}` }}>
+              {f >= at ? <Img src={staticFile(`fotos/${n}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover", scale: 0.85 + k * 0.15, opacity: Math.min(1, k * 1.2) }} /> : <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#5a6278" }}><Ico n="camera" s={22} /></div>}
               <div style={{ position: "absolute", inset: 0, background: "#fff", opacity: flash * 0.9 }} />
             </div>
           );
         })}
       </div>
       {/* firma */}
-      <div style={{ position: "relative", marginTop: 22, height: 168, borderRadius: 24, background: "#f6f7f9", border: `2px solid ${LINE}`, overflow: "hidden" }}>
-        <span style={{ position: "absolute", left: 22, top: 14, fontFamily: sans, fontWeight: 700, fontSize: 24, color: MUTED }}>Firma del cliente</span>
-        <div style={{ position: "absolute", left: "10%", right: "10%", bottom: 34, borderTop: `2px dashed ${LINE}` }} />
+      <div style={{ position: "relative", marginTop: 22, height: 168, borderRadius: 24, background: "#f6f7f9", border: "2px solid #2a2f3a", overflow: "hidden" }}>
+        <span style={{ position: "absolute", left: 22, top: 14, fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#6b7285" }}>Firma del cliente</span>
+        <div style={{ position: "absolute", left: "10%", right: "10%", bottom: 34, borderTop: "2px dashed #d5d9e1" }} />
         <div style={{ position: "absolute", inset: "16px 60px 10px" }}>{f >= FIRMA0 ? <Firma ms={firmaMs} color="#1b2a6b" stroke={10} /> : null}</div>
       </div>
       {/* enviar */}
       <div
         style={{
           marginTop: 22, height: 104, borderRadius: 30, display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: sans, fontWeight: 700, fontSize: 38,
-          background: enviado ? "#fff4df" : AMBER, color: enviado ? "#b06f0a" : INK, scale: press, boxShadow: enviado ? "none" : "0 18px 40px rgba(245,166,35,.4)",
+          background: enviado ? OKBG : AMBER, color: enviado ? AMBER : INK, scale: press, boxShadow: enviado ? "none" : "0 18px 40px rgba(245,166,35,.4)",
         }}
       >
         {enviado ? <><Ico n="check" s={18} w={3} /> Enviado al cliente</> : <><Ico n="msg" s={18} w={2.4} /> Enviar por WhatsApp</>}
@@ -249,26 +253,26 @@ const Cobro: React.FC<{ f: number }> = ({ f }) => {
             <span>AuxiliOS</span>
             <span>ahora</span>
           </div>
-          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: INK }}>{cobrado ? "Asistencia del Sur te pagó" : "Asistencia del Sur te debe $ 220.500"}</div>
-          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 27, color: cobrado ? "#b06f0a" : MUTED }}>{cobrado ? "Cobrado el 05/12 ✓" : "Venció el 22/11 · hace 12 días"}</div>
+          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: TXT }}>{cobrado ? "Asistencia del Sur te pagó" : "Asistencia del Sur te debe $ 220.500"}</div>
+          <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 27, color: cobrado ? AMBER : MUTED }}>{cobrado ? "Cobrado el 05/12 ✓" : "Venció el 22/11 · hace 12 días"}</div>
         </span>
       </div>
       <div style={{ position: "absolute", left: SAFE.left, width: W, top: 590, height: 470, ...CARD, padding: "34px 40px", opacity: tarjeta, translate: `0px ${(1 - tarjeta) * 80}px`, boxShadow: cobrado ? `0 0 ${80 * flip}px rgba(245,166,35,.35), ${CARD.boxShadow}` : CARD.boxShadow }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <span style={{ width: 80, height: 80, borderRadius: "50%", background: INK, color: "#fff", display: "grid", placeItems: "center", fontFamily: mono, fontWeight: 700, fontSize: 28 }}>AS</span>
+          <span style={{ width: 80, height: 80, borderRadius: "50%", background: "#2a2f3a", color: TXT, display: "grid", placeItems: "center", fontFamily: mono, fontWeight: 700, fontSize: 28 }}>AS</span>
           <span>
-            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 38, color: INK }}>Asistencia del Sur</div>
+            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 38, color: TXT }}>Asistencia del Sur</div>
             <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 27, color: MUTED }}>{cobrado ? "Cobrado" : "Por cobrar"} · 4 remitos de octubre</div>
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 26, fontFamily: mono, fontWeight: 700, fontSize: 104, color: INK, lineHeight: 1, scale: cobrado ? 1 + (1 - flip) * 0.08 : 1, transformOrigin: "0 50%" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 26, fontFamily: mono, fontWeight: 700, fontSize: 104, color: TXT, lineHeight: 1, scale: cobrado ? 1 + (1 - flip) * 0.08 : 1, transformOrigin: "0 50%" }}>
           {cobrado ? <span style={{ color: AMBER }}><Ico n="check" s={30} w={3.2} /></span> : null}
           {money(220500)}
         </div>
         <div
           style={{
             marginTop: 34, height: 104, borderRadius: 30, display: "flex", alignItems: "center", justifyContent: "center", gap: 14, fontFamily: sans, fontWeight: 700, fontSize: 38,
-            background: cobrado ? "#fff4df" : AMBER, color: cobrado ? "#b06f0a" : INK, scale: press, boxShadow: cobrado ? "none" : "0 18px 40px rgba(245,166,35,.4)",
+            background: cobrado ? OKBG : AMBER, color: cobrado ? AMBER : INK, scale: press, boxShadow: cobrado ? "none" : "0 18px 40px rgba(245,166,35,.4)",
           }}
         >
           {cobrado ? <><Ico n="check" s={18} w={3} /> Cobrado</> : <><Ico n="cash" s={18} w={2.4} /> Marcar cobrado</>}
@@ -302,10 +306,10 @@ const Numeros: React.FC<{ f: number }> = ({ f }) => {
       </div>
       <div style={{ position: "absolute", left: SAFE.left, width: W, top: 360, height: 600, ...CARD, padding: "34px 40px", opacity: e, scale: 0.94 + e * 0.06 }}>
         <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 24, letterSpacing: 3, color: AMBER }}>
-          AUXILI<span style={{ color: INK }}>OS</span> · MIS NÚMEROS
+          AUXILI<span style={{ color: TXT }}>OS</span> · MIS NÚMEROS
         </div>
         <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: MUTED, marginTop: 26 }}>En noviembre te quedaron</div>
-        <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 112, color: INK, lineHeight: 1.1, marginTop: 4, whiteSpace: "nowrap" }}>{money(v)}</div>
+        <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 112, color: TXT, lineHeight: 1.1, marginTop: 4, whiteSpace: "nowrap" }}>{money(v)}</div>
         <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: MUTED, marginTop: 6, opacity: r(f, S3 + 70, S3 + 84) }}>
           Facturaste $ 3.600.000 · gastaste $ 1.790.000
         </div>
@@ -314,9 +318,9 @@ const Numeros: React.FC<{ f: number }> = ({ f }) => {
             const k = pop(f, S3 + 110 + i * 8, S3 + 126 + i * 8);
             const hot = i === 0;
             return (
-              <div key={l} style={{ flex: 1, borderRadius: 26, padding: "16px 18px", background: hot ? "#fff4df" : "#f4f5f8", border: `3px solid ${hot ? AMBER : "transparent"}`, opacity: k, scale: 0.85 + k * 0.15 }}>
+              <div key={l} style={{ flex: 1, borderRadius: 26, padding: "16px 18px", background: hot ? OKBG : SOFT, border: `3px solid ${hot ? AMBER : "transparent"}`, opacity: k, scale: 0.85 + k * 0.15 }}>
                 <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: MUTED }}>{l}</div>
-                <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 36, color: hot ? "#b06f0a" : INK, marginTop: 2 }}>{val}</div>
+                <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 36, color: hot ? AMBER : TXT, marginTop: 2 }}>{val}</div>
               </div>
             );
           })}
