@@ -8,7 +8,6 @@ import { Logo } from "../scenes/Logo";
 import { Ico } from "../solo/ui";
 import { Firma } from "../solo/Firma";
 import { Billete, Camara, Grano, Toma } from "./Gancho";
-import ruta from "../mapa/route.json";
 
 // Reel nuevo, parte 2: la transición (de lo oscuro a lo claro) y el desarrollo con la app.
 // Fondo claro, tarjetas blancas que flotan, cámara que no para, cortes con desenfoque. 60 fps.
@@ -36,7 +35,7 @@ const VOZ: { src: string; at: number; dur: number; texto: string }[] = [
   { src: "vo/desarrollo-l4.wav", at: 756, dur: 110, texto: "Y sabés cuánto te deja cada servicio." },
 ];
 const S0 = 150, S1 = 300, S2 = 560, S3 = 740;
-export const DESARROLLO_DUR = 1020;
+export const DESARROLLO_DUR = 1110;
 
 // Subtítulo palabra por palabra, abajo de las tarjetas
 const Subtitulo: React.FC<{ f: number }> = ({ f }) => {
@@ -283,149 +282,99 @@ const Cobro: React.FC<{ f: number }> = ({ f }) => {
   );
 };
 
-// ── 3 · Sabés cuánto te deja cada servicio: el taxímetro del tramo ─
-// Recorrido real (OSRM) Base → Origen → Destino → Base, 22 km, en píxeles del mapa (1080×1920)
-type Pt = [number, number];
-const LEGS = (ruta.legs as unknown as { km: number; points: Pt[] }[]).map((l) => l.points);
-const SEGS = LEGS.map((pts) => {
-  const acc = [0];
-  for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-  return acc;
-});
-const LARGO = SEGS.reduce((s, a) => s + a[a.length - 1], 0);
-const KM = ruta.legs.reduce((s, l) => s + l.km, 0); // 22
-// Punto del recorrido a una distancia dada, con el rumbo para girar la grúa
-const enRuta = (d: number): { p: Pt; ang: number; leg: number; dLeg: number } => {
-  let rest = Math.max(0, Math.min(LARGO - 0.01, d));
-  for (let l = 0; l < LEGS.length; l++) {
-    const acc = SEGS[l], pts = LEGS[l], tot = acc[acc.length - 1];
-    if (rest <= tot) {
-      let i = 1;
-      while (i < acc.length - 1 && acc[i] < rest) i++;
-      const k = (rest - acc[i - 1]) / (acc[i] - acc[i - 1] || 1);
-      const p: Pt = [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k];
-      return { p, ang: Math.atan2(pts[i][1] - pts[i - 1][1], pts[i][0] - pts[i - 1][0]), leg: l, dLeg: rest };
-    }
-    rest -= tot;
-  }
-  const last = LEGS[LEGS.length - 1];
-  return { p: last[last.length - 1], ang: 0, leg: LEGS.length - 1, dLeg: SEGS[LEGS.length - 1].slice(-1)[0] };
-};
-const tramoHasta = (leg: number, d: number): Pt[] => {
-  const pts = LEGS[leg], acc = SEGS[leg];
-  const out: Pt[] = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    if (acc[i] <= d) { out.push(pts[i]); continue; }
-    const k = (d - acc[i - 1]) / (acc[i] - acc[i - 1] || 1);
-    out.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k]);
-    break;
-  }
-  return out;
-};
+// ── 3 · Sabés cuánto te deja cada servicio: el tramo y la suma de los gastos ─
 const COBRO = 112500;
+const KM = 22;
+// Cada gasto entra cuando la grúa pasa por su punto del tramo (fracción del recorrido)
 const PARADAS: [string, string, number, number][] = [
   ["⛽", "Gasoil", 22250, 0.2],
-  ["🛞", "Desgaste", 9375, 0.44],
-  ["🍔", "Comida y peajes", 4875, 0.64],
-  ["🛡️", "Fijos", 19437, 0.86],
+  ["🛞", "Desgaste (cubiertas, taller)", 9375, 0.42],
+  ["🍔", "Comida y peajes", 4875, 0.62],
+  ["🛡️", "Fijos (seguro, monotributo…)", 19437, 0.84],
 ];
-const DEJA = COBRO - PARADAS.reduce((s, x) => s + x[2], 0); // 56.563
-const VIAJE0 = S3 + 26, VIAJE1 = S3 + 214;
-const MAPA = { top: 590, h: 560, z: 1.12 };
-const TRAMOS = [
-  { color: "rgba(245,166,35,.75)", w: 7, dash: "14 12" },
-  { color: AMBER, w: 12, dash: undefined },
-  { color: "rgba(230,232,238,.6)", w: 7, dash: "3 14" },
+const GASTOS = PARADAS.reduce((s, x) => s + x[2], 0); // 55.937
+const DEJA = COBRO - GASTOS; // 56.563
+const VIAJE0 = S3 + 30, VIAJE1 = S3 + 250;
+const llegaA = (k: number) => Math.round(VIAJE0 + k * (VIAJE1 - VIAJE0));
+const FINAL = VIAJE1 + 14;
+// Puntos del tramo real: base → origen (4,1 km) → destino (+7,9 km) → base (+10 km)
+const HITOS: [string, number][] = [
+  ["Base", 0],
+  ["Monte Grande", 4.1 / KM],
+  ["Lomas", 12 / KM],
+  ["Base", 1],
 ];
-const Display: React.FC<{ v: number; size: number; color: string }> = ({ v, size, color }) => (
-  <span style={{ position: "relative", fontFamily: mono, fontWeight: 700, fontSize: size, lineHeight: 1, whiteSpace: "nowrap" }}>
-    <span style={{ position: "absolute", right: 0, top: 0, color: "rgba(255,255,255,.05)", whiteSpace: "nowrap" }}>$ 888.888</span>
-    <span style={{ position: "relative", color, textShadow: `0 0 18px ${color}66` }}>{money(v)}</span>
-  </span>
-);
+const LX0 = 40, LW = 790;
 const Numeros: React.FC<{ f: number }> = ({ f }) => {
   const e = r(f, S3, S3 + 18);
-  const k = interpolate(f, [VIAJE0, VIAJE1], [0, 1], { ...clamp, easing: Easing.inOut(Easing.quad) });
-  const d = k * LARGO;
-  const { p, ang, leg, dLeg } = enRuta(d);
-  const cobra = COBRO * k;
-  let queda = cobra;
-  let golpe = 0;
-  PARADAS.forEach(([, , v, at]) => {
-    const hit = Math.max(0, Math.min(1, (k - at) / 0.03));
-    queda -= v * hit;
-    if (hit > 0 && hit < 1) golpe = Math.sin(hit * Math.PI) * 8;
-  });
-  const llego = r(f, VIAJE1, VIAJE1 + 16);
-  // cámara del mapa que sigue a la grúa
-  const z = MAPA.z;
-  const camX = Math.max(0, Math.min(1080 * z - W, p[0] * z - W / 2));
-  const camY = Math.max(0, Math.min(1920 * z - MAPA.h, p[1] * z - MAPA.h / 2));
-  const pin = (q: Pt, label: string, at: number, izq = false) => {
-    const s = pop(f, at, at + 14);
-    return (
-      <div key={label} style={{ position: "absolute", left: q[0], top: q[1], width: 0, height: 0, scale: s }}>
-        <div style={{ position: "absolute", left: -15, top: -15, width: 30, height: 30, borderRadius: "50%", background: "#fff", border: `7px solid ${AMBER}`, boxShadow: "0 4px 14px rgba(0,0,0,.6)" }} />
-        <div style={{ position: "absolute", ...(izq ? { right: 24 } : { left: 24 }), top: -22, padding: "6px 12px", borderRadius: 12, background: "rgba(12,14,18,.92)", border: "1px solid rgba(255,255,255,.12)", fontFamily: sans, fontWeight: 700, fontSize: 24, color: TXT, whiteSpace: "nowrap" }}>{label}</div>
-      </div>
-    );
-  };
+  const e2 = r(f, S3 + 8, S3 + 26);
+  const k = interpolate(f, [VIAJE0, VIAJE1], [0, 1], clamp);
+  // subtotal de gastos que va sumando
+  const sumado = PARADAS.reduce((s, [, , v, at]) => s + v * r(f, llegaA(at), llegaA(at) + 14), 0);
+  const golpe = PARADAS.reduce((g, [, , , at]) => {
+    const t = f - llegaA(at);
+    return t >= 0 && t < 12 ? Math.sin(t * 2.6) * 8 * (1 - t / 12) : g;
+  }, 0);
+  const fin = pop(f, FINAL, FINAL + 18);
+  const deja = interpolate(f, [FINAL, FINAL + 30], [0, DEJA], { ...clamp, easing: Easing.out(Easing.cubic) });
   return (
     <>
-      {/* el taxímetro */}
-      <div style={{ position: "absolute", left: SAFE.left, width: W, top: 330, height: 236, ...CARD, padding: "22px 34px", opacity: e, translate: `${golpe}px ${(1 - e) * -40}px`, boxShadow: llego > 0 ? `0 0 ${90 * llego}px rgba(245,166,35,.45), ${CARD.boxShadow}` : CARD.boxShadow }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 22, letterSpacing: 3, color: AMBER }}>
-            AUXILI<span style={{ color: TXT }}>OS</span> · ESTE SERVICIO
-          </span>
-          <span style={{ display: "flex", alignItems: "baseline", gap: 10, fontFamily: sans, fontWeight: 700, fontSize: 24, color: MUTED }}>
-            Cobrás <Display v={cobra} size={34} color="#c9cdd8" />
+      {/* el tramo */}
+      <div style={{ position: "absolute", left: SAFE.left, width: W, top: 330, height: 200, ...CARD, padding: "24px 0", opacity: e, translate: `0px ${(1 - e) * -40}px` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "0 34px" }}>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 22, letterSpacing: 3, color: AMBER }}>UN SERVICIO · PARTICULAR</span>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 28, color: TXT }}>
+            {(k * KM).toFixed(1).replace(".", ",")} <span style={{ color: MUTED, fontSize: 22 }}>km</span>
           </span>
         </div>
-        <div style={{ marginTop: 18, borderRadius: 22, background: "#0b0c10", border: "2px solid #23262f", padding: "14px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 30, color: llego > 0.5 ? AMBER : MUTED }}>{llego > 0.5 ? "Te deja" : "Te queda"}</span>
-          <span style={{ scale: 1 + (1 - pop(f, VIAJE1, VIAJE1 + 16)) * (llego > 0 ? 0.12 : 0) }}>
-            <Display v={llego > 0 ? DEJA : Math.max(0, queda)} size={84} color={AMBER} />
-          </span>
+        <div style={{ position: "absolute", left: LX0, width: LW, top: 98, height: 10, borderRadius: 5, background: "#2a2f3a" }}>
+          <div style={{ width: `${k * 100}%`, height: "100%", borderRadius: 5, background: AMBER }} />
+        </div>
+        {HITOS.map(([l, at], i) => (
+          <div key={i} style={{ position: "absolute", left: LX0 + at * LW, top: 103, width: 0, height: 0 }}>
+            <div style={{ position: "absolute", left: -11, top: -11, width: 22, height: 22, borderRadius: "50%", background: k >= at ? AMBER : "#2a2f3a", border: "4px solid #14161b" }} />
+            <div style={{ position: "absolute", top: 22, left: i === 0 ? -10 : i === HITOS.length - 1 ? undefined : 0, right: i === HITOS.length - 1 ? -10 : undefined, translate: i === 0 || i === HITOS.length - 1 ? undefined : "-50% 0", fontFamily: sans, fontWeight: 700, fontSize: 22, color: k >= at ? TXT : MUTED, whiteSpace: "nowrap" }}>{l}</div>
+          </div>
+        ))}
+        {/* cada gasto, marcado arriba de la línea cuando la grúa pasa */}
+        {PARADAS.map(([em, l, , at]) => (
+          <div key={l} style={{ position: "absolute", left: LX0 + at * LW - 20, top: 46, width: 40, height: 40, borderRadius: 12, background: SOFT, display: "grid", placeItems: "center", fontSize: 22, opacity: pop(f, llegaA(at), llegaA(at) + 12), scale: 0.6 + pop(f, llegaA(at), llegaA(at) + 12) * 0.4 }}>{em}</div>
+        ))}
+        {/* la grúa */}
+        <div style={{ position: "absolute", left: LX0 + k * LW, top: 103, width: 0, height: 0 }}>
+          <div style={{ position: "absolute", left: -30, top: -30, width: 60, height: 60, borderRadius: "50%", background: "rgba(245,166,35,.25)", scale: 1 + 0.2 * Math.sin(f / 6) }} />
+          <div style={{ position: "absolute", left: -18, top: -18, width: 36, height: 36, borderRadius: "50%", background: AMBER, border: "5px solid #fff", display: "grid", placeItems: "center", color: INK }}>
+            <Ico n="route" s={10} w={3} />
+          </div>
         </div>
       </div>
-      {/* el mapa con el tramo */}
-      <div style={{ position: "absolute", left: SAFE.left, width: W, top: MAPA.top, height: MAPA.h, ...CARD, overflow: "hidden", opacity: e, translate: `0px ${(1 - e) * 60}px` }}>
-        <div style={{ position: "absolute", left: 0, top: 0, width: 1080, height: 1920, transformOrigin: "0 0", transform: `translate(${-camX}px, ${-camY}px) scale(${z})` }}>
-          <Img src={staticFile("mapa-recorrido.png")} style={{ width: 1080, height: 1920 }} />
-          <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
-            {LEGS.map((pts, l) => (l < leg || l === leg ? (
-              <polyline key={l} points={(l < leg ? pts : tramoHasta(l, dLeg)).map((q) => q.join(",")).join(" ")} fill="none" stroke={TRAMOS[l].color} strokeWidth={TRAMOS[l].w} strokeDasharray={TRAMOS[l].dash} strokeLinecap="round" strokeLinejoin="round" />
-            ) : null))}
-          </svg>
-          {pin(ruta.origen as unknown as Pt, "Origen · Monte Grande", VIAJE0 + 30)}
-          {pin(ruta.destino as unknown as Pt, "Destino · Lomas", VIAJE0 + 80, true)}
-          {pin(ruta.base as unknown as Pt, "Base", VIAJE0)}
-          {/* la grúa: punto de navegación que gira con el rumbo */}
-          <div style={{ position: "absolute", left: p[0], top: p[1], width: 0, height: 0 }}>
-            <div style={{ position: "absolute", left: -46, top: -46, width: 92, height: 92, borderRadius: "50%", background: "rgba(245,166,35,.22)", scale: 1 + 0.25 * Math.sin(f / 6) }} />
-            <div style={{ position: "absolute", left: -22, top: -22, width: 44, height: 44, borderRadius: "50%", background: AMBER, border: "5px solid #fff", boxShadow: "0 4px 16px rgba(0,0,0,.6)", rotate: `${(ang * 180) / Math.PI + 90}deg`, display: "grid", placeItems: "center" }}>
-              <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: `12px solid ${INK}`, marginTop: -4 }} />
+      {/* el taxímetro: la cuenta del servicio */}
+      <div style={{ position: "absolute", left: SAFE.left, width: W, top: 552, height: 596, ...CARD, padding: "26px 36px", opacity: e2, translate: `${golpe}px ${(1 - e2) * 60}px`, boxShadow: fin > 0 ? `0 0 ${90 * Math.min(1, fin)}px rgba(245,166,35,.4), ${CARD.boxShadow}` : CARD.boxShadow }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", height: 64 }}>
+          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 34, color: TXT }}>Cobrás</span>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 42, color: TXT }}>{money(COBRO)}</span>
+        </div>
+        <div style={{ borderTop: `2px solid ${LINE}`, margin: "4px 0 6px" }} />
+        {PARADAS.map(([em, l, v, at]) => {
+          const t = llegaA(at);
+          const kk = r(f, t, t + 12);
+          return (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 62, opacity: kk, translate: `${(1 - kk) * 60}px 0px` }}>
+              <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: "#d6d9e2" }}>{em} {l}</span>
+              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 32, color: "#d6d9e2" }}>− {money(v)}</span>
             </div>
-          </div>
-          {/* cada gasto salta en su punto del camino */}
-          {PARADAS.map(([em, l, v, at]) => {
-            const q = enRuta(at * LARGO).p;
-            const t0 = interpolate(at, [0, 1], [VIAJE0, VIAJE1]);
-            const kk = f - t0;
-            if (kk < 0 || kk > 70) return null;
-            return (
-              <div key={l} style={{ position: "absolute", left: q[0], top: q[1] - 60 - kk * 0.7, translate: "-50% 0", padding: "8px 14px", borderRadius: 14, background: "rgba(12,14,18,.94)", border: `2px solid ${AMBER}`, display: "flex", gap: 8, alignItems: "center", fontFamily: sans, fontWeight: 700, fontSize: 24, color: TXT, whiteSpace: "nowrap", opacity: pop(f, t0, t0 + 10) * (1 - r(f, t0 + 50, t0 + 70)) }}>
-                {em} {l} <span style={{ fontFamily: mono, color: AMBER }}>− {money(v)}</span>
-              </div>
-            );
-          })}
+          );
+        })}
+        {/* subtotal de gastos */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 66, marginTop: 6, padding: "0 18px", borderRadius: 18, background: SOFT, opacity: r(f, llegaA(PARADAS[0][3]), llegaA(PARADAS[0][3]) + 10) }}>
+          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 30, color: MUTED }}>Gastos de este servicio</span>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 36, color: TXT }}>− {money(sumado)}</span>
         </div>
-        {/* km y atribución del mapa */}
-        <div style={{ position: "absolute", left: 22, top: 20, padding: "8px 16px", borderRadius: 14, background: "rgba(12,14,18,.88)", fontFamily: mono, fontWeight: 700, fontSize: 28, color: TXT }}>
-          {(k * KM).toFixed(1).replace(".", ",")} <span style={{ color: MUTED, fontSize: 22 }}>km</span>
+        {/* lo que te deja */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18, paddingTop: 16, borderTop: `3px dashed ${LINE}`, opacity: Math.min(1, fin), scale: 0.94 + Math.min(1, fin) * 0.06, transformOrigin: "50% 0" }}>
+          <span style={{ fontFamily: display, fontSize: 64, color: AMBER, lineHeight: 1 }}>Te deja</span>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 84, color: AMBER, lineHeight: 1, textShadow: "0 0 24px rgba(245,166,35,.45)" }}>{money(deja)}</span>
         </div>
-        <div style={{ position: "absolute", right: 14, bottom: 10, fontFamily: sans, fontWeight: 500, fontSize: 15, color: "rgba(230,232,238,.75)", background: "rgba(12,14,18,.6)", padding: "2px 8px", borderRadius: 6 }}>© OpenFreeMap © OpenMapTiles © OpenStreetMap</div>
       </div>
     </>
   );
@@ -489,9 +438,9 @@ export const Desarrollo: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       <Audio name="Cobrar" src={staticFile("sfx/mouse-click.wav")} from={COBRA} volume={0.5} />
       <Audio name="Cobrado" src={staticFile("sfx/ding.wav")} from={COBRA + 4} volume={0.5} />
       {PARADAS.map(([, l, , at]) => (
-        <Audio key={l} name="Gasto" src={staticFile("sfx/mouse-click.wav")} from={Math.round(interpolate(at, [0, 1], [VIAJE0, VIAJE1]))} volume={0.45} />
+        <Audio key={l} name="Gasto" src={staticFile("sfx/mouse-click.wav")} from={llegaA(at)} volume={0.5} />
       ))}
-      <Audio name="Llegó" src={staticFile("sfx/ding.wav")} from={VIAJE1} volume={0.55} />
+      <Audio name="Te deja" src={staticFile("sfx/ding.wav")} from={FINAL} volume={0.6} />
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
   );
