@@ -342,7 +342,7 @@ const EN_QUE: [string, string, number][] = [
   ["🧾", "Monotributo", 180000],
 ];
 const GASTO_MES = 1790000;
-const Gastos: React.FC<{ f: number }> = ({ f }) => {
+export const Gastos: React.FC<{ f: number }> = ({ f }) => {
   const total = interpolate(f, [8, 40], [0, GASTO_MES], { ...clamp, easing: Easing.out(Easing.cubic) });
   return (
     <div style={{ position: "absolute", inset: 0 }}>
