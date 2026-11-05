@@ -29,7 +29,7 @@ export const GANCHO_DUR = 560;
 
 // ── Herramientas de cámara y terminación ────────────────────────────
 // Cada toma entra y sale desenfocada y con un empujón de escala (corte «whip»)
-const Toma: React.FC<{ f: number; from: number; to: number; children: React.ReactNode }> = ({ f, from, to, children }) => {
+export const Toma: React.FC<{ f: number; from: number; to: number; children: React.ReactNode }> = ({ f, from, to, children }) => {
   if (f < from - 10 || f > to + 10) return null;
   const inn = from === 0 ? 1 : r(f, from - 4, from + 10);
   const out = r(f, to - 2, to + 10, Easing.in(Easing.cubic));
@@ -41,14 +41,14 @@ const Toma: React.FC<{ f: number; from: number; to: number; children: React.Reac
   );
 };
 // Cámara en mano: una deriva lenta y continua
-const Camara: React.FC<{ f: number; zoom: [number, number]; from: number; to: number; rot?: number; children: React.ReactNode }> = ({ f, zoom, from, to, rot = 1.2, children }) => {
+export const Camara: React.FC<{ f: number; zoom: [number, number]; from: number; to: number; rot?: number; children: React.ReactNode }> = ({ f, zoom, from, to, rot = 1.2, children }) => {
   const k = interpolate(f, [from, to], [0, 1], { ...clamp, easing: Easing.inOut(Easing.quad) });
   const s = zoom[0] + (zoom[1] - zoom[0]) * k;
   const dx = Math.sin(f / 37) * 10 + Math.sin(f / 13) * 3;
   const dy = Math.cos(f / 41) * 8 + Math.cos(f / 17) * 2;
   return <AbsoluteFill style={{ scale: s, translate: `${dx}px ${dy}px`, rotate: `${(k - 0.5) * rot}deg` }}>{children}</AbsoluteFill>;
 };
-const Grano: React.FC<{ f: number }> = ({ f }) => (
+export const Grano: React.FC<{ f: number }> = ({ f }) => (
   <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, opacity: 0.11, mixBlendMode: "overlay", pointerEvents: "none" }}>
     <filter id="grano">
       <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed={Math.floor(f / 2) % 24} />
@@ -264,7 +264,7 @@ const Hoja: React.FC<{ dia: number; children?: React.ReactNode; style?: React.CS
 const BILLETES = 14;
 const SE_VAN = ["Gasoil", "Seguro", "Taller", "Peajes", "Cubiertas", "Monotributo", "Comida", "Patente", "Repuestos", "GPS", "VTV", "Lavado"];
 const VUELA0 = SLAM + 26, VUELA_CADA = 7;
-const Billete: React.FC<{ style?: React.CSSProperties; label?: string }> = ({ style, label }) => (
+export const Billete: React.FC<{ style?: React.CSSProperties; label?: string }> = ({ style, label }) => (
   <div
     style={{
       position: "absolute", width: 560, height: 250, borderRadius: 14, background: "linear-gradient(135deg, #d7dccd 0%, #c3cbb6 55%, #d3d8c8 100%)",
