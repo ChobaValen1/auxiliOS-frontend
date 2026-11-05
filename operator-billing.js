@@ -333,11 +333,16 @@
 
   function excelMenuMarkup() {
     const serviceCount = S.selected.size;
+    // Adicionales: lo visible (con el filtro de quién cobra) y, aparte, el Excel completo.
+    if (S.tab === 'extras') return `<div class="obx-menu" role="menu">
+      <button type="button" data-ob="excel-extras"><b>Adicionales visibles</b><small>${visibleExtraRows().length} excedentes con quién cobra, medio y facturación</small></button>
+      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes + Excedentes</small></button>
+    </div>`;
     // En Peajes no hay selección de servicios: solo «Peajes visibles» y «Todo lo filtrado».
     return `<div class="obx-menu" role="menu">
       ${S.tab === 'tolls' ? '' : `<button type="button" data-ob="excel-selected"><b>Selección de servicios</b><small>${serviceCount} servicios seleccionados</small></button>`}
       <button type="button" data-ob="excel-current"><b>${S.tab === 'tolls' ? 'Peajes' : 'Servicios'} visibles</b><small>${S.tab === 'tolls' ? S.tollRows.length : S.rows.length} registros con estos filtros</small></button>
-      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes</small></button>
+      <button type="button" data-ob="excel-all"><b>Todo lo filtrado</b><small>Servicios + Peajes + Excedentes</small></button>
     </div>`;
   }
 
@@ -504,6 +509,12 @@
   const IVA = { consumidor_final: 'Consumidor final', monotributo: 'Monotributo', responsable_inscripto: 'Responsable inscripto', exento: 'Exento' };
 
   /* ── Columnas: cada pestaña tiene su catálogo y cada usuario elige cuáles ve (table-columns-v1.js) ── */
+  /* Km como los factura la prestadora (Parámetros → Kilómetros enteros): asfalto y ripio redondeados por separado. */
+  const billedKm = row => {
+    const R = window.AuxiliosKmRounding, raw = { asphalt: num(row.estimated_asphalt_km), gravel: num(row.estimated_gravel_km), total: num(row.km) };
+    if (!R || R.modeFor(row.company_id, row.scheduled_for) !== 'nearest_integer') return raw;
+    return R.apply('nearest_integer', row.estimated_asphalt_km, row.estimated_gravel_km, row.km);
+  };
   const kmText = value => `${num(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
   const stacked = (top, sub) => `<b>${esc(top)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`;
   const when = row => { const parts = dateParts(row.scheduled_for); return stacked(parts.day, parts.time); };
@@ -523,8 +534,8 @@
       { key: 'client', label: 'Cliente', td: row => `<b>${esc(row.customer_name || '—')}</b>` },
       { key: 'plate', label: 'Patente', optional: true, td: row => esc(row.vehicle_plate || '—') },
       { key: 'vehicle', label: 'Vehículo', optional: true, td: row => esc(row.vehicle_make_model || '—') },
-      { key: 'km', label: 'KM', cls: 'ob-km', td: row => esc(kmText(row.km)) },
-      { key: 'kmsplit', label: 'Km asfalto / ripio', optional: true, cls: 'ob-km', td: row => (row.estimated_asphalt_km != null || row.estimated_gravel_km != null) ? esc(`${num(row.estimated_asphalt_km).toLocaleString('es-AR', { maximumFractionDigits: 1 })} / ${num(row.estimated_gravel_km).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`) : '<small>—</small>' },
+      { key: 'km', label: 'KM', cls: 'ob-km', td: row => esc(kmText(billedKm(row).total)) },
+      { key: 'kmsplit', label: 'Km asfalto / ripio', optional: true, cls: 'ob-km', td: row => (row.estimated_asphalt_km != null || row.estimated_gravel_km != null) ? esc(`${num(billedKm(row).asphalt).toLocaleString('es-AR', { maximumFractionDigits: 1 })} / ${num(billedKm(row).gravel).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`) : '<small>—</small>' },
       { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>` },
       { key: 'remito', label: 'Remito', optional: true, td: row => row.remito_id ? 'Con remito' : '<small>Sin remito</small>' }
     ],
@@ -860,7 +871,7 @@
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
     document.querySelector('.topbar-right #obx-wrap')?.remove();
     // Servicios: aparece al tildar servicios. Peajes: siempre que haya peajes con estos filtros.
-    const excelControl = (S.tab === 'tolls' ? (S.tollRows || []).length : S.selected.size)
+    const excelControl = (S.tab === 'tolls' ? (S.tollRows || []).length : S.tab === 'extras' ? (S.extraRows || []).length : S.selected.size)
       ? `<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">${ico('download')}Excel</button></div>`
       : '';
     const overlayOpen = S.invoiceOpen || S.rowAction || S.detail || S.detailLoading;
@@ -898,6 +909,7 @@
   async function load() {
     if (S.loading || !db() || !canRead()) return;
     S.loading = true;
+    window.AuxiliosKmRounding?.load();
     render();
     const bounds = window.AuxFilters ? window.AuxFilters.periodBounds(S.periodSel) : periodBounds(S.period);
     try {
@@ -1226,6 +1238,7 @@
       if (excelAction === 'excel-current') return window.OperatorBillingExcel?.exportCurrent?.();
       if (excelAction === 'excel-selected') return window.OperatorBillingExcel?.exportSelected?.();
       if (excelAction === 'excel-all') return window.OperatorBillingExcel?.exportAllFiltered?.();
+      if (excelAction === 'excel-extras') return window.OperatorBillingExcel?.exportExtras?.();
       return;
     }
 
@@ -1285,6 +1298,7 @@
 
   function init() {
     ensureShell();
+    window.addEventListener('auxilios:km-rounding-ready', () => { if (S.rows.length && document.getElementById('screen-facturacion')?.offsetParent) render(); });
     document.addEventListener('click', onDocumentClick);
     document.addEventListener('scroll', closeRowActionMenu, true);
     window.addEventListener('resize', closeRowActionMenu);
