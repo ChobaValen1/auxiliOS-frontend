@@ -27,14 +27,13 @@ const VAR_SERV = PASOS.filter((p) => !p.fijo).reduce((s, p) => s + p.monto, 0) /
 const FACTURADO = N * PRECIO; // 7.700.000
 const VARIABLES = N * VAR_SERV; // 1.896.400
 const QUEDA = FACTURADO - VARIABLES - FIJOS_MES; // 5.181.600
-const POR_SERVICIO = Math.round(QUEDA / N); // 47.105
 const KM_MES = N * (KM / SERVICIOS); // 3.960
 const POR_KM = Math.round(QUEDA / KM_MES); // 1.308
 const DEJA_PROM = (FACTURADO - VARIABLES) / N; // 52.760
 const NECESITAS = Math.ceil(FIJOS_MES / DEJA_PROM); // 12
 const FIJOS: [string, string, number][] = [["escudo", "Seguro", 180000], ["recibo", "Cuota de la grúa", 350000], ["cal", "Monotributo", 92000]];
 
-const VOZ: [string, number][] = [["ctc-s1", 20], ["ctc-s2", 212], ["ctc-s3", 420], ["ctc-s4", 602], ["ctc-s5", 820], ["ctc-s6", 1000]];
+const VOZ: [string, number][] = [["ctc-s1", 20], ["ctc-s2", 212], ["ctc-s3", 420], ["ctc-s4", 602], ["ctc-s5", 820], ["ctc-s6", 1004]];
 const CORTE_B = 200;
 const CORTE_C = 590;
 export const SOLUCION_DUR = 1190;
@@ -149,118 +148,101 @@ const Gastos: React.FC<{ f: number }> = ({ f }) => {
 };
 
 // ── C · Mirás tus números ───────────────────────────────────────────
-// No copia la pantalla: muestra en grande lo mismo que calcula la app (lo que te deja cada
-// servicio y cada km, y cuántos servicios cubren los fijos) para que se entienda de un golpe.
-const A_IN = 616; // cada servicio
-const B_IN = 724; // cada km
-const GRID0 = 836; // los servicios del mes, uno por uno
-const GRID_CADA = 1.05;
-const TUYA = 996; // «del servicio 13 en adelante, es plata tuya»
-const COLS = 11;
-const CELDA = 58;
-const DOT = 48;
-const GX = 540 - (COLS * CELDA) / 2;
-const GY = 560;
+// Un servicio de $ 70.000 por dentro, como torta: lo que te queda en ámbar y con brillo;
+// los gastos del día y los fijos en gris, para que el ojo vaya a la ganancia.
+const VAR_S = VAR_SERV; // 17.240
+const FIJO_S = Math.round(FIJOS_MES / N); // 5.655
+const QUEDA_S = PRECIO - VAR_S - FIJO_S; // 47.105
+const G_VAR = "#3d4352";
+const G_FIJO = "#565e70";
+const T_VAR = 650; // los gastos del día se comen su parte
+const T_FIJO = 704; // después los fijos
+const T_BRILLO = 752; // lo que queda se enciende
+const T_KM = 772;
+const T_EQ = 850;
+const TUYA = 1004;
+const R_T = 150;
+const C_T = 2 * Math.PI * R_T;
 const Numeros: React.FC<{ f: number }> = ({ f }) => {
-  // 1 · cada servicio: la barra de $ 70.000 se achica hasta lo que te queda
-  const a = r(f, A_IN, A_IN + 18, Easing.out(Easing.back(1.2)));
-  const corte = r(f, A_IN + 30, A_IN + 80, Easing.inOut(Easing.cubic));
-  const deja = PRECIO - (PRECIO - POR_SERVICIO) * corte;
-  // 2 · cada km: la ruta corre y el número sube
-  const b = r(f, B_IN, B_IN + 18, Easing.out(Easing.back(1.2)));
-  const km = cuenta(f, B_IN + 10, B_IN + 70, POR_KM);
-  const sale = r(f, GRID0 - 24, GRID0 - 4, Easing.in(Easing.cubic));
-  // 3 · los 110 servicios del mes: los primeros 12 pagan los fijos, el resto es tuyo
-  const g = r(f, GRID0 - 6, GRID0 + 10);
-  const hechos = Math.max(0, Math.min(N, Math.floor((f - GRID0) / GRID_CADA)));
-  const marco = r(f, GRID0 + NECESITAS * GRID_CADA + 4, GRID0 + NECESITAS * GRID_CADA + 20);
+  const card = r(f, CORTE_C + 14, CORTE_C + 34, Easing.out(Easing.back(1.1)));
+  const aro = r(f, CORTE_C + 20, CORTE_C + 56, Easing.inOut(Easing.cubic)); // el aro se dibuja entero en ámbar
+  const pv = r(f, T_VAR, T_VAR + 34, Easing.inOut(Easing.cubic));
+  const pf = r(f, T_FIJO, T_FIJO + 30, Easing.inOut(Easing.cubic));
+  const lenV = (VAR_S / PRECIO) * C_T * pv;
+  const lenF = (FIJO_S / PRECIO) * C_T * pf;
+  const lenQ = C_T * aro - lenV - lenF;
+  const centro = PRECIO - VAR_S * pv - FIJO_S * pf;
+  const brillo = r(f, T_BRILLO, T_BRILLO + 16);
+  const pulso = f > T_BRILLO ? 1 + 0.035 * Math.max(0, Math.sin((f - T_BRILLO) / 7)) * (1 - r(f, T_BRILLO + 40, T_BRILLO + 90)) : 1;
+  const km = pop(f, T_KM, T_KM + 20);
+  const eq = pop(f, T_EQ, T_EQ + 20);
   const tuya = f >= TUYA;
+  const sale = r(f, TUYA - 8, TUYA + 2);
   const t = f - TUYA - 10;
   const shake = t >= 0 && t < 16 ? Math.sin(t * 2.6) * 14 * (1 - t / 16) : 0;
+  const leyenda: [string, number, string, string, number][] = [
+    ["Te queda", QUEDA_S, AMBER, "check", brillo],
+    ["Gastos del día", VAR_S, G_VAR, "gasoil", pv],
+    ["Fijos del mes", FIJO_S, G_FIJO, "cal", pf],
+  ];
   return (
     <Camara f={f} zoom={[1, 1.03]} from={CORTE_C} to={SOLUCION_DUR} rot={0.4}>
       <Fondo />
       <Paso f={f} at={CORTE_C + 6} n="PASO 2" titulo="Mirás tus números" />
-      {/* 1 y 2: tarjetas grandes */}
-      <div style={{ position: "absolute", inset: 0, opacity: 1 - sale, filter: sale > 0 ? `blur(${sale * 16}px)` : undefined, scale: 1 - sale * 0.06 }}>
-        <div
-          style={{
-            position: "absolute", top: 470, left: IN_L, width: IN_W, borderRadius: 36, background: CARD, padding: "26px 30px 30px", boxShadow: "0 30px 60px rgba(10,12,18,.28)",
-            opacity: Math.min(1, a * 1.4), translate: `0px ${(1 - a) * 140}px`,
-          }}
-        >
-          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: "#9aa3b8" }}>CADA SERVICIO TE DEJA</div>
-          <div style={{ fontFamily: display, fontSize: 170, lineHeight: 1, color: AMBER, marginTop: 6 }}>{peso(Math.round(deja / 5) * 5)}</div>
-          <div style={{ position: "relative", height: 40, borderRadius: 12, background: AMBER, marginTop: 10, overflow: "hidden" }}>
-            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${corte * (1 - POR_SERVICIO / PRECIO) * 100}%`, background: "repeating-linear-gradient(135deg, #3a4050 0 12px, #2c313d 12px 24px)", borderLeft: corte > 0 ? "4px solid #14161b" : undefined }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8", marginTop: 10 }}>
-            <span>de cada {peso(PRECIO)} que cobrás</span>
-            <span style={{ opacity: corte }}>gastos y fijos {peso(PRECIO - POR_SERVICIO)}</span>
+      <div
+        style={{
+          position: "absolute", top: 466, left: IN_L, width: IN_W, height: 650, borderRadius: 36, background: CARD, padding: "24px 30px", boxShadow: "0 30px 60px rgba(10,12,18,.28)",
+          opacity: Math.min(1, card * 1.4), translate: `${shake}px ${(1 - card) * 140}px`,
+        }}
+      >
+        <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 24, letterSpacing: 3, color: "#9aa3b8" }}>UN SERVICIO DE {peso(PRECIO)}, POR DENTRO</div>
+        <div style={{ position: "relative", width: 400, height: 400, margin: "10px auto 0" }}>
+          <svg width={400} height={400} viewBox="15 15 400 400" style={{ rotate: "-90deg", overflow: "visible" }}>
+            <circle cx={215} cy={215} r={R_T} fill="none" stroke="#1d212b" strokeWidth={62} />
+            {/* lo que queda, con brillo */}
+            <circle
+              cx={215} cy={215} r={R_T} fill="none" stroke={AMBER} strokeWidth={74 + brillo * 10} strokeDasharray={`${Math.max(0, lenQ - (pv > 0 ? 6 : 0))} ${C_T}`}
+              style={{ filter: brillo > 0 ? `drop-shadow(0 0 ${brillo * 22}px rgba(245,166,35,.75))` : undefined }}
+            />
+            {pv > 0 ? <circle cx={215} cy={215} r={R_T} fill="none" stroke={G_VAR} strokeWidth={50} strokeDasharray={`${Math.max(0, lenV - 6)} ${C_T}`} strokeDashoffset={-lenQ} /> : null}
+            {pf > 0 ? <circle cx={215} cy={215} r={R_T} fill="none" stroke={G_FIJO} strokeWidth={50} strokeDasharray={`${Math.max(0, lenF - 6)} ${C_T}`} strokeDashoffset={-(lenQ + lenV)} /> : null}
+          </svg>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8" }}>{pv > 0 ? "te quedan" : "cobrás"}</div>
+            <div style={{ fontFamily: display, fontSize: 80, lineHeight: 1, color: pv > 0 ? AMBER : "#f2f3f6", scale: pulso, textShadow: brillo > 0 ? `0 0 ${brillo * 30}px rgba(245,166,35,.5)` : undefined }}>
+              {peso(Math.round(centro / 5) * 5)}
+            </div>
+            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8", opacity: brillo }}>el {Math.round((QUEDA_S / PRECIO) * 100)} %</div>
           </div>
         </div>
-        <div
-          style={{
-            position: "absolute", top: 830, left: IN_L, width: IN_W, height: 250, borderRadius: 36, background: CARD, padding: "26px 30px", overflow: "hidden", boxShadow: "0 30px 60px rgba(10,12,18,.28)",
-            opacity: Math.min(1, b * 1.4), translate: `0px ${(1 - b) * 140}px`,
-          }}
-        >
-          {/* la ruta que corre abajo */}
-          <div style={{ position: "absolute", left: -100, right: -100, bottom: 34, height: 8, background: `repeating-linear-gradient(90deg, ${CELESTE} 0 60px, transparent 60px 110px)`, opacity: 0.55, translate: `${-((f * 9) % 110)}px 0px` }} />
-          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: "#9aa3b8" }}>CADA KM TE DEJA</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 18 }}>
-            <span style={{ fontFamily: display, fontSize: 150, lineHeight: 1.05, color: CELESTE }}>{peso(Math.round(km))}</span>
-            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: "#9aa3b8" }}>ya con todo descontado</span>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+          {leyenda.map(([n, v, c, ico, k], i) => (
+            <div key={n} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 250, opacity: i === 0 ? 0.5 + k * 0.5 : k, scale: i === 0 ? 1 + k * 0.08 : 1 }}>
+              <span style={{ width: 50, height: 50, borderRadius: 15, background: c, color: i === 0 ? INK : "#c9cfdc", display: "grid", placeItems: "center", boxShadow: i === 0 && k > 0 ? `0 0 ${k * 22}px rgba(245,166,35,.6)` : undefined }}>
+                <Icono n={ico} s={26} w={2.4} />
+              </span>
+              <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: i === 0 ? "#f2f3f6" : "#8a92a5" }}>{n}</span>
+              <span style={{ fontFamily: i === 0 ? display : mono, fontWeight: 700, fontSize: i === 0 ? 46 : 26, lineHeight: 1, color: i === 0 ? AMBER : "#8a92a5" }}>{peso(v)}</span>
+            </div>
+          ))}
         </div>
       </div>
-      {/* 3: los servicios del mes */}
-      {f >= GRID0 - 6 ? (
-        <div style={{ position: "absolute", inset: 0, opacity: g, translate: `${shake}px 0px` }}>
-          <div style={{ position: "absolute", top: 470, left: IN_L, width: IN_W, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 30, color: INK }}>Tus servicios de noviembre</span>
-            <span style={{ fontFamily: display, fontSize: 64, lineHeight: 1, color: INK }}>{hechos}</span>
+      {/* por km y punto de equilibrio */}
+      <div style={{ position: "absolute", top: 1134, left: IN_L, width: IN_W, display: "flex", gap: 16, opacity: 1 - sale }}>
+        {[
+          { k: km, l: "Cada km te deja", v: peso(POR_KM), c: AMBER },
+          { k: eq, l: "Cubrís los fijos con", v: `${NECESITAS} servicios`, c: INK },
+        ].map((x) => (
+          <div key={x.l} style={{ flex: 1, borderRadius: 26, background: CARD, padding: "14px 20px", opacity: Math.min(1, x.k * 1.4), scale: 0.7 + x.k * 0.3, boxShadow: "0 20px 40px rgba(10,12,18,.22)" }}>
+            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8" }}>{x.l}</div>
+            <div style={{ fontFamily: display, fontSize: 56, lineHeight: 1.05, color: x.c === INK ? "#f2f3f6" : x.c, whiteSpace: "nowrap" }}>{x.v}</div>
           </div>
-          {Array.from({ length: N }).map((_, i) => {
-            const on = i < hechos;
-            const k = on ? pop(f, GRID0 + i * GRID_CADA, GRID0 + i * GRID_CADA + 12) : 0;
-            const fijo = i < NECESITAS;
-            return (
-              <div
-                key={i}
-                style={{
-                  position: "absolute", left: GX + (i % COLS) * CELDA + (CELDA - DOT) / 2, top: GY + Math.floor(i / COLS) * CELDA + (CELDA - DOT) / 2, width: DOT, height: DOT, borderRadius: 14,
-                  background: on ? (fijo ? "#3a4050" : AMBER) : "rgba(20,22,27,.07)", color: on ? (fijo ? "#c9cfdc" : INK) : "transparent",
-                  display: "grid", placeItems: "center", scale: on ? 0.5 + k * 0.5 : 1, boxShadow: on && !fijo ? "0 6px 14px rgba(245,166,35,.35)" : undefined,
-                }}
-              >
-                <Icono n="ruta" s={24} w={2.4} />
-              </div>
-            );
-          })}
-          {/* los primeros 12: los que pagan los fijos */}
-          {[
-            { x: 0, y: 0, w: COLS },
-            { x: 0, y: 1, w: NECESITAS - COLS },
-          ].map((m, j) => (
-            <div key={j} style={{ position: "absolute", left: GX + m.x * CELDA - 4, top: GY + m.y * CELDA - 4, width: m.w * CELDA + 8, height: CELDA + 8, borderRadius: 18, border: "4px dashed #14161b", opacity: marco }} />
-          ))}
-          <div
-            style={{
-              position: "absolute", left: 0, right: 0, top: 1170, display: "flex", justifyContent: "center", opacity: marco * (1 - r(f, TUYA - 8, TUYA)),
-              translate: `0px ${(1 - marco) * 20}px`,
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 12, background: INK, color: "#f2f3f6", padding: "12px 22px", borderRadius: 16, fontFamily: sans, fontWeight: 700, fontSize: 30 }}>
-              <Icono n="cal" s={30} w={2.4} /> Los primeros {NECESITAS} pagan los fijos del mes
-            </span>
-          </div>
-          {tuya ? (
-            <div style={{ position: "absolute", top: 1156, left: IN_L - 40, width: IN_W + 80, textAlign: "center", fontFamily: display, lineHeight: 1, color: INK, scale: slam(f, TUYA), opacity: r(f, TUYA, TUYA + 4) }}>
-              <span style={{ fontSize: 96 }}>Del 13 en adelante, </span>
-              <span style={{ fontSize: 96, color: AMBER }}>es plata tuya.</span>
-            </div>
-          ) : null}
+        ))}
+      </div>
+      {tuya ? (
+        <div style={{ position: "absolute", top: 1124, left: IN_L - 40, width: IN_W + 80, textAlign: "center", fontFamily: display, lineHeight: 0.95, color: INK, scale: slam(f, TUYA), opacity: r(f, TUYA, TUYA + 4), translate: `${shake}px 0px` }}>
+          <div style={{ fontSize: 64 }}>Del servicio 13 en adelante,</div>
+          <div style={{ fontSize: 66, color: AMBER, textShadow: "0 10px 40px rgba(245,166,35,.35)" }}>es plata tuya.</div>
         </div>
       ) : null}
     </Camara>
@@ -294,12 +276,11 @@ const Solucion: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       {FIJOS.map((x, i) => (
         <Audio key={x[1]} name="Fijo" src={staticFile("sfx/mouse-click.wav")} from={440 + i * 22} volume={0.3} />
       ))}
-      <Audio name="Cada servicio" src={staticFile("sfx/whoosh.wav")} from={A_IN + 30} volume={0.35} />
-      <Audio name="Cada km" src={staticFile("sfx/mouse-click.wav")} from={B_IN} volume={0.35} />
-      {Array.from({ length: 12 }).map((_, i) => (
-        <Audio key={`g${i}`} name="Servicios" src={staticFile("sfx/mouse-click.wav")} from={GRID0 + Math.round(i * 9 * GRID_CADA)} volume={0.18} />
-      ))}
-      <Audio name="Fijos cubiertos" src={staticFile("sfx/ding.wav")} from={GRID0 + Math.round(NECESITAS * GRID_CADA) + 6} volume={0.45} />
+      <Audio name="Gastos del día" src={staticFile("sfx/whoosh.wav")} from={T_VAR} volume={0.3} />
+      <Audio name="Fijos" src={staticFile("sfx/whoosh.wav")} from={T_FIJO} volume={0.3} />
+      <Audio name="Te queda" src={staticFile("sfx/ding.wav")} from={T_BRILLO} volume={0.5} />
+      <Audio name="Por km" src={staticFile("sfx/mouse-click.wav")} from={T_KM} volume={0.35} />
+      <Audio name="Equilibrio" src={staticFile("sfx/mouse-click.wav")} from={T_EQ} volume={0.35} />
       <Audio name="Plata tuya" src={staticFile("sfx/whip.wav")} from={TUYA + 2} volume={0.8} />
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
