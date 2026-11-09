@@ -1,13 +1,12 @@
 import { Audio } from "@remotion/media";
 import React from "react";
-import { AbsoluteFill, Easing, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { clamp, display, mono, sans } from "../theme";
 import { SAFE } from "../gastos/common";
 import { ReelsGuide } from "../monogrua/StepFrame";
 import { Logo } from "../scenes/Logo";
 import { Ico } from "../solo/ui";
 import { Grano } from "./Gancho";
-import { Chofer } from "./Chofer";
 
 // Reel nuevo, parte 3: el cierre. Fondo claro, el logo con los íconos que se juntan,
 // la frase y el botón. 60 fps.
@@ -23,6 +22,12 @@ const VOZ_AT = 14;
 const ICONOS = ["file", "cash", "gauge", "route"];
 const LOGO_Y = 760;
 const PULGAR = 74;
+// el chofer (ilustración en public/chofer-pulgar.png, 960 × 1021) y dónde queda su pulgar
+const CH_W = 340;
+const CH_H = Math.round((CH_W * 1021) / 960);
+const CH_TOP = 280;
+const PULGAR_X = 540 - CH_W / 2 + CH_W * 0.82;
+const PULGAR_Y = CH_TOP + CH_H * 0.3;
 
 export const Cierre: React.FC<{ guia?: boolean; voz?: string }> = ({ guia = false, voz = "vo/cierre-l1.wav" }) => {
   const f = useCurrentFrame();
@@ -31,7 +36,10 @@ export const Cierre: React.FC<{ guia?: boolean; voz?: string }> = ({ guia = fals
   const logo = pop(f, 6, 30);
   const junta = r(f, 10, 40, Easing.in(Easing.cubic));
   const chofer = pop(f, 30, 56);
-  const pulgar = interpolate(f, [PULGAR, PULGAR + 18], [0, 1], { ...clamp, easing: Easing.out(Easing.back(2)) });
+  // el pulgar «empuja»: un golpe de escala y un balanceo que se apaga
+  const t = f - PULGAR;
+  const empuje = t >= 0 && t < 30 ? Math.sin((t / 30) * Math.PI) * (1 - t / 30) : 0;
+  const balanceo = t >= 0 && t < 40 ? Math.sin(t * 0.45) * 4 * (1 - t / 40) : 0;
   const sub = r(f, 60, 74);
   const l1 = r(f, 78, 92);
   const l2 = r(f, 90, 104);
@@ -57,15 +65,20 @@ export const Cierre: React.FC<{ guia?: boolean; voz?: string }> = ({ guia = fals
           );
         })}
         {/* el chofer que levanta el pulgar */}
-        <div style={{ position: "absolute", left: 540 - 190, top: 300, width: 380, height: 380, opacity: Math.min(1, chofer * 1.4), scale: 0.7 + chofer * 0.3, translate: `0px ${(1 - chofer) * 80}px`, transformOrigin: "50% 100%" }}>
-          <Chofer pulgar={pulgar} size={380} parpadeo={f >= 200 && f < 206} />
+        <div
+          style={{
+            position: "absolute", left: 540 - CH_W / 2, top: CH_TOP, width: CH_W, height: CH_H, opacity: Math.min(1, chofer * 1.4),
+            scale: (0.7 + chofer * 0.3) * (1 + empuje * 0.08), rotate: `${balanceo}deg`, translate: `0px ${(1 - chofer) * 80}px`, transformOrigin: "50% 100%",
+          }}
+        >
+          <Img src={staticFile("chofer-pulgar.png")} style={{ width: CH_W, height: CH_H }} />
         </div>
         {/* chispas del pulgar */}
         {f >= PULGAR + 12 && f < PULGAR + 40
           ? Array.from({ length: 8 }).map((_, i) => {
               const a = (i / 8) * Math.PI * 2;
               const d = 30 + r(f, PULGAR + 12, PULGAR + 40) * 70;
-              return <div key={i} style={{ position: "absolute", left: 540 + 120 + Math.cos(a) * d, top: 300 + 120 + Math.sin(a) * d, width: 12, height: 12, borderRadius: 3, background: i % 2 ? AMBER : INK, rotate: "45deg", opacity: 1 - r(f, PULGAR + 12, PULGAR + 40) }} />;
+              return <div key={i} style={{ position: "absolute", left: PULGAR_X + Math.cos(a) * d, top: PULGAR_Y + Math.sin(a) * d, width: 12, height: 12, borderRadius: 3, background: i % 2 ? AMBER : INK, rotate: "45deg", opacity: 1 - r(f, PULGAR + 12, PULGAR + 40) }} />;
             })
           : null}
         <div style={{ position: "absolute", left: 0, right: 0, top: LOGO_Y - 60, display: "flex", justifyContent: "center", scale: 0.6 + logo * 0.4, opacity: Math.min(1, logo * 1.3) }}>
