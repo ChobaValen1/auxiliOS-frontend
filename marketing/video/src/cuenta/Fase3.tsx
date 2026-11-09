@@ -34,10 +34,10 @@ const DEJA_PROM = (FACTURADO - VARIABLES) / N; // 52.760
 const NECESITAS = Math.ceil(FIJOS_MES / DEJA_PROM); // 12
 const FIJOS: [string, string, number][] = [["escudo", "Seguro", 180000], ["recibo", "Cuota de la grúa", 350000], ["cal", "Monotributo", 92000]];
 
-const VOZ: [string, number][] = [["ctc-s1", 20], ["ctc-s2", 212], ["ctc-s3", 420], ["ctc-s4", 602], ["ctc-s5", 820]];
+const VOZ: [string, number][] = [["ctc-s1", 20], ["ctc-s2", 212], ["ctc-s3", 420], ["ctc-s4", 602], ["ctc-s5", 820], ["ctc-s6", 1000]];
 const CORTE_B = 200;
 const CORTE_C = 590;
-export const SOLUCION_DUR = 1040;
+export const SOLUCION_DUR = 1190;
 export const FASE3_DUR = SOLUCION_DUR + CIERRE_DUR;
 
 const Fondo: React.FC = () => <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 38%, #ffffff 0%, #eef0f4 62%, #e2e5ec 100%)" }} />;
@@ -148,72 +148,121 @@ const Gastos: React.FC<{ f: number }> = ({ f }) => {
   );
 };
 
-// ── C · Mis números ─────────────────────────────────────────────────
-const LLEVAS0 = 850;
-const LLEVAS1 = 960;
+// ── C · Mirás tus números ───────────────────────────────────────────
+// No copia la pantalla: muestra en grande lo mismo que calcula la app (lo que te deja cada
+// servicio y cada km, y cuántos servicios cubren los fijos) para que se entienda de un golpe.
+const A_IN = 616; // cada servicio
+const B_IN = 724; // cada km
+const GRID0 = 836; // los servicios del mes, uno por uno
+const GRID_CADA = 1.05;
+const TUYA = 996; // «del servicio 13 en adelante, es plata tuya»
+const COLS = 11;
+const CELDA = 58;
+const DOT = 48;
+const GX = 540 - (COLS * CELDA) / 2;
+const GY = 560;
 const Numeros: React.FC<{ f: number }> = ({ f }) => {
-  const card = r(f, CORTE_C + 16, CORTE_C + 36, Easing.out(Easing.back(1.1)));
-  const k1 = cuenta(f, 650, 720, POR_SERVICIO);
-  const k2 = cuenta(f, 710, 780, POR_KM);
-  const k3 = cuenta(f, 640, 700, N);
-  const be = r(f, 826, 844);
-  const llevas = Math.round(interpolate(f, [LLEVAS0, LLEVAS1], [0, N], { ...clamp, easing: Easing.in(Easing.quad) }));
-  const cubierto = llevas >= NECESITAS;
-  const cub = f >= LLEVAS0 ? pop(f, LLEVAS0 + 26, LLEVAS0 + 44) : 0;
-  const hint = r(f, 900, 920);
-  const kpis: [string, string, string][] = [
-    ["Por servicio", peso(Math.round(k1)), AMBER],
-    ["Por km", peso(Math.round(k2)), CELESTE],
-    ["Servicios", String(Math.round(k3)), "#f2f3f6"],
-  ];
+  // 1 · cada servicio: la barra de $ 70.000 se achica hasta lo que te queda
+  const a = r(f, A_IN, A_IN + 18, Easing.out(Easing.back(1.2)));
+  const corte = r(f, A_IN + 30, A_IN + 80, Easing.inOut(Easing.cubic));
+  const deja = PRECIO - (PRECIO - POR_SERVICIO) * corte;
+  // 2 · cada km: la ruta corre y el número sube
+  const b = r(f, B_IN, B_IN + 18, Easing.out(Easing.back(1.2)));
+  const km = cuenta(f, B_IN + 10, B_IN + 70, POR_KM);
+  const sale = r(f, GRID0 - 24, GRID0 - 4, Easing.in(Easing.cubic));
+  // 3 · los 110 servicios del mes: los primeros 12 pagan los fijos, el resto es tuyo
+  const g = r(f, GRID0 - 6, GRID0 + 10);
+  const hechos = Math.max(0, Math.min(N, Math.floor((f - GRID0) / GRID_CADA)));
+  const marco = r(f, GRID0 + NECESITAS * GRID_CADA + 4, GRID0 + NECESITAS * GRID_CADA + 20);
+  const tuya = f >= TUYA;
+  const t = f - TUYA - 10;
+  const shake = t >= 0 && t < 16 ? Math.sin(t * 2.6) * 14 * (1 - t / 16) : 0;
   return (
-    <Camara f={f} zoom={[1, 1.02]} from={CORTE_C} to={SOLUCION_DUR} rot={0.4}>
+    <Camara f={f} zoom={[1, 1.03]} from={CORTE_C} to={SOLUCION_DUR} rot={0.4}>
       <Fondo />
       <Paso f={f} at={CORTE_C + 6} n="PASO 2" titulo="Mirás tus números" />
-      <div
-        style={{
-          position: "absolute", top: 470, left: IN_L, width: IN_W, borderRadius: 36, background: CARD, padding: "28px 28px 30px", boxShadow: "0 34px 70px rgba(10,12,18,.3)",
-          opacity: Math.min(1, card * 1.4), translate: `0px ${(1 - card) * 140}px`,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 44, color: "#f2f3f6" }}>Mis números</span>
-          <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 26, color: "#dfe3ea", background: "#232733", padding: "8px 18px", borderRadius: 999 }}>Noviembre</span>
+      {/* 1 y 2: tarjetas grandes */}
+      <div style={{ position: "absolute", inset: 0, opacity: 1 - sale, filter: sale > 0 ? `blur(${sale * 16}px)` : undefined, scale: 1 - sale * 0.06 }}>
+        <div
+          style={{
+            position: "absolute", top: 470, left: IN_L, width: IN_W, borderRadius: 36, background: CARD, padding: "26px 30px 30px", boxShadow: "0 30px 60px rgba(10,12,18,.28)",
+            opacity: Math.min(1, a * 1.4), translate: `0px ${(1 - a) * 140}px`,
+          }}
+        >
+          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: "#9aa3b8" }}>CADA SERVICIO TE DEJA</div>
+          <div style={{ fontFamily: display, fontSize: 170, lineHeight: 1, color: AMBER, marginTop: 6 }}>{peso(Math.round(deja / 5) * 5)}</div>
+          <div style={{ position: "relative", height: 40, borderRadius: 12, background: AMBER, marginTop: 10, overflow: "hidden" }}>
+            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: `${corte * (1 - POR_SERVICIO / PRECIO) * 100}%`, background: "repeating-linear-gradient(135deg, #3a4050 0 12px, #2c313d 12px 24px)", borderLeft: corte > 0 ? "4px solid #14161b" : undefined }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8", marginTop: 10 }}>
+            <span>de cada {peso(PRECIO)} que cobrás</span>
+            <span style={{ opacity: corte }}>gastos y fijos {peso(PRECIO - POR_SERVICIO)}</span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 14, marginTop: 22 }}>
-          {kpis.map(([l, v, c]) => (
-            <div key={l} style={{ flex: 1, borderRadius: 22, background: "#1d212b", padding: "16px 18px" }}>
-              <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: "#9aa3b8" }}>{l}</div>
-              <div style={{ fontFamily: display, fontSize: 62, lineHeight: 1.05, color: c, whiteSpace: "nowrap" }}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 22, color: "#9aa3b8", marginTop: 10 }}>Lo que te queda, en promedio, después de todos los gastos.</div>
-        {/* punto de equilibrio */}
-        <div style={{ marginTop: 26, borderRadius: 26, background: "#1d212b", padding: "22px 24px", opacity: be, translate: `0px ${(1 - be) * 40}px` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 32, color: "#f2f3f6" }}>Punto de equilibrio</span>
-            <span
-              style={{
-                fontFamily: sans, fontWeight: 700, fontSize: 24, padding: "6px 16px", borderRadius: 999, color: INK, background: cubierto ? CELESTE : AMBER,
-                scale: cubierto ? 0.8 + cub * 0.2 : 1,
-              }}
-            >
-              {cubierto ? "Cubierto" : `Faltan ${NECESITAS - llevas}`}
-            </span>
-          </div>
-          <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 30, lineHeight: 1.3, color: "#dfe3ea", marginTop: 12 }}>
-            Necesitás <b style={{ color: AMBER, fontFamily: display, fontSize: 48, fontWeight: 400 }}>{NECESITAS}</b> servicios por mes para cubrir <span style={{ whiteSpace: "nowrap" }}>{peso(FIJOS_MES)}</span> de fijos. Llevás{" "}
-            <b style={{ color: "#f2f3f6", fontFamily: display, fontSize: 48, fontWeight: 400 }}>{llevas}</b>.
-          </div>
-          <div style={{ position: "relative", height: 22, borderRadius: 11, background: "#2a2f3a", marginTop: 16, overflow: "hidden" }}>
-            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${Math.min(1, llevas / NECESITAS) * 100}%`, background: cubierto ? CELESTE : AMBER, borderRadius: 11 }} />
-          </div>
-          <div style={{ fontFamily: sans, fontWeight: 500, fontSize: 24, color: "#9aa3b8", marginTop: 14, opacity: hint }}>
-            Cada servicio te deja en promedio {peso(DEJA_PROM)} después de los gastos del día.
+        <div
+          style={{
+            position: "absolute", top: 830, left: IN_L, width: IN_W, height: 250, borderRadius: 36, background: CARD, padding: "26px 30px", overflow: "hidden", boxShadow: "0 30px 60px rgba(10,12,18,.28)",
+            opacity: Math.min(1, b * 1.4), translate: `0px ${(1 - b) * 140}px`,
+          }}
+        >
+          {/* la ruta que corre abajo */}
+          <div style={{ position: "absolute", left: -100, right: -100, bottom: 34, height: 8, background: `repeating-linear-gradient(90deg, ${CELESTE} 0 60px, transparent 60px 110px)`, opacity: 0.55, translate: `${-((f * 9) % 110)}px 0px` }} />
+          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: "#9aa3b8" }}>CADA KM TE DEJA</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 18 }}>
+            <span style={{ fontFamily: display, fontSize: 150, lineHeight: 1.05, color: CELESTE }}>{peso(Math.round(km))}</span>
+            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 28, color: "#9aa3b8" }}>ya con todo descontado</span>
           </div>
         </div>
       </div>
+      {/* 3: los servicios del mes */}
+      {f >= GRID0 - 6 ? (
+        <div style={{ position: "absolute", inset: 0, opacity: g, translate: `${shake}px 0px` }}>
+          <div style={{ position: "absolute", top: 470, left: IN_L, width: IN_W, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 30, color: INK }}>Tus servicios de noviembre</span>
+            <span style={{ fontFamily: display, fontSize: 64, lineHeight: 1, color: INK }}>{hechos}</span>
+          </div>
+          {Array.from({ length: N }).map((_, i) => {
+            const on = i < hechos;
+            const k = on ? pop(f, GRID0 + i * GRID_CADA, GRID0 + i * GRID_CADA + 12) : 0;
+            const fijo = i < NECESITAS;
+            return (
+              <div
+                key={i}
+                style={{
+                  position: "absolute", left: GX + (i % COLS) * CELDA + (CELDA - DOT) / 2, top: GY + Math.floor(i / COLS) * CELDA + (CELDA - DOT) / 2, width: DOT, height: DOT, borderRadius: 14,
+                  background: on ? (fijo ? "#3a4050" : AMBER) : "rgba(20,22,27,.07)", color: on ? (fijo ? "#c9cfdc" : INK) : "transparent",
+                  display: "grid", placeItems: "center", scale: on ? 0.5 + k * 0.5 : 1, boxShadow: on && !fijo ? "0 6px 14px rgba(245,166,35,.35)" : undefined,
+                }}
+              >
+                <Icono n="ruta" s={24} w={2.4} />
+              </div>
+            );
+          })}
+          {/* los primeros 12: los que pagan los fijos */}
+          {[
+            { x: 0, y: 0, w: COLS },
+            { x: 0, y: 1, w: NECESITAS - COLS },
+          ].map((m, j) => (
+            <div key={j} style={{ position: "absolute", left: GX + m.x * CELDA - 4, top: GY + m.y * CELDA - 4, width: m.w * CELDA + 8, height: CELDA + 8, borderRadius: 18, border: "4px dashed #14161b", opacity: marco }} />
+          ))}
+          <div
+            style={{
+              position: "absolute", left: 0, right: 0, top: 1170, display: "flex", justifyContent: "center", opacity: marco * (1 - r(f, TUYA - 8, TUYA)),
+              translate: `0px ${(1 - marco) * 20}px`,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 12, background: INK, color: "#f2f3f6", padding: "12px 22px", borderRadius: 16, fontFamily: sans, fontWeight: 700, fontSize: 30 }}>
+              <Icono n="cal" s={30} w={2.4} /> Los primeros {NECESITAS} pagan los fijos del mes
+            </span>
+          </div>
+          {tuya ? (
+            <div style={{ position: "absolute", top: 1156, left: IN_L - 40, width: IN_W + 80, textAlign: "center", fontFamily: display, lineHeight: 1, color: INK, scale: slam(f, TUYA), opacity: r(f, TUYA, TUYA + 4) }}>
+              <span style={{ fontSize: 96 }}>Del 13 en adelante, </span>
+              <span style={{ fontSize: 96, color: AMBER }}>es plata tuya.</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </Camara>
   );
 };
@@ -245,7 +294,13 @@ const Solucion: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       {FIJOS.map((x, i) => (
         <Audio key={x[1]} name="Fijo" src={staticFile("sfx/mouse-click.wav")} from={440 + i * 22} volume={0.3} />
       ))}
-      <Audio name="Cubierto" src={staticFile("sfx/ding.wav")} from={LLEVAS0 + 28} volume={0.5} />
+      <Audio name="Cada servicio" src={staticFile("sfx/whoosh.wav")} from={A_IN + 30} volume={0.35} />
+      <Audio name="Cada km" src={staticFile("sfx/mouse-click.wav")} from={B_IN} volume={0.35} />
+      {Array.from({ length: 12 }).map((_, i) => (
+        <Audio key={`g${i}`} name="Servicios" src={staticFile("sfx/mouse-click.wav")} from={GRID0 + Math.round(i * 9 * GRID_CADA)} volume={0.18} />
+      ))}
+      <Audio name="Fijos cubiertos" src={staticFile("sfx/ding.wav")} from={GRID0 + Math.round(NECESITAS * GRID_CADA) + 6} volume={0.45} />
+      <Audio name="Plata tuya" src={staticFile("sfx/whip.wav")} from={TUYA + 2} volume={0.8} />
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
   );
