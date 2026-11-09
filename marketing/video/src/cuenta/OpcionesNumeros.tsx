@@ -4,7 +4,7 @@ import { display, mono, sans } from "../theme";
 import { SAFE } from "../gastos/common";
 import { ReelsGuide } from "../monogrua/StepFrame";
 import { AMBER, FIJOS_MES, Icono, KM, PASOS, peso, SERVICIOS, W } from "./Fase1";
-import { CELESTE, CORAL } from "./MapaTraslado";
+import { CELESTE, CORAL } from "./MapaFijo";
 
 // Tres propuestas de gráfico para el paso 2 de la fase 3 («Mirás tus números»).
 // Mismos números del mes que usa la fase 3: 110 servicios de $ 70.000.

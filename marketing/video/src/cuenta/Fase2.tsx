@@ -6,7 +6,7 @@ import { SAFE } from "../gastos/common";
 import { ReelsGuide } from "../monogrua/StepFrame";
 import { Camara, Grano, Toma } from "../reel/Gancho";
 import { AMBER, Chip, DESGASTE_KM, GRIS, KM, Palabra, PASOS, peso, pop, r, SERVICIOS, slam, temblor, Vineta, W } from "./Fase1";
-import { CELESTE, CORAL, KM_REALES, MapaTraslado, PEAJE_EN } from "./MapaTraslado";
+import { CELESTE, CORAL, KM_REALES, MapaFijo, PEAJE_EN } from "./MapaFijo";
 
 // Reel «Hagamos la cuenta», fase 2: el servicio que te saca plata. Con los números de la fase 1,
 // cada km cuesta $ 250. Entra un traslado de $ 38.000 y, mientras la grúa hace los tres tramos,
@@ -95,7 +95,6 @@ const PorKm: React.FC<{ f: number }> = ({ f }) => {
 };
 
 // ── B · El traslado de $ 38.000 y la carrera ────────────────────────
-const PADDING = { top: 610, bottom: 960, left: 150, right: 170 };
 const avance = (f: number, i: number) => interpolate(f, [TRAMOS[i].desde, TRAMOS[i].hasta], [0, 1], { ...clamp, easing: i === 2 ? Easing.inOut(Easing.quad) : Easing.inOut(Easing.cubic) });
 const kmEn = (f: number) => TRAMOS.reduce((s, t, i) => s + t.km * avance(f, i), 0);
 const FIJOS_AT = 572;
@@ -127,7 +126,7 @@ const Carrera: React.FC<{ f: number }> = ({ f }) => {
       {/* el mapa real, con el recorrido de los tres tramos */}
       {f >= 560 ? (
         <AbsoluteFill style={{ opacity: mapa, translate: `${shake}px 0px` }}>
-          <MapaTraslado avance={[avance(f, 0), avance(f, 1), avance(f, 2)]} width={1080} height={1920} padding={PADDING} />
+          <MapaFijo avance={[avance(f, 0), avance(f, 1), avance(f, 2)]} f={f} />
           <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(7,10,18,.96) 0%, rgba(7,10,18,.9) 27%, rgba(7,10,18,0) 31%, rgba(7,10,18,0) 54%, rgba(7,10,18,.94) 57%, rgba(7,10,18,.98) 100%)" }} />
           <div style={{ position: "absolute", right: 1080 - IN_L - IN_W, top: 1050, fontFamily: sans, fontWeight: 500, fontSize: 18, color: "rgba(255,255,255,.6)" }}>© OpenFreeMap © OpenMapTiles © OpenStreetMap</div>
         </AbsoluteFill>

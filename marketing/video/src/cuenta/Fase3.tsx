@@ -8,7 +8,7 @@ import { Logo } from "../scenes/Logo";
 import { Camara, Grano, Toma } from "../reel/Gancho";
 import { Cierre, CIERRE_DUR } from "../reel/Cierre";
 import { AMBER, Chip, FIJOS_MES, Icono, KM, PASOS, peso, pop, r, SERVICIOS, slam, W } from "./Fase1";
-import { CELESTE } from "./MapaTraslado";
+import { CELESTE } from "./MapaFijo";
 
 // Reel «Hagamos la cuenta», fase 3: la solución, solo con lo que la app hace hoy.
 // 1) Cargás los gastos variables (con foto del ticket) y los fijos del mes una vez.
