@@ -13,6 +13,12 @@ import { Desarrollo, DESARROLLO_DUR } from "./reel/Desarrollo";
 import { COMPLETO_DUR, ReelCompleto } from "./reel/Completo";
 import { Cierre, CIERRE_DUR } from "./reel/Cierre";
 import { ChoferPreview } from "./reel/Chofer";
+import { a60 } from "./timescale/A60";
+
+const DelChat60 = a60(DelChatAlRemito);
+const MonoGrua60 = a60(MonoGruaVideo);
+const Factura60 = a60(FacturaAchica);
+const Comparacion60 = a60(ComparacionVideo);
 import { MG_P1, MG_P2, MG_P3, MGPaso1, MGPaso2, MGPaso3, MONOGRUA_DUR, MonoGruaVideo } from "./monogrua/v2/Video";
 import * as SoloRef from "./solo/Screens";
 import { AdVideo, AD_DURATION } from "./AdVideo";
@@ -64,6 +70,12 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Chat-Cierre" component={CierreChatScene} width={W} height={H} fps={FPS} durationInFrames={CIERRE_CHAT_DUR} />
     </Folder>
     <Composition id="DelChatAlRemito" component={DelChatAlRemito} width={W} height={H} fps={FPS} durationInFrames={DEL_CHAT_DUR} />
+    <Folder name="Nivel-60fps">
+      <Composition id="DelChatAlRemito-60" component={DelChat60} width={W} height={H} fps={60} durationInFrames={DEL_CHAT_DUR * 2} />
+      <Composition id="MonoGrua-60" component={MonoGrua60} width={W} height={H} fps={60} durationInFrames={MONOGRUA_DUR * 2} defaultProps={{ guia: false }} />
+      <Composition id="Gastos3-Factura-60" component={Factura60} width={W} height={H} fps={60} durationInFrames={FACTURA_DUR * 2} defaultProps={{ guia: false }} />
+      <Composition id="ComparacionSolo-60" component={Comparacion60} width={W} height={H} fps={60} durationInFrames={COMPARACION_DUR * 2} />
+    </Folder>
     <Folder name="Reel-AuxiliOS">
       <Composition id="Reel-Gancho" component={Gancho} width={W} height={H} fps={FPS60} durationInFrames={GANCHO_DUR} defaultProps={{ guia: false }} />
       <Composition id="Reel-Gancho-Guia" component={Gancho} width={W} height={H} fps={FPS60} durationInFrames={GANCHO_DUR} defaultProps={{ guia: true }} />
