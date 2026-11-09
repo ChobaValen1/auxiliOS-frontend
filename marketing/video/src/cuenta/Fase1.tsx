@@ -11,23 +11,23 @@ import { Grua } from "./Grua";
 // Reel «Hagamos la cuenta», fase 1: el gancho y la bola de nieve. Cinco servicios de $ 70.000
 // y, renglón por renglón, cada gasto con su cuenta a la vista: primero los variables (lo que
 // gastás cada vez que salís) y, aparte, la parte del día de los fijos del mes. Oscuro, 60 fps.
-const W = SAFE.right - SAFE.left;
-const AMBER = "#f5a623";
-const GRIS = "#9aa3b8";
-const ease = Easing.bezier(0.16, 1, 0.3, 1);
-const r = (f: number, a: number, b: number, e = ease) => interpolate(f, [a, b], [0, 1], { ...clamp, easing: e });
-const pop = (f: number, a: number, b: number) => interpolate(f, [a, b], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.7)) });
-const fmt = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-const peso = (n: number) => `$ ${fmt(n)}`;
+export const W = SAFE.right - SAFE.left;
+export const AMBER = "#f5a623";
+export const GRIS = "#9aa3b8";
+export const ease = Easing.bezier(0.16, 1, 0.3, 1);
+export const r = (f: number, a: number, b: number, e = ease) => interpolate(f, [a, b], [0, 1], { ...clamp, easing: e });
+export const pop = (f: number, a: number, b: number) => interpolate(f, [a, b], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.7)) });
+export const fmt = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+export const peso = (n: number) => `$ ${fmt(n)}`;
 // golpe de texto: entra grande y cae a su tamaño
-const slam = (f: number, at: number) => interpolate(f, [at, at + 10], [2, 1], { ...clamp, easing: Easing.in(Easing.cubic) });
-const temblor = (f: number, at: number, fuerza = 16) => {
+export const slam = (f: number, at: number) => interpolate(f, [at, at + 10], [2, 1], { ...clamp, easing: Easing.in(Easing.cubic) });
+export const temblor = (f: number, at: number, fuerza = 16) => {
   const t = f - at;
   return t >= 0 && t < 16 ? Math.sin(t * 2.6) * fuerza * (1 - t / 16) : 0;
 };
 
 // ── Íconos de los gastos (trazo, estilo lucide) ─────────────────────
-const ICONOS: Record<string, React.ReactNode> = {
+export const ICONOS: Record<string, React.ReactNode> = {
   gasoil: (
     <>
       <path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
@@ -56,15 +56,29 @@ const ICONOS: Record<string, React.ReactNode> = {
       <path d="M16 2v4M8 2v4M3 10h18" />
     </>
   ),
+  ruta: (
+    <>
+      <circle cx="6" cy="19" r="3" />
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+      <circle cx="18" cy="5" r="3" />
+    </>
+  ),
+  casa: <path d="M3 10.5 12 3l9 7.5V21H3zM9 21v-6h6v6" />,
+  pin: (
+    <>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </>
+  ),
   recibo: <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM8 8h8M8 12h8M8 16h5" />,
 };
-const Icono: React.FC<{ n: string; s: number; c?: string; w?: number }> = ({ n, s, c = "currentColor", w = 2 }) => (
+export const Icono: React.FC<{ n: string; s: number; c?: string; w?: number }> = ({ n, s, c = "currentColor", w = 2 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
     {ICONOS[n]}
   </svg>
 );
 // cuadrito negro con el ícono en ámbar
-const Chip: React.FC<{ n: string; s: number; fijo?: boolean }> = ({ n, s, fijo }) => (
+export const Chip: React.FC<{ n: string; s: number; fijo?: boolean }> = ({ n, s, fijo }) => (
   <span
     style={{
       width: s, height: s, borderRadius: s * 0.28, background: fijo ? "rgba(245,166,35,.14)" : "#1c1f28", border: `2px solid ${fijo ? AMBER : "#2e3440"}`,
@@ -115,7 +129,7 @@ const TERCIO = 2694;
 export const FASE1_DUR = 2850;
 
 // Palabra gigante de fondo, en contorno, que corre más lento que lo de adelante
-const Palabra: React.FC<{ f: number; from: number; to: number; children: string; top?: number }> = ({ f, from, to, children, top = 640 }) => {
+export const Palabra: React.FC<{ f: number; from: number; to: number; children: string; top?: number }> = ({ f, from, to, children, top = 640 }) => {
   if (f < from - 2 || f > to + 14) return null;
   return (
     <div
@@ -128,7 +142,7 @@ const Palabra: React.FC<{ f: number; from: number; to: number; children: string;
     </div>
   );
 };
-const Vineta: React.FC = () => <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,.65) 100%)", pointerEvents: "none" }} />;
+export const Vineta: React.FC = () => <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,.65) 100%)", pointerEvents: "none" }} />;
 
 // ── 0 · Gancho: la grúa arranca y sale ──────────────────────────────
 const ARRANCA = 14;
