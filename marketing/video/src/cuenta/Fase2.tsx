@@ -4,9 +4,9 @@ import { AbsoluteFill, Easing, interpolate, staticFile, useCurrentFrame } from "
 import { clamp, display, mono, sans } from "../theme";
 import { SAFE } from "../gastos/common";
 import { ReelsGuide } from "../monogrua/StepFrame";
-import { Ico } from "../solo/ui";
 import { Camara, Grano, Toma } from "../reel/Gancho";
-import { AMBER, Chip, DESGASTE_KM, FIJOS_MES, GRIS, Icono, KM, Palabra, PASOS, peso, pop, r, SERVICIOS, slam, temblor, Vineta, W } from "./Fase1";
+import { AMBER, Chip, DESGASTE_KM, GRIS, KM, Palabra, PASOS, peso, pop, r, SERVICIOS, slam, temblor, Vineta, W } from "./Fase1";
+import { CELESTE, CORAL, KM_REALES, MapaTraslado, PEAJE_EN } from "./MapaTraslado";
 
 // Reel «Hagamos la cuenta», fase 2: el servicio que te saca plata. Con los números de la fase 1,
 // cada km cuesta $ 250. Entra un traslado de $ 38.000 y, mientras la grúa hace los tres tramos,
@@ -22,19 +22,20 @@ const FIJOS_DIA = PASOS[5].monto; // 20.700
 const FIJOS_SERV = FIJOS_DIA / SERVICIOS; // 4.140
 const PAGO = 38000;
 const PEAJE = 1400;
+// los km son los del recorrido real: Monte Grande → San Vicente → La Plata → Monte Grande
 const TRAMOS: { km: number; desde: number; hasta: number; txt: string }[] = [
-  { km: 35, desde: 596, hasta: 704, txt: "a buscarlo" },
-  { km: 50, desde: 712, hasta: 818, txt: "con el auto arriba" },
-  { km: 55, desde: 826, hasta: 1000, txt: "vuelve vacío" },
+  { km: KM_REALES[0], desde: 596, hasta: 704, txt: "a buscarlo" },
+  { km: KM_REALES[1], desde: 712, hasta: 836, txt: "con el auto arriba" },
+  { km: KM_REALES[2], desde: 846, hasta: 1010, txt: "vuelve vacío" },
 ];
-const KM_TOTAL = TRAMOS.reduce((s, t) => s + t.km, 0); // 140
-const PEAJES = [{ tramo: 1, en: 0.5 }, { tramo: 2, en: 0.08 }];
-export const COSTO = KM_TOTAL * POR_KM + PEAJES.length * PEAJE + FIJOS_SERV; // 41.940
-export const PIERDE = COSTO - PAGO; // 3.940
-void FIJOS_MES;
+const KM_TOTAL = TRAMOS.reduce((s, t) => s + t.km, 0); // 146
+// un peaje: el de la autopista a La Plata, en la vuelta
+const PEAJES = [{ tramo: 2, en: PEAJE_EN }];
+export const COSTO = KM_TOTAL * POR_KM + PEAJES.length * PEAJE + FIJOS_SERV; // 42.040
+export const PIERDE = COSTO - PAGO; // 4.040
 
 const VOZ: [string, number][] = [
-  ["ctb-p1", 8], ["ctb-p1b", 222], ["ctb-p2", 356], ["ctb-p3", 596], ["ctb-p4", 712], ["ctb-p5", 826],
+  ["ctb-p1", 8], ["ctb-p1b", 222], ["ctb-p2", 356], ["ctb-p3", 596], ["ctb-p4", 712], ["ctb-p5", 846],
   ["ctb-p6", 1100], ["ctb-p7", 1186], ["ctb-p8", 1300], ["ctb-p9", 1460],
 ];
 const CORTE_B = 345;
@@ -52,7 +53,7 @@ const PorKm: React.FC<{ f: number }> = ({ f }) => {
   const shake = temblor(f, 240);
   return (
     <Camara f={f} zoom={[1, 1.05]} from={0} to={CORTE_B + 10}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1f2230, #06070a 75%)", translate: `${shake}px 0px` }} />
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1a2236, #070a12 75%)", translate: `${shake}px 0px` }} />
       <Palabra f={f} from={0} to={CORTE_B} top={700}>POR KM</Palabra>
       <div style={{ position: "absolute", top: 300, left: IN_L, width: IN_W, textAlign: "center" }}>
         <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 30, letterSpacing: 3, color: GRIS, opacity: t0 }}>LA CUENTA QUE NADIE HACE</div>
@@ -94,34 +95,7 @@ const PorKm: React.FC<{ f: number }> = ({ f }) => {
 };
 
 // ── B · El traslado de $ 38.000 y la carrera ────────────────────────
-// el recorrido: base → origen → destino → base
-const PB = { x: 200, y: 1000 };
-const PO = { x: 260, y: 660 };
-const PD = { x: 850, y: 700 };
-const RUTAS: { x: number; y: number }[][] = [
-  [PB, { x: 200, y: 820 }, PO],
-  [PO, { x: 520, y: 620 }, { x: 640, y: 760 }, PD],
-  [PD, { x: 880, y: 1000 }, PB],
-];
-const largo = (pts: { x: number; y: number }[]) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0);
-// el pedazo de la ruta hecho hasta t (0..1) y el punto donde está la grúa
-const parcial = (pts: { x: number; y: number }[], t: number) => {
-  const L = largo(pts) * t;
-  const out = [pts[0]];
-  let acc = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1], b = pts[i];
-    const seg = Math.hypot(b.x - a.x, b.y - a.y);
-    if (acc + seg >= L) {
-      const k = seg ? (L - acc) / seg : 0;
-      out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
-      return out;
-    }
-    out.push(b);
-    acc += seg;
-  }
-  return out;
-};
+const PADDING = { top: 610, bottom: 960, left: 150, right: 170 };
 const avance = (f: number, i: number) => interpolate(f, [TRAMOS[i].desde, TRAMOS[i].hasta], [0, 1], { ...clamp, easing: i === 2 ? Easing.inOut(Easing.quad) : Easing.inOut(Easing.cubic) });
 const kmEn = (f: number) => TRAMOS.reduce((s, t, i) => s + t.km * avance(f, i), 0);
 const FIJOS_AT = 572;
@@ -147,13 +121,17 @@ const Carrera: React.FC<{ f: number }> = ({ f }) => {
   const shake = temblor(f, CRUCE, 20);
   const mapa = r(f, 572, 592);
   const km = kmEn(f);
-  // dónde está la grúa
-  const i = f < TRAMOS[1].desde ? 0 : f < TRAMOS[2].desde ? 1 : 2;
-  const aqui = parcial(RUTAS[i], avance(f, i)).slice(-1)[0];
   return (
     <Camara f={f} zoom={[1, 1.02]} from={CORTE_B} to={CORTE_C + 10} rot={0.4}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1c2030, #05060a 75%)", translate: `${shake}px 0px` }} />
-      <Palabra f={f} from={TRAMOS[0].desde} to={CORTE_C} top={720}>{f >= TRAMOS[2].desde ? "VACÍO" : "TRASLADO"}</Palabra>
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1a2236, #070a12 75%)", translate: `${shake}px 0px` }} />
+      {/* el mapa real, con el recorrido de los tres tramos */}
+      {f >= 560 ? (
+        <AbsoluteFill style={{ opacity: mapa, translate: `${shake}px 0px` }}>
+          <MapaTraslado avance={[avance(f, 0), avance(f, 1), avance(f, 2)]} width={1080} height={1920} padding={PADDING} />
+          <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(7,10,18,.96) 0%, rgba(7,10,18,.9) 27%, rgba(7,10,18,0) 31%, rgba(7,10,18,0) 54%, rgba(7,10,18,.94) 57%, rgba(7,10,18,.98) 100%)" }} />
+          <div style={{ position: "absolute", right: 1080 - IN_L - IN_W, top: 1050, fontFamily: sans, fontWeight: 500, fontSize: 18, color: "rgba(255,255,255,.6)" }}>© OpenFreeMap © OpenMapTiles © OpenStreetMap</div>
+        </AbsoluteFill>
+      ) : null}
       {/* la notificación del pedido */}
       {pasa < 1 ? (
         <div
@@ -195,101 +173,33 @@ const Carrera: React.FC<{ f: number }> = ({ f }) => {
             <div style={{ fontFamily: display, fontSize: 110, lineHeight: 1, color: AMBER }}>{peso(PAGO)}</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: cruzo ? AMBER : GRIS }}>TE CUESTA</div>
-            <div style={{ fontFamily: display, fontSize: 110, lineHeight: 1, color: "#f2f3f6", scale: 1 + flash * 0.12, transformOrigin: "100% 50%" }}>{peso(Math.round(costo / 10) * 10)}</div>
+            <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: cruzo ? CORAL : GRIS }}>TE CUESTA</div>
+            <div style={{ fontFamily: display, fontSize: 110, lineHeight: 1, color: cruzo ? CORAL : "#f2f3f6", scale: 1 + flash * 0.12, transformOrigin: "100% 50%" }}>{peso(Math.round(costo / 10) * 10)}</div>
           </div>
         </div>
         <div style={{ position: "relative", height: 34, borderRadius: 10, background: "#20242e", marginTop: 14, overflow: "hidden" }}>
-          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(Math.min(costo, PAGO) / ESCALA) * 100}%`, background: "repeating-linear-gradient(135deg, #4a5163 0 12px, #3a4050 12px 24px)" }} />
-          {cruzo ? <div style={{ position: "absolute", left: `${(PAGO / ESCALA) * 100}%`, top: 0, bottom: 0, width: `${((costo - PAGO) / ESCALA) * 100}%`, background: `repeating-linear-gradient(135deg, ${AMBER} 0 12px, #b97a14 12px 24px)` }} /> : null}
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(Math.min(costo, PAGO) / ESCALA) * 100}%`, background: `repeating-linear-gradient(135deg, ${CELESTE}99 0 12px, ${CELESTE}55 12px 24px)` }} />
+          {cruzo ? <div style={{ position: "absolute", left: `${(PAGO / ESCALA) * 100}%`, top: 0, bottom: 0, width: `${((costo - PAGO) / ESCALA) * 100}%`, background: `repeating-linear-gradient(135deg, ${CORAL} 0 12px, #c4544a 12px 24px)` }} /> : null}
           <div style={{ position: "absolute", left: `${(PAGO / ESCALA) * 100}%`, top: -2, bottom: -2, width: 5, background: AMBER, boxShadow: `0 0 12px ${AMBER}` }} />
         </div>
         <div style={{ position: "relative", height: 34, marginTop: 6 }}>
           <span style={{ position: "absolute", left: `${(PAGO / ESCALA) * 100}%`, translate: "-50% 0", fontFamily: mono, fontWeight: 700, fontSize: 22, color: AMBER, whiteSpace: "nowrap" }}>lo que te pagan</span>
         </div>
       </div>
-      {/* el recorrido */}
-      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, opacity: mapa, overflow: "visible" }}>
-        {RUTAS.map((pts, k) => (
-          <polyline key={`b${k}`} points={pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-        {RUTAS.map((pts, k) => {
-          const hecho = parcial(pts, avance(f, k));
-          if (hecho.length < 2) return null;
-          return (
-            <polyline
-              key={`h${k}`} points={hecho.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" strokeWidth={14} strokeLinecap="round" strokeLinejoin="round"
-              stroke={k === 1 ? AMBER : k === 0 ? "#c9cfdc" : "#c9cfdc"} strokeDasharray={k === 2 ? "4 26" : undefined}
-            />
-          );
-        })}
-      </svg>
-      {/* lugares */}
-      {[
-        { p: PB, ico: "casa", t: "BASE", dx: -10, dy: 44 },
-        { p: PO, ico: "pin", t: "ORIGEN", dx: -10, dy: -110 },
-        { p: PD, ico: "pin", t: "DESTINO", dx: -150, dy: -110 },
-      ].map((x) => (
-        <div key={x.t} style={{ position: "absolute", left: x.p.x - 30, top: x.p.y - 30, opacity: mapa }}>
-          <div style={{ width: 60, height: 60, borderRadius: 18, background: "#16181f", border: "2px solid #3a4050", display: "grid", placeItems: "center", color: "#dfe3ea" }}>
-            <Icono n={x.ico} s={32} w={2.2} />
-          </div>
-          <div style={{ position: "absolute", left: x.dx + 30, top: x.dy, fontFamily: mono, fontWeight: 700, fontSize: 24, letterSpacing: 2, color: GRIS, whiteSpace: "nowrap", translate: "-50% 0" }}>{x.t}</div>
-        </div>
-      ))}
-      {/* el km de cada tramo */}
-      {TRAMOS.map((t, k) => {
-        const e = pop(f, t.desde + 10, t.desde + 28);
-        const pos = [
-          { x: 120, y: 820 },
-          { x: 400, y: 560 },
-          { x: 560, y: 900 },
-        ][k];
-        return (
-          <div
-            key={t.txt}
-            style={{
-              position: "absolute", left: pos.x, top: pos.y, padding: "8px 16px", borderRadius: 14, background: k === 1 ? AMBER : "#1c1f28", border: k === 1 ? undefined : "2px solid #3a4050",
-              color: k === 1 ? "#14161b" : "#eef0f5", fontFamily: mono, fontWeight: 700, fontSize: 26, whiteSpace: "nowrap", opacity: Math.min(1, e * 1.4), scale: 0.6 + e * 0.4,
-            }}
-          >
-            {t.km} km · {t.txt}
-          </div>
-        );
-      })}
-      {/* peajes */}
-      {PEAJES.map((p, k) => {
-        const at = parcial(RUTAS[p.tramo], p.en).slice(-1)[0];
-        const paso = avance(f, p.tramo) >= p.en;
-        return (
-          <div key={k} style={{ position: "absolute", left: at.x - 24, top: at.y - 24, width: 48, height: 48, borderRadius: 14, background: paso ? AMBER : "#1c1f28", border: "2px solid #3a4050", color: paso ? "#14161b" : GRIS, display: "grid", placeItems: "center", opacity: mapa }}>
-            <Icono n="peaje" s={26} w={2.2} />
-            {paso ? (
-              <div style={{ position: "absolute", left: at.x > 700 ? -150 : 56, top: 6, fontFamily: mono, fontWeight: 700, fontSize: 24, color: AMBER, whiteSpace: "nowrap" }}>+ {peso(PEAJE)}</div>
-            ) : null}
-          </div>
-        );
-      })}
-      {/* la grúa */}
-      {f >= TRAMOS[0].desde - 6 ? (
-        <div style={{ position: "absolute", left: aqui.x - 40, top: aqui.y - 40, width: 80, height: 80, borderRadius: "50%", background: AMBER, color: "#14161b", display: "grid", placeItems: "center", boxShadow: "0 0 0 10px rgba(245,166,35,.22), 0 16px 30px rgba(0,0,0,.5)" }}>
-          <Ico n="car" s={44} w={2.4} />
-        </div>
-      ) : null}
       {/* fijos del servicio, al arrancar */}
       {f >= FIJOS_AT ? (
-        <div style={{ position: "absolute", top: 1080, left: IN_L, width: IN_W, display: "flex", justifyContent: "space-between", fontFamily: mono, fontWeight: 700, fontSize: 28, color: "#c9cfdc", opacity: r(f, FIJOS_AT, FIJOS_AT + 14) }}>
+        <div style={{ position: "absolute", top: 1100, left: IN_L, width: IN_W, display: "flex", justifyContent: "space-between", fontFamily: mono, fontWeight: 700, fontSize: 28, color: "#c9cfdc", opacity: r(f, FIJOS_AT, FIJOS_AT + 14) }}>
           <span>KM {Math.round(km)} / {KM_TOTAL} · × {peso(POR_KM)}</span>
-          <span style={{ color: AMBER }}>+ fijos {peso(FIJOS_SERV)}</span>
+          <span style={{ color: CELESTE }}>+ fijos {peso(FIJOS_SERV)}</span>
         </div>
       ) : null}
       {/* el momento en que empezás a perder */}
       {cruzo ? (
-        <div style={{ position: "absolute", top: 1140, left: IN_L - 30, width: IN_W + 60, textAlign: "center", fontFamily: display, fontSize: 96, lineHeight: 1, color: AMBER, scale: slam(f, CRUCE), opacity: r(f, CRUCE, CRUCE + 4) }}>
+        <div style={{ position: "absolute", top: 1150, left: IN_L - 30, width: IN_W + 60, textAlign: "center", fontFamily: display, fontSize: 90, lineHeight: 1, color: CORAL, scale: slam(f, CRUCE), opacity: r(f, CRUCE, CRUCE + 4) }}>
           Acá empezás a perder
         </div>
       ) : null}
-      <AbsoluteFill style={{ background: AMBER, opacity: flash * 0.18, pointerEvents: "none" }} />
+      <AbsoluteFill style={{ background: CORAL, opacity: flash * 0.2, pointerEvents: "none" }} />
     </Camara>
   );
 };
@@ -298,7 +208,7 @@ const Carrera: React.FC<{ f: number }> = ({ f }) => {
 const Cuentita: React.FC<{ f: number }> = ({ f }) => {
   const filas: { ico: string; t: string; c: string; v: number; at: number }[] = [
     { ico: "ruta", t: "Kilómetros", c: `${KM_TOTAL} km × ${peso(POR_KM)}`, v: KM_TOTAL * POR_KM, at: 1040 },
-    { ico: "peaje", t: "Peajes", c: `2 × ${peso(PEAJE)}`, v: PEAJES.length * PEAJE, at: 1058 },
+    { ico: "peaje", t: "Peaje", c: `${PEAJES.length} × ${peso(PEAJE)} · autopista`, v: PEAJES.length * PEAJE, at: 1058 },
     { ico: "cal", t: "Fijos del servicio", c: `${peso(FIJOS_DIA)} ÷ ${SERVICIOS}`, v: FIJOS_SERV, at: 1076 },
   ];
   const tot = pop(f, 1100, 1120);
@@ -307,7 +217,7 @@ const Cuentita: React.FC<{ f: number }> = ({ f }) => {
   const shake = temblor(f, perdiste + 10, 20);
   return (
     <Camara f={f} zoom={[1.04, 1]} from={CORTE_C} to={CORTE_D + 10}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1f2230, #050608 72%)", translate: `${shake}px 0px` }} />
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1a2236, #070a12 72%)", translate: `${shake}px 0px` }} />
       <Palabra f={f} from={perdiste} to={CORTE_D} top={700}>PERDISTE</Palabra>
       <div style={{ position: "absolute", top: 300, left: IN_L, width: IN_W, translate: `${shake}px 0px` }}>
         <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 28, letterSpacing: 3, color: GRIS, opacity: r(f, CORTE_C, CORTE_C + 14) }}>LA CUENTA DEL TRASLADO</div>
@@ -336,7 +246,7 @@ const Cuentita: React.FC<{ f: number }> = ({ f }) => {
       {f >= perdiste ? (
         <div style={{ position: "absolute", top: 1010, left: IN_L - 40, width: IN_W + 80, textAlign: "center", fontFamily: display, lineHeight: 0.95, scale: slam(f, perdiste), opacity: r(f, perdiste, perdiste + 4), textShadow: "0 12px 50px rgba(0,0,0,.7)" }}>
           <div style={{ fontSize: 110, color: "#f2f3f6" }}>Perdiste</div>
-          <div style={{ fontSize: 140, color: AMBER }}>− {peso(PIERDE)}</div>
+          <div style={{ fontSize: 140, color: CORAL }}>− {peso(PIERDE)}</div>
         </div>
       ) : null}
     </Camara>
@@ -351,7 +261,7 @@ const Remate: React.FC<{ f: number }> = ({ f }) => {
   const sub = r(f, 1462, 1480);
   return (
     <Camara f={f} zoom={[1.06, 1]} from={CORTE_D} to={FASE2_DUR}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 42%, #23262f, #050608 72%)", translate: `${shake}px 0px` }} />
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 42%, #1d2740, #070a12 72%)", translate: `${shake}px 0px` }} />
       <Palabra f={f} from={LA_CUENTA} to={FASE2_DUR} top={700}>LA CUENTA</Palabra>
       <div style={{ position: "absolute", top: 360, left: IN_L, width: IN_W, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 62, lineHeight: 1.15, color: "#eef0f5", opacity: t1, translate: `0px ${(1 - t1) * 30}px` }}>
           Esto es lo que
