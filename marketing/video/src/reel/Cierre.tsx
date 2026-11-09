@@ -24,7 +24,7 @@ const ICONOS = ["file", "cash", "gauge", "route"];
 const LOGO_Y = 760;
 const PULGAR = 74;
 
-export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
+export const Cierre: React.FC<{ guia?: boolean; voz?: string }> = ({ guia = false, voz = "vo/cierre-l1.wav" }) => {
   const f = useCurrentFrame();
   // entra desenfocado, como los otros cortes
   const inn = r(f, 0, 16);
@@ -89,7 +89,7 @@ export const Cierre: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
         </div>
       </AbsoluteFill>
       <Grano f={f} />
-      <Audio name="Auxilios. Para el gruero independiente." src={staticFile("vo/cierre-l1.wav")} from={VOZ_AT} volume={1} />
+      <Audio name="Auxilios. Para el gruero independiente." src={staticFile(voz)} from={VOZ_AT} volume={1} />
       <Audio name="Corte" src={staticFile("sfx/whoosh.wav")} from={0} volume={0.4} />
       <Audio name="Logo" src={staticFile("sfx/ding.wav")} from={40} volume={0.5} />
       <Audio name="Pulgar" src={staticFile("sfx/whoosh.wav")} from={PULGAR} volume={0.35} />

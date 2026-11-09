@@ -16,6 +16,7 @@ import { ChoferPreview } from "./reel/Chofer";
 import { a60 } from "./timescale/A60";
 import { Fase1, FASE1_DUR } from "./cuenta/Fase1";
 import { Fase2, FASE2_DUR } from "./cuenta/Fase2";
+import { Fase3, FASE3_DUR } from "./cuenta/Fase3";
 
 const DelChat60 = a60(DelChatAlRemito);
 const MonoGrua60 = a60(MonoGruaVideo);
@@ -83,6 +84,8 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="Cuenta-Fase1-Guia" component={Fase1} width={W} height={H} fps={FPS60} durationInFrames={FASE1_DUR} defaultProps={{ guia: true }} />
       <Composition id="Cuenta-Fase2" component={Fase2} width={W} height={H} fps={FPS60} durationInFrames={FASE2_DUR} defaultProps={{ guia: false }} />
       <Composition id="Cuenta-Fase2-Guia" component={Fase2} width={W} height={H} fps={FPS60} durationInFrames={FASE2_DUR} defaultProps={{ guia: true }} />
+      <Composition id="Cuenta-Fase3" component={Fase3} width={W} height={H} fps={FPS60} durationInFrames={FASE3_DUR} defaultProps={{ guia: false }} />
+      <Composition id="Cuenta-Fase3-Guia" component={Fase3} width={W} height={H} fps={FPS60} durationInFrames={FASE3_DUR} defaultProps={{ guia: true }} />
     </Folder>
     <Folder name="Reel-AuxiliOS">
       <Composition id="Reel-Gancho" component={Gancho} width={W} height={H} fps={FPS60} durationInFrames={GANCHO_DUR} defaultProps={{ guia: false }} />

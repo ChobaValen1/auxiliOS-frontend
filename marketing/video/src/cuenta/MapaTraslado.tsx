@@ -88,7 +88,7 @@ export const MapaTraslado: React.FC<{ avance: [number, number, number]; width: n
       m.addLayer({ id: "peaje", type: "circle", source: "peaje", paint: { "circle-radius": 14, "circle-color": CORAL, "circle-stroke-color": "#ffffff", "circle-stroke-width": 4 } });
       m.addLayer({
         id: "peaje-txt", type: "symbol", source: "peaje",
-        layout: { "text-field": "Peaje + $ 1.400", "text-font": ["Noto Sans Bold"], "text-size": 28, "text-anchor": "right", "text-offset": [-1.1, 0], "text-allow-overlap": true, "text-ignore-placement": true },
+        layout: { "text-field": "Peaje + $ 1.400", "text-font": ["Noto Sans Bold"], "text-size": 28, "text-anchor": "bottom", "text-offset": [0, -1.1], "text-allow-overlap": true, "text-ignore-placement": true },
         paint: { "text-color": CORAL, "text-halo-color": "#0b1020", "text-halo-width": 4 },
       });
       m.addSource("grua", { type: "geojson", data: turf.featureCollection([]) });

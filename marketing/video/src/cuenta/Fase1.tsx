@@ -70,6 +70,13 @@ export const ICONOS: Record<string, React.ReactNode> = {
       <circle cx="12" cy="10" r="3" />
     </>
   ),
+  camera: (
+    <>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </>
+  ),
+  check: <path d="M20 6 9 17l-5-5" />,
   recibo: <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1zM8 8h8M8 12h8M8 16h5" />,
 };
 export const Icono: React.FC<{ n: string; s: number; c?: string; w?: number }> = ({ n, s, c = "currentColor", w = 2 }) => (
