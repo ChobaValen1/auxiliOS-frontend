@@ -43,4 +43,10 @@
 .drl-more .ax-icon { width: 14px; height: 14px; }
 .drl-sheet { display: grid; gap: 12px; }
 .drl-sheet .drl-state { justify-self: start; margin: 0; }
-#p3-preview-actions .drl-box { margin: 0 0 10px; }
+/* Unificado con la tarjeta del servicio: sin caja anidada, sólo un separador y el mismo ancho que los botones. */
+.drl-box { padding: 12px 0 0; border: 0; border-top: 1px solid color-mix(in srgb, #a78bfa 40%, transparent); border-radius: 0; background: none; }
+.p3-driver-task > .drl-box { margin: 0 16px 12px; }
+#p3-preview-actions .drl-box { margin: 12px 0 0; }
+.drl-box .drl-id { margin-bottom: 2px; }
+.drl-box .drl-btn + .drl-btn, .drl-box .drl-maps + .drl-btn { margin-top: 0; }
+.drl-box .drl-note { margin-top: 2px; }
