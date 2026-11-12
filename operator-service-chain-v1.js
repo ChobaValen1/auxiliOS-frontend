@@ -96,15 +96,21 @@
   }
 
   function render(w) {
-    const box = document.getElementById('osv4-chain');
-    if (!box) return;
-    if (!eligible(w)) { box.hidden = true; box.innerHTML = ''; return; }
+    const box = document.getElementById('osv4-chain'), slot = document.getElementById('osv4-chain-switch'), card = document.getElementById('osv4-toggles');
+    if (!box || !slot) return;
+    if (!eligible(w)) {
+      box.hidden = true; box.innerHTML = ''; slot.innerHTML = '';
+      if (card && !(w?.toggles?.concepts || []).length) card.hidden = true;
+      return;
+    }
+    if (card) card.hidden = false;
     const c = state(w), view = w.mode === 'view', sel = selected(c);
     const options = [...c.candidates];
     if (c.previous && !options.some(x => String(x.service_id) === String(c.previous.service_id))) options.unshift(c.previous);
     const mode = routeMode(w, baseMode(w));
     const next = c.next ? `<p class="osv4-chain-next">Después sigue con <b>${esc(c.next.label)}</b>: este servicio no vuelve a la base.</p>` : '';
-    const toggle = `<label class="ax-switch osv4-chain-toggle"><input type="checkbox" id="osv4-chain-on" ${c.on ? 'checked' : ''} ${view || c.loading ? 'disabled' : ''} aria-describedby="osv4-chain-help"><span><b>Servicio enganchado</b><small id="osv4-chain-help">${c.on ? 'Sí' : 'No'} · el móvil viene de terminar otro servicio de esta prestadora sin volver a la base</small></span></label>`;
+    /* Mismo interruptor que «¿Se derivó a taller?» (conceptos sí/no), en la misma fila. */
+    slot.innerHTML = `<label class="ax-switch osv4-toggle-row osv4-chain-toggle"><span>Servicio enganchado</span><input type="checkbox" id="osv4-chain-on" ${c.on ? 'checked' : ''} ${view || c.loading ? 'disabled' : ''} title="El móvil viene de terminar otro servicio de esta prestadora sin volver a la base"></label>`;
     const field = !c.on ? '' : view
       ? `<p class="osv4-chain-value">${sel ? `Enganchado a <b>${esc(sel.label)}</b> · ${esc(place(sel.origin))} → ${esc(place(sel.destination))}` : 'No está enganchado a otro servicio.'}</p>`
       : `<label class="osv4-chain-field"><span>¿A qué servicio sigue?</span><select id="osv4-chain-select" ${c.loading ? 'disabled' : ''} ${!c.selectedId ? 'aria-invalid="true"' : ''}>
@@ -112,11 +118,12 @@
           ${options.map(x => `<option value="${esc(x.service_id)}" ${String(x.service_id) === String(c.selectedId) ? 'selected' : ''}>${esc(optionLabel(x))}</option>`).join('')}
         </select></label>
         ${!options.length && !c.candLoading ? '<small class="osv4-chain-hint">No hay servicios de esta prestadora de las últimas 24 h para enganchar.</small>' : !c.selectedId ? '<small class="osv4-chain-hint">Hasta que elijas el servicio anterior, este servicio se calcula saliendo de la base.</small>' : ''}`;
-    box.hidden = false;
-    box.innerHTML = `${toggle}${field}${next}
-      ${sel || c.next ? `<p class="osv4-chain-route">Se factura <b>${esc(LABEL[mode] || mode)}</b>${sel ? ` · ${esc(sel.label)} pasa a facturarse <b>${esc(LABEL[modeFor(FULL, Boolean(sel.has_previous), true)])}</b>` : ''}</p>` : ''}
+    const route = sel || c.next ? `<p class="osv4-chain-route">Se factura <b>${esc(LABEL[mode] || mode)}</b>${sel ? ` · ${esc(sel.label)} pasa a facturarse <b>${esc(LABEL[modeFor(FULL, Boolean(sel.has_previous), true)])}</b>` : ''}</p>` : '';
+    box.hidden = !(field || next || route || c.error);
+    box.innerHTML = `${field}${next}
+      ${route}
       ${c.error ? `<small class="osv4-chain-error">${esc(c.error)}</small>` : ''}`;
-    const on = box.querySelector('#osv4-chain-on');
+    const on = slot.querySelector('#osv4-chain-on');
     if (on) on.addEventListener('change', () => {
       c.on = on.checked;
       const had = Boolean(c.selectedId);
@@ -181,5 +188,5 @@
     }
   }
 
-  window.AuxEngancheServicio = { sync, render, persist, routeMode, _modeFor: modeFor, _label: LABEL };
+  window.AuxEngancheServicio = { sync, render, persist, routeMode, visible: eligible, _modeFor: modeFor, _label: LABEL };
 })();

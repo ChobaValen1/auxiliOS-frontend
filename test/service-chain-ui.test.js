@@ -72,7 +72,10 @@ test('sin cambios no llama a nada; si falla avisa que el servicio se guardó', a
 
 test('el formulario, maps-proxy y el Excel conocen los recorridos nuevos', () => {
   assert.match(ws, /return window\.AuxEngancheServicio\?\.routeMode\?\.\(W\(\),base\)\|\|base;/);
-  assert.match(ws, /<div id="osv4-chain" class="osv4-chain" hidden><\/div>/);
+  // En la tarjeta de conceptos sí/no, en la misma fila que «¿Se derivó a taller?».
+  assert.match(ws, /<section id="osv4-toggles" class="osv2-card osv4-toggles-card" hidden><div class="osv4-toggles-row"><div id="osv4-toggles-list" class="osv4-toggles-list"><\/div><div id="osv4-chain-switch" class="osv4-chain-switch"><\/div><\/div><div id="osv4-chain" class="osv4-chain" hidden><\/div><\/section>/);
+  assert.match(ws, /card\.hidden=!t\.concepts\.length&&!window\.AuxEngancheServicio\?\.visible\?\.\(w\);/);
+  assert.match(src, /<label class="ax-switch osv4-toggle-row osv4-chain-toggle"><span>Servicio enganchado<\/span><input type="checkbox" id="osv4-chain-on"/);
   assert.match(ws, /window\.AuxEngancheServicio\?\.persist\?\.\(w,serviceId\)/);
   assert.match(ws, /rm==='base_origin_destination'\?\[base,origin,dest\]:rm==='origin_destination_base'\?\[origin,dest,base\]/);
   assert.match(proxy, /mode === "base_origin_destination"[\s\S]*destination: latLngWaypoint\(destination\), intermediates: \[latLngWaypoint\(origin\)\]/);

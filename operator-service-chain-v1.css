@@ -1,14 +1,22 @@
-/* AuxiliOS · Servicios enganchados: bloque dentro de «Kilómetros planificados». */
-.osv4-reactive #osv4-chain { display: grid; gap: 8px; margin-top: 12px; padding: 10px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+/* AuxiliOS · Servicios enganchados.
+   El interruptor comparte la tarjeta de conceptos sí/no con «¿Se derivó a taller?»: misma fila, mismo estilo
+   (interruptor primero, texto después). Con Sí, debajo se elige a qué servicio sigue. */
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row,
+.osv4-reactive #osv4-toggles .osv4-toggles-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2) var(--ax-sp-6); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-toggles-list,
+.osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-toggles-list { display: flex; flex-wrap: wrap; gap: var(--ax-sp-2) var(--ax-sp-6); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-toggles-list:empty { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row,
+.osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row { width: auto; flex-direction: row-reverse; justify-content: flex-end; gap: 10px; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-chain-switch:empty { display: none; }
+
+.osv4-reactive #osv4-chain { display: grid; gap: 8px; padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
 .osv4-reactive #osv4-chain[hidden] { display: none; }
-.osv4-reactive .osv4-chain-toggle { align-items: flex-start; }
-.osv4-reactive .osv4-chain-toggle span { display: grid; gap: 2px; }
-.osv4-reactive .osv4-chain-toggle b { font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); color: var(--ax-text); }
-.osv4-reactive .osv4-chain-toggle small, .osv4-reactive .osv4-chain-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
-.osv4-reactive .osv4-chain-field select[aria-invalid="true"] { border-color: var(--ax-warn); }
 .osv4-reactive .osv4-chain-field { display: grid; gap: 4px; }
 .osv4-reactive .osv4-chain-field span { color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
 .osv4-reactive .osv4-chain-field select { width: 100%; min-width: 0; }
+.osv4-reactive .osv4-chain-field select[aria-invalid="true"] { border-color: var(--ax-warn); }
+.osv4-reactive .osv4-chain-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 .osv4-reactive .osv4-chain-route, .osv4-reactive .osv4-chain-next, .osv4-reactive .osv4-chain-value { margin: 0; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
 .osv4-reactive .osv4-chain-route b, .osv4-reactive .osv4-chain-next b { color: var(--ax-info); }
 .osv4-reactive .osv4-chain-error { color: var(--ax-danger); font-size: var(--ax-fs-xs); }
