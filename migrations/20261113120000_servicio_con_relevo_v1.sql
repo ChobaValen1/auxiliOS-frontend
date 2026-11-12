@@ -1,7 +1,7 @@
 -- Servicio con relevo (v1)
 -- Un mismo servicio lo hacen dos choferes: el 1º lleva el vehículo del cliente del origen (A) al punto de
 -- intercambio (B) y el 2º, con otro móvil, lo lleva de B al destino (C). Es UN servicio y UN remito.
---   · El 2º chofer ve el servicio desde que se carga (get_driver_relay_incoming_v1) y va hacia B.
+--   · El 2º chofer ve el servicio desde que se carga (get_driver_relay_state_v1) y va hacia B.
 --   · El móvil del 2º chofer NO se elige: es el de su jornada activa (se toma al entregar el vehículo).
 --   · Cuando el 1º marca «Entregué el vehículo», el servicio pasa al 2º (misma reasignación de siempre:
 --     el historial de asignaciones queda guardado por el trigger existente).
@@ -204,22 +204,38 @@ begin
                    from public.operator_service_relays r where r.service_id = any(p_service_ids)), '{}'::jsonb);
 end $f$;
 
--- Chofer 2º: servicios que va a recibir y todavía no se le activaron (para ir hacia el punto de intercambio).
-create or replace function public.get_driver_relay_incoming_v1()
+-- Tarjeta de un servicio con relevo para la app del chofer: relevo + lo que hace falta mostrar sin abrir el servicio.
+create or replace function app_private.relay_card_json_v1(p_service_id uuid)
+returns jsonb language sql stable security definer set search_path = '' as $f$
+  select app_private.relay_json_v1(s.service_id) || jsonb_build_object(
+    'label', coalesce(nullif(s.service_order_number, ''), s.service_number), 'status', s.status, 'scheduled_for', s.scheduled_for,
+    'vehicle_plate', s.vehicle_plate, 'vehicle_make_model', s.vehicle_make_model,
+    'destination', coalesce(s.destination_formatted_address, s.destination), 'destination_lat', s.destination_lat, 'destination_lng', s.destination_lng)
+  from public.operator_services s where s.service_id = p_service_id
+$f$;
+revoke all on function app_private.relay_card_json_v1(uuid) from public, anon, authenticated;
+
+-- App del chofer: sus relevos en tres grupos.
+--   incoming: es el 2º chofer y todavía no le entregaron el vehículo (ve el servicio desde antes y va hacia B).
+--   outgoing: es el 1º chofer y todavía tiene que entregar el vehículo en B.
+--   received: es el 2º chofer y ya recibió el vehículo (el servicio es suyo y sigue hacia C).
+create or replace function public.get_driver_relay_state_v1()
 returns jsonb language plpgsql stable security definer set search_path = '' as $f$
+declare v_uid uuid := auth.uid();
 begin
-  if auth.uid() is null or coalesce(app_private.current_auxilios_role(), '') <> 'chofer' then
+  if v_uid is null or coalesce(app_private.current_auxilios_role(), '') <> 'chofer' then
     raise exception 'Sólo choferes pueden consultar sus relevos';
   end if;
-  return coalesce((
-    select jsonb_agg(app_private.relay_json_v1(s.service_id) || jsonb_build_object(
-      'label', coalesce(nullif(s.service_order_number, ''), s.service_number), 'status', s.status, 'scheduled_for', s.scheduled_for,
-      'vehicle_plate', s.vehicle_plate, 'vehicle_make_model', s.vehicle_make_model,
-      'destination', coalesce(s.destination_formatted_address, s.destination), 'destination_lat', s.destination_lat, 'destination_lng', s.destination_lng)
-      order by s.scheduled_for)
-    from public.operator_service_relays r join public.operator_services s on s.service_id = r.service_id
-    where r.to_driver_id = auth.uid() and r.handed_over_at is null and s.status in ('assigned', 'at_origin') and s.assigned_driver_id is not null
-  ), '[]'::jsonb);
+  return jsonb_build_object(
+    'incoming', coalesce((select jsonb_agg(app_private.relay_card_json_v1(s.service_id) order by s.scheduled_for)
+      from public.operator_service_relays r join public.operator_services s on s.service_id = r.service_id
+      where r.to_driver_id = v_uid and r.handed_over_at is null and s.status in ('assigned', 'at_origin') and s.assigned_driver_id is not null), '[]'::jsonb),
+    'outgoing', coalesce((select jsonb_agg(app_private.relay_card_json_v1(s.service_id) order by s.scheduled_for)
+      from public.operator_service_relays r join public.operator_services s on s.service_id = r.service_id
+      where s.assigned_driver_id = v_uid and r.handed_over_at is null and s.status in ('assigned', 'at_origin')), '[]'::jsonb),
+    'received', coalesce((select jsonb_agg(app_private.relay_card_json_v1(s.service_id) order by s.scheduled_for)
+      from public.operator_service_relays r join public.operator_services s on s.service_id = r.service_id
+      where r.to_driver_id = v_uid and r.handed_over_at is not null and s.assigned_driver_id = v_uid and s.status in ('assigned', 'at_origin')), '[]'::jsonb));
 end $f$;
 
 -- Entrega del vehículo en el punto B: la marca el 1º chofer (o Operaciones si no puede) y el servicio pasa al 2º.
@@ -306,12 +322,12 @@ revoke all on function public.get_relay_receiver_truck_v1(uuid) from public, ano
 revoke all on function public.remove_operator_service_relay_v1(uuid) from public, anon;
 revoke all on function public.get_operator_service_relay_v1(uuid) from public, anon;
 revoke all on function public.list_operator_service_relays_v1(uuid[]) from public, anon;
-revoke all on function public.get_driver_relay_incoming_v1() from public, anon;
+revoke all on function public.get_driver_relay_state_v1() from public, anon;
 revoke all on function public.mark_operator_service_relay_handover_v1(uuid) from public, anon;
 grant execute on function public.set_operator_service_relay_v1(uuid, text, numeric, numeric, text, uuid) to authenticated;
 grant execute on function public.get_relay_receiver_truck_v1(uuid) to authenticated;
 grant execute on function public.remove_operator_service_relay_v1(uuid) to authenticated;
 grant execute on function public.get_operator_service_relay_v1(uuid) to authenticated;
 grant execute on function public.list_operator_service_relays_v1(uuid[]) to authenticated;
-grant execute on function public.get_driver_relay_incoming_v1() to authenticated;
+grant execute on function public.get_driver_relay_state_v1() to authenticated;
 grant execute on function public.mark_operator_service_relay_handover_v1(uuid) to authenticated;

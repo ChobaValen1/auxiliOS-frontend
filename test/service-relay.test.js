@@ -82,18 +82,44 @@ test('el móvil que recibe es el de la jornada activa del 2º chofer', async () 
 test('el 2º chofer ve el servicio antes de que se lo entreguen, con el punto B y el vehículo', async () => {
   await setRelay();
   await as('chofer', d2);
-  const list = await rpc('select public.get_driver_relay_incoming_v1() r');
-  assert.equal(list.length, 1);
-  assert.equal(list[0].label, 'ORD-1');
-  assert.equal(list[0].exchange_address, 'Estación de servicio, Gonnet');
-  assert.equal(Number(list[0].exchange_lat), -34.87);
-  assert.equal(list[0].vehicle_plate, 'AA111BB');
-  assert.equal(list[0].from_driver_name, 'Martín R.');
-  assert.equal(Number(list[0].destination_lat), -34.72);
+  const st = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.equal(st.incoming.length, 1);
+  assert.equal(st.outgoing.length, 0);
+  assert.equal(st.received.length, 0);
+  const x = st.incoming[0];
+  assert.equal(x.label, 'ORD-1');
+  assert.equal(x.exchange_address, 'Estación de servicio, Gonnet');
+  assert.equal(Number(x.exchange_lat), -34.87);
+  assert.equal(x.vehicle_plate, 'AA111BB');
+  assert.equal(x.from_driver_name, 'Martín R.');
+  assert.equal(Number(x.destination_lat), -34.72);
+  assert.equal(x.to_has_active_jornada, false, 'la app le avisa que inicie su jornada');
   await as('chofer', other);
-  assert.equal((await rpc('select public.get_driver_relay_incoming_v1() r')).length, 0, 'otro chofer no lo ve');
+  const none = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.deepEqual([none.incoming.length, none.outgoing.length, none.received.length], [0, 0, 0], 'otro chofer no lo ve');
   await as('chofer', d1);
-  assert.equal((await rpc('select public.get_driver_relay_incoming_v1() r')).length, 0, 'el 1º tiene su propio tramo');
+  const mine = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.deepEqual([mine.incoming.length, mine.outgoing.length, mine.received.length], [0, 1, 0], 'el 1º lo ve para entregar');
+  assert.equal(mine.outgoing[0].to_driver_name, 'Lucas P.');
+  await as('operador', op);
+  await assert.rejects(rpc('select public.get_driver_relay_state_v1() r'), /Sólo choferes/);
+});
+
+test('después de entregar, el servicio le queda al 2º como recibido y el 1º ya no lo ve', async () => {
+  await jornada(d2, 7);
+  await setRelay();
+  await as('chofer', d2);
+  assert.equal((await rpc('select public.get_driver_relay_state_v1() r')).incoming[0].to_has_active_jornada, true);
+  await as('chofer', d1);
+  await handover();
+  const mine = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.deepEqual([mine.incoming.length, mine.outgoing.length, mine.received.length], [0, 0, 0]);
+  await as('chofer', d2);
+  const st = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.deepEqual([st.incoming.length, st.outgoing.length, st.received.length], [0, 0, 1]);
+  assert.equal(st.received[0].from_driver_name, 'Martín R.');
+  assert.equal(st.received[0].handed_over, true);
+  assert.equal(st.received[0].to_truck_id, 7);
 });
 
 test('el 1º chofer no puede crear viaje ni remito hasta entregar; después lo crea el 2º', async () => {
@@ -124,7 +150,7 @@ test('la entrega pasa el servicio al 2º chofer, con el móvil de su jornada act
   await assert.rejects(handover(), /no está asignado a este chofer/, 'el 1º ya no tiene el servicio');
   // El 2º deja de verlo como pendiente de recibir.
   await as('chofer', d2);
-  assert.equal((await rpc('select public.get_driver_relay_incoming_v1() r')).length, 0);
+  assert.equal((await rpc('select public.get_driver_relay_state_v1() r')).incoming.length, 0);
 });
 
 test('la entrega necesita que el 2º chofer haya iniciado su jornada con un móvil', async () => {
@@ -208,7 +234,7 @@ test('permisos y exposición de las funciones', async () => {
   const sql = fs.readFileSync(MIGRATION, 'utf8');
   assert.match(sql, /revoke all on public\.operator_service_relays from public, anon, authenticated;/);
   for (const fn of ['set_operator_service_relay_v1\\(uuid, text, numeric, numeric, text, uuid\\)', 'get_relay_receiver_truck_v1\\(uuid\\)', 'remove_operator_service_relay_v1\\(uuid\\)',
-    'get_operator_service_relay_v1\\(uuid\\)', 'list_operator_service_relays_v1\\(uuid\\[\\]\\)', 'get_driver_relay_incoming_v1\\(\\)', 'mark_operator_service_relay_handover_v1\\(uuid\\)']) {
+    'get_operator_service_relay_v1\\(uuid\\)', 'list_operator_service_relays_v1\\(uuid\\[\\]\\)', 'get_driver_relay_state_v1\\(\\)', 'mark_operator_service_relay_handover_v1\\(uuid\\)']) {
     assert.match(sql, new RegExp(`grant execute on function public\\.${fn} to authenticated;`));
   }
   assert.match(sql, /revoke all on function app_private\.completed_driver_services_v2\(\) from public,anon,authenticated;/);

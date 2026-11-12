@@ -1,0 +1,65 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+const src = fs.readFileSync('driver-relay-v1.js', 'utf8');
+function load() {
+  const window = { toast() {} };
+  vm.runInNewContext(src, { window, document: {}, console, Date, Number, String, JSON, Math, encodeURIComponent });
+  return window.AuxRelevoChofer;
+}
+const R = load();
+const x = { service_id: 's1', label: 'SRV-123', exchange_address: 'Estación de servicio, Gonnet', exchange_lat: -34.87, exchange_lng: -58.02,
+  from_driver_name: 'Martín R.', from_truck_label: '12', from_truck_plate: 'AB123CD', to_driver_name: 'Lucas P.', to_truck_label: '7', to_truck_plate: 'AC456DE',
+  to_has_active_jornada: false, vehicle_plate: 'AA111BB', vehicle_make_model: 'Fiat Cronos', destination: 'Remedios de Escalada', destination_lat: -34.72, destination_lng: -58.4 };
+
+test('Maps abre la ruta directa al punto de intercambio (y avisa si no tiene ubicación)', () => {
+  assert.equal(R._mapsUrl(-34.87, -58.02), 'https://www.google.com/maps/dir/?api=1&destination=-34.87%2C-58.02&travelmode=driving');
+  assert.equal(R._mapsUrl(null, -58), '');
+  assert.equal(R._mapsUrl('', ''), '');
+  assert.match(R._incomingHtml([{ ...x, exchange_lat: null, exchange_lng: null }]), /no tiene ubicación en el mapa/);
+});
+
+test('el 2º chofer ve el servicio antes: punto B, vehículo, quién se lo trae, destino y Maps', () => {
+  const html = R._incomingHtml([x]);
+  for (const t of ['Vas a recibir', 'Tramo 2 de 2', 'Esperando la entrega', 'Estación de servicio, Gonnet', 'Fiat Cronos · AA111BB', 'Martín R.', 'Móvil 12', 'Remedios de Escalada', 'Ir al punto de intercambio en Maps', 'target="_blank"']) assert.ok(html.includes(t), t);
+  assert.match(html, /Iniciá tu jornada con tu móvil para poder recibir el vehículo/);
+  assert.doesNotMatch(R._incomingHtml([{ ...x, to_has_active_jornada: true }]), /Iniciá tu jornada/);
+  assert.equal(R._incomingHtml([]), '');
+});
+
+test('el 1º chofer: va a B con Maps, entrega con doble toque y no crea remito', () => {
+  const idle = R._outgoingBox(x, '', '');
+  assert.match(idle, /Con relevo · Tramo 1 de 2/);
+  assert.match(idle, /Ir al punto de intercambio en Maps/);
+  assert.match(idle, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo en B/);
+  assert.match(idle, /No hace falta crear remito/);
+  const sure = R._outgoingBox(x, 's1', '');
+  assert.match(sure, /Tocá de nuevo para confirmar la entrega/);
+  assert.match(sure, /pasa a Lucas P\. y no vas a poder crear el remito/);
+  assert.match(R._outgoingBox(x, '', 's1'), /disabled aria-busy="true"/);
+});
+
+test('el 2º chofer, ya con el servicio: de quién lo recibió y Maps al destino', () => {
+  const html = R._receivedBox({ ...x, handed_over: true, handed_over_at: '2026-11-13T14:42:00Z' });
+  assert.match(html, /Tramo 2 de 2/);
+  assert.match(html, /Recibiste el vehículo de <b>Martín R\.<\/b>/);
+  assert.match(html, /Ir al destino en Maps/);
+  assert.match(html, /destination=-34.72%2C-58.4/);
+});
+
+test('el motivo del rechazo se muestra sin el código técnico', () => {
+  assert.equal(R._friendlyError({ message: 'RELEVO_SIN_JORNADA: Lucas P. todavía no inició su jornada con un móvil' }), 'Lucas P. todavía no inició su jornada con un móvil');
+  assert.equal(R._friendlyError({ message: 'El vehículo ya se entregó' }), 'El vehículo ya se entregó');
+});
+
+test('el módulo usa la consulta del chofer, la entrega y queda registrado en la app', () => {
+  assert.match(src, /get_driver_relay_state_v1/);
+  assert.match(src, /mark_operator_service_relay_handover_v1/);
+  assert.match(src, /auxilios:driver-queue-updated/);
+  assert.match(src, /MutationObserver/);
+  for (const f of ['Index.html', 'sw.js', 'package.json']) assert.match(fs.readFileSync(f, 'utf8'), /driver-relay-v1/);
+  assert.match(fs.readFileSync('ui/icons.svg', 'utf8'), /<symbol id="repeat"/);
+  assert.match(fs.readFileSync('driver-relay-v1.css', 'utf8'), /\.p3-driver-task\.drl-out \.p3-task-primary \{ display: none; \}/);
+});
