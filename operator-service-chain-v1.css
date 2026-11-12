@@ -20,3 +20,7 @@
 .osv4-reactive .osv4-chain-route, .osv4-reactive .osv4-chain-next, .osv4-reactive .osv4-chain-value { margin: 0; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
 .osv4-reactive .osv4-chain-route b, .osv4-reactive .osv4-chain-next b { color: var(--ax-info); }
 .osv4-reactive .osv4-chain-error { color: var(--ax-danger); font-size: var(--ax-fs-xs); }
+/* Visible aunque no se pueda usar todavía (sin prestadora): atenuado y sin cambiar. */
+#modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled { cursor: not-allowed; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled > span { color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled input { cursor: not-allowed; }

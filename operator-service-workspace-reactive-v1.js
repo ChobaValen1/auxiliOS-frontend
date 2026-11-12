@@ -11,9 +11,12 @@ async function load(w){
 }
 function render(w){
  const card=document.getElementById('osv4-toggles'),list=document.getElementById('osv4-toggles-list');if(!card||!list||!w?.toggles)return;
- const t=w.toggles;/* Comparte la tarjeta con «Servicio enganchado»: se muestra si hay alguno de los dos. */card.hidden=!t.concepts.length&&!window.AuxEngancheServicio?.visible?.(w);const view=w.mode==='view';
- list.innerHTML=t.concepts.map(c=>`<label class="ax-switch osv4-toggle-row"><span>${esc(c.description||c.name)}</span><input type="checkbox" data-osv4-toggle="${esc(c.concept_id)}" ${t.selected.has(String(c.concept_id))?'checked':''} ${view?'disabled':''}></label>`).join('');
- list.querySelectorAll('[data-osv4-toggle]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.osv4Toggle;if(input.checked)t.selected.add(id);else t.selected.delete(id);t.dirty=true;w.dirty=true;window.OperatorServiceWorkspaceReactiveV1?.sync?.();}));
+ const t=w.toggles;/* Comparte la tarjeta con «Servicio enganchado». Se ve siempre; sin prestadora queda deshabilitado. */card.hidden=!t.concepts.length&&!window.AuxEngancheServicio?.visible?.(w);const view=w.mode==='view',noCompany=!w.data?.company_id;
+ /* Se dibuja una sola vez y después se actualiza en el lugar: así la perilla anima y no se pierde el clic. */
+ const sig=t.concepts.map(c=>`${c.concept_id}:${c.description||c.name}`).join('|');
+ if(list.dataset.sig!==sig){list.dataset.sig=sig;list.innerHTML=t.concepts.map(c=>`<label class="ax-switch osv4-toggle-row"><span>${esc(c.description||c.name)}</span><input type="checkbox" data-osv4-toggle="${esc(c.concept_id)}"></label>`).join('');}
+ if(!list.dataset.bound){list.dataset.bound='1';list.addEventListener('change',e=>{const input=e.target.closest?.('[data-osv4-toggle]');const cur=window.OperatorServices?.S?.wizard;if(!input||!cur?.toggles)return;const id=input.dataset.osv4Toggle;if(input.checked)cur.toggles.selected.add(id);else cur.toggles.selected.delete(id);cur.toggles.dirty=true;cur.dirty=true;window.OperatorServiceWorkspaceReactiveV1?.sync?.();});}
+ list.querySelectorAll('[data-osv4-toggle]').forEach(input=>{const on=t.selected.has(String(input.dataset.osv4Toggle));if(input.checked!==on&&!input.hasAttribute('data-drag'))input.checked=on;input.disabled=view||noCompany;const row=input.closest('label');row.classList.toggle('is-disabled',input.disabled);row.title=noCompany&&!view?'Elegí la prestadora para habilitarlo':'';});
 }
 function sync(w){if(!w||typeof _db==='undefined')return;if(w.toggles?.key!==String(w.serviceId||'new'))void load(w);else render(w);}
 /* Trazado del recorrido: se guarda en el servicio para sugerirle al chofer los peajes que quedan sobre el camino. */
