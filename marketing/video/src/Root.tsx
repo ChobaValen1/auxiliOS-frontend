@@ -19,6 +19,7 @@ import { Fase2, FASE2_DUR } from "./cuenta/Fase2";
 import { Fase3, FASE3_DUR } from "./cuenta/Fase3";
 import { OpcionesNumeros } from "./cuenta/OpcionesNumeros";
 import { OpcionesRemate } from "./cuenta/OpcionesRemate";
+import { Vuelta, VUELTA_DUR } from "./vuelta/Vuelta";
 
 const DelChat60 = a60(DelChatAlRemito);
 const MonoGrua60 = a60(MonoGruaVideo);
@@ -80,6 +81,10 @@ export const RemotionRoot: React.FC = () => (
       <Composition id="MonoGrua-60" component={MonoGrua60} width={W} height={H} fps={60} durationInFrames={MONOGRUA_DUR * 2} defaultProps={{ guia: false }} />
       <Composition id="Gastos3-Factura-60" component={Factura60} width={W} height={H} fps={60} durationInFrames={FACTURA_DUR * 2} defaultProps={{ guia: false }} />
       <Composition id="ComparacionSolo-60" component={Comparacion60} width={W} height={H} fps={60} durationInFrames={COMPARACION_DUR * 2} />
+    </Folder>
+    <Folder name="Reel-Vuelta">
+      <Composition id="Vuelta" component={Vuelta} width={W} height={H} fps={FPS60} durationInFrames={VUELTA_DUR} defaultProps={{ guia: false }} />
+      <Composition id="Vuelta-Guia" component={Vuelta} width={W} height={H} fps={FPS60} durationInFrames={VUELTA_DUR} defaultProps={{ guia: true }} />
     </Folder>
     <Folder name="Reel-Cuenta">
       <Composition id="Cuenta-Fase1" component={Fase1} width={W} height={H} fps={FPS60} durationInFrames={FASE1_DUR} defaultProps={{ guia: false }} />
