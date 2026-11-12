@@ -1,0 +1,12 @@
+/* AuxiliOS · Servicios enganchados: bloque dentro de «Kilómetros planificados». */
+.osv4-reactive #osv4-chain { display: grid; gap: 8px; margin-top: 12px; padding: 12px 14px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+.osv4-reactive #osv4-chain[hidden] { display: none; }
+.osv4-reactive .osv4-chain-head { display: grid; gap: 2px; }
+.osv4-reactive .osv4-chain-head b { font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); color: var(--ax-text); }
+.osv4-reactive .osv4-chain-head small, .osv4-reactive .osv4-chain-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osv4-reactive .osv4-chain-field { display: grid; gap: 4px; }
+.osv4-reactive .osv4-chain-field span { color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+.osv4-reactive .osv4-chain-field select { width: 100%; min-width: 0; }
+.osv4-reactive .osv4-chain-route, .osv4-reactive .osv4-chain-next, .osv4-reactive .osv4-chain-value { margin: 0; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+.osv4-reactive .osv4-chain-route b, .osv4-reactive .osv4-chain-next b { color: var(--ax-info); }
+.osv4-reactive .osv4-chain-error { color: var(--ax-danger); font-size: var(--ax-fs-xs); }
