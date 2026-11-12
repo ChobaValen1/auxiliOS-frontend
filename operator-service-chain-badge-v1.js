@@ -204,6 +204,21 @@
   document.addEventListener('auxilios:services-rendered', refresh);
 document.addEventListener('auxilios:billing-rendered', refresh);
 
+  /* Mapa: detalle (previous/next con coordenadas) de los servicios enganchados ya consultados, y carga de los que faltan. */
+  const cachedDetail = id => details.get(String(id))?.data || null;
+  const modeOf = id => modes.get(String(id))?.mode || null;
+  let loadingDetails = false;
+  async function ensureDetails(ids) {
+    const need = [...new Set((ids || []).map(String))].filter(id => isChained(id) && !details.get(id)).slice(0, 80);
+    if (!need.length || !db() || loadingDetails) return false;
+    loadingDetails = true;
+    let changed = false;
+    await Promise.all(need.map(async id => { try { await loadDetail(id); changed = true; } catch (e) { /* sin detalle: se reintenta luego */ } }));
+    loadingDetails = false;
+    if (changed) document.dispatchEvent(new CustomEvent('auxilios:chain-details-ready'));
+    return changed;
+  }
+
   /* Facturación: de lo seleccionado, qué servicios enganchados tienen a su compañero fuera de la selección.
      Devuelve [{ id, label, missing: [{ id, label, relation }] }]. Sólo informa: no bloquea nada. */
   async function selectionGaps(selectedIds) {
@@ -234,5 +249,5 @@ document.addEventListener('auxilios:billing-rendered', refresh);
   }
 
   /* Al cambiar un enganche se vuelve a leer. */
-  window.AuxEngancheClip = { refresh, selectionGaps, isChained, warm, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
+  window.AuxEngancheClip = { refresh, selectionGaps, isChained, warm, cached: cachedDetail, modeOf, ensureDetails, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
 })();

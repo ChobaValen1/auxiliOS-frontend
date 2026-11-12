@@ -66,3 +66,16 @@ test('Tablas: filtro «Enganchados», barra que une A y B y columna «Enganche»
   assert.match(exp, /Viene de \$\{data\.previous\.label/);
   assert.match(exp, /Sigue con \$\{data\.next\.label/);
 });
+
+test('Mapa: unión A→B punteada, clip en marcadores y lista, y bloque en el panel', () => {
+  const map = read('operator-services-map-v1.js');
+  assert.match(map, /chainLinks\(\)\.map\(l=>\[l\.a,l\.b\]\)/, 'la firma de dibujo incluye las uniones');
+  assert.match(map, /strokeColor:'#5aa9ff'/);
+  assert.match(map, /osm-pin-clip/);
+  assert.match(map, /chainOrdered\(V\.rows\)\.slice/);
+  assert.match(map, /\$\{chainBlock\(s\)\}<div class="osm-detail-tabs"/);
+  assert.match(map, /data-osm-chain/);
+  assert.match(map, /auxilios:chain-details-ready/);
+  assert.match(read('operator-service-chain-badge-v1.js'), /ensureDetails/);
+  assert.match(read('operator-services-map-v1.css'), /\.osm-chain-link/);
+});
