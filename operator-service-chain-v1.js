@@ -37,7 +37,7 @@
   function state(w) {
     const key = String(w.serviceId || 'new');
     if (!w.chain || w.chain.key !== key) {
-      w.chain = { key, loaded: false, loading: false, previous: null, next: null, selectedId: null, originalId: null, candidates: [], candKey: '', candLoading: false, error: '' };
+      w.chain = { key, loaded: false, loading: false, on: false, previous: null, next: null, selectedId: null, originalId: null, candidates: [], candKey: '', candLoading: false, error: '' };
     }
     return w.chain;
   }
@@ -61,6 +61,7 @@
         c.next = data?.next || null;
         c.selectedId = c.previous?.service_id || null;
         c.originalId = c.selectedId;
+        c.on = Boolean(c.selectedId);
       } catch (e) { c.error = 'No se pudo leer el enganche del servicio.'; console.warn('[enganche]', e); }
     }
     c.loaded = true; c.loading = false;
@@ -103,18 +104,27 @@
     if (c.previous && !options.some(x => String(x.service_id) === String(c.previous.service_id))) options.unshift(c.previous);
     const mode = routeMode(w, baseMode(w));
     const next = c.next ? `<p class="osv4-chain-next">Después sigue con <b>${esc(c.next.label)}</b>: este servicio no vuelve a la base.</p>` : '';
-    const field = view
+    const toggle = `<label class="ax-switch osv4-chain-toggle"><input type="checkbox" id="osv4-chain-on" ${c.on ? 'checked' : ''} ${view || c.loading ? 'disabled' : ''} aria-describedby="osv4-chain-help"><span><b>Servicio enganchado</b><small id="osv4-chain-help">${c.on ? 'Sí' : 'No'} · el móvil viene de terminar otro servicio de esta prestadora sin volver a la base</small></span></label>`;
+    const field = !c.on ? '' : view
       ? `<p class="osv4-chain-value">${sel ? `Enganchado a <b>${esc(sel.label)}</b> · ${esc(place(sel.origin))} → ${esc(place(sel.destination))}` : 'No está enganchado a otro servicio.'}</p>`
-      : `<label class="osv4-chain-field"><span>Enganchado a</span><select id="osv4-chain-select" ${c.loading ? 'disabled' : ''}>
-          <option value="">No está enganchado (sale de la base)</option>
+      : `<label class="osv4-chain-field"><span>¿A qué servicio sigue?</span><select id="osv4-chain-select" ${c.loading ? 'disabled' : ''} ${!c.selectedId ? 'aria-invalid="true"' : ''}>
+          <option value="">Elegí el servicio anterior…</option>
           ${options.map(x => `<option value="${esc(x.service_id)}" ${String(x.service_id) === String(c.selectedId) ? 'selected' : ''}>${esc(optionLabel(x))}</option>`).join('')}
         </select></label>
-        ${!options.length && !c.candLoading ? '<small class="osv4-chain-hint">No hay servicios de esta prestadora de las últimas 24 h para enganchar.</small>' : ''}`;
+        ${!options.length && !c.candLoading ? '<small class="osv4-chain-hint">No hay servicios de esta prestadora de las últimas 24 h para enganchar.</small>' : !c.selectedId ? '<small class="osv4-chain-hint">Hasta que elijas el servicio anterior, este servicio se calcula saliendo de la base.</small>' : ''}`;
     box.hidden = false;
-    box.innerHTML = `<div class="osv4-chain-head"><b>Servicio enganchado</b><small>Cuando el móvil viene de terminar otro servicio de esta prestadora sin volver a la base.</small></div>
-      ${field}${next}
+    box.innerHTML = `${toggle}${field}${next}
       ${sel || c.next ? `<p class="osv4-chain-route">Se factura <b>${esc(LABEL[mode] || mode)}</b>${sel ? ` · ${esc(sel.label)} pasa a facturarse <b>${esc(LABEL[modeFor(FULL, Boolean(sel.has_previous), true)])}</b>` : ''}</p>` : ''}
       ${c.error ? `<small class="osv4-chain-error">${esc(c.error)}</small>` : ''}`;
+    const on = box.querySelector('#osv4-chain-on');
+    if (on) on.addEventListener('change', () => {
+      c.on = on.checked;
+      const had = Boolean(c.selectedId);
+      if (!c.on) c.selectedId = null;
+      w.dirty = true;
+      render(w);
+      if (had && !c.on) { w.quote = null; window.OperatorServiceWorkspaceReactiveV1?.computeRoute?.(); }
+    });
     const select = box.querySelector('#osv4-chain-select');
     if (select) select.addEventListener('change', () => {
       c.selectedId = select.value || null;
