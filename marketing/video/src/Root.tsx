@@ -18,6 +18,7 @@ import { Fase1, FASE1_DUR } from "./cuenta/Fase1";
 import { Fase2, FASE2_DUR } from "./cuenta/Fase2";
 import { Fase3, FASE3_DUR } from "./cuenta/Fase3";
 import { OpcionesNumeros } from "./cuenta/OpcionesNumeros";
+import { OpcionesRemate } from "./cuenta/OpcionesRemate";
 
 const DelChat60 = a60(DelChatAlRemito);
 const MonoGrua60 = a60(MonoGruaVideo);
@@ -89,6 +90,12 @@ export const RemotionRoot: React.FC = () => (
       <Still id="Cuenta-Numeros-A" component={OpcionesNumeros} width={W} height={H} defaultProps={{ op: "A" as const, guia: false }} />
       <Still id="Cuenta-Numeros-B" component={OpcionesNumeros} width={W} height={H} defaultProps={{ op: "B" as const, guia: false }} />
       <Still id="Cuenta-Numeros-C" component={OpcionesNumeros} width={W} height={H} defaultProps={{ op: "C" as const, guia: false }} />
+      <Still id="Cuenta-Remate-A1" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "A1" as const, guia: false }} />
+      <Still id="Cuenta-Remate-A2" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "A2" as const, guia: false }} />
+      <Still id="Cuenta-Remate-B1" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "B1" as const, guia: false }} />
+      <Still id="Cuenta-Remate-B2" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "B2" as const, guia: false }} />
+      <Still id="Cuenta-Remate-C1" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "C1" as const, guia: false }} />
+      <Still id="Cuenta-Remate-C2" component={OpcionesRemate} width={W} height={H} defaultProps={{ id: "C2" as const, guia: false }} />
       <Composition id="Cuenta-Fase3-Guia" component={Fase3} width={W} height={H} fps={FPS60} durationInFrames={FASE3_DUR} defaultProps={{ guia: true }} />
     </Folder>
     <Folder name="Reel-AuxiliOS">
