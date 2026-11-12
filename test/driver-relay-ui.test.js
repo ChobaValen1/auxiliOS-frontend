@@ -84,3 +84,12 @@ test('en la ventana de un servicio normal: el 1º chofer sin remito, el 2º sin 
   for (const frag of ['abrirRemitoServicio', '.p3-other-actions', '.p3-arrive-btn', 'Tocalo al llegar', "[onclick*=\"abrirRemitoServicio\"]"]) assert.ok(src.includes(frag), frag);
   assert.match(src, /window\.cerrarPreviewServicio\?\.\(\)/, 'al entregar se cierra la ventana');
 });
+
+test('detalle del 1º chofer: un solo botón principal (aparece al llegar) y sin botón azul de Maps', () => {
+  const before = R._sheetBox(x, '', '', false), after = R._sheetBox(x, '', '', true);
+  assert.doesNotMatch(before, /data-drl-handover/);
+  assert.match(after, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo en B/);
+  assert.doesNotMatch(before + after, /drl-maps/);
+  assert.match(after, /No hace falta crear remito/);
+  assert.match(R._sheetBox(x, 's1', '', true), /Tocá de nuevo para confirmar la entrega/);
+});

@@ -69,6 +69,30 @@
     </div>`;
   }
 
+  /* En la ventana de detalle todo va integrado: el punto de encuentro es una dirección más (con su pin de Maps),
+     el chip de relevo queda a la derecha del vehículo y «Entregué el vehículo en B» ocupa el lugar del botón principal. */
+  function sheetBox(x, confirming, busy, arrived) {
+    const sure = confirming === String(x.service_id), wait = busy === String(x.service_id);
+    const btn = arrived ? `<button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
+        ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo en B'}</button>` : '';
+    const note = sure ? 'Al confirmar, el servicio pasa a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer') + ' y no vas a poder crear el remito.'
+      : `Lo recibe ${esc(x.to_driver_name || 'el segundo chofer')}${x.to_truck_label ? ' · ' + esc(truckText(x.to_truck_label, x.to_truck_plate)) : ''}. No hace falta crear remito: lo cierra quien recibe el vehículo.`;
+    return `<div class="drl-sheet-box drl-out-box">${btn}<p class="drl-note">${note}</p></div>`;
+  }
+  function decorateSheetBody(x) {
+    const body = document.getElementById('p3-preview-body'); if (!body) return;
+    const vehicleBox = body.querySelector('.p3-sheet-vehicle');
+    if (vehicleBox && !vehicleBox.querySelector('.drl-chip')) vehicleBox.insertAdjacentHTML('beforeend', `<span class="drl-chip drl-chip-side">${ico('repeat')}Con relevo · Tramo 1 de 2</span>`);
+    const route = body.querySelector('.p3-sheet-route');
+    if (route && !route.querySelector('.drl-meet')) {
+      const href = mapsUrl(x.exchange_lat, x.exchange_lng), addr = place(x.exchange_address) || 'Punto sin dirección';
+      const pin = href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" aria-label="Navegar al punto de encuentro">${ico('map-pin')}</a>` : '';
+      const block = `<div class="p3-sheet-place drl-meet"><span><small>Punto de encuentro</small><b class="drl-b">${esc(addr)}</b></span>${pin}</div>`;
+      const first = route.querySelector('.p3-sheet-place');
+      first ? first.insertAdjacentHTML('afterend', block) : route.insertAdjacentHTML('afterbegin', block);
+    }
+  }
+
   /* ── 2º chofer, ya con el servicio: de quién lo recibió y Maps al destino ── */
   function receivedBox(x) {
     const trip = truckText(x.from_truck_label, x.from_truck_plate);
@@ -112,8 +136,10 @@
       /* 1º chofer: no crea remito ni lo marca como activado; llega al origen, va a B y entrega. */
       actions.querySelectorAll('[onclick*="abrirRemitoServicio"], .p3-other-actions').forEach(n => n.remove());
       actions.querySelectorAll('small').forEach(n => { if (/remito|activado/i.test(n.textContent)) n.remove(); });
-      actions.querySelector(':scope > .drl-box')?.remove();
-      actions.insertAdjacentHTML('beforeend', outgoingBox(o, S.confirming, S.busy));
+      actions.querySelectorAll(':scope > .drl-box, :scope > .drl-sheet-box').forEach(n => n.remove());
+      const arrived = Boolean(actions.querySelector('.p3-arrived-chip'));
+      decorateSheetBody(o);
+      actions.insertAdjacentHTML('beforeend', sheetBox(o, S.confirming, S.busy, arrived));
     } else {
       /* 2º chofer: ya tiene el vehículo (no llega a ningún origen); sigue al destino y completa el remito. */
       actions.querySelectorAll('.p3-arrive-btn, .p3-arrived-chip').forEach(n => n.remove());
@@ -128,8 +154,8 @@
     if (!modal || modal.hidden) return;
     const id = modal.dataset.serviceRouteId; if (!id) return;
     const actions = document.getElementById('p3-preview-actions'), o = S.outgoing.find(x => String(x.service_id) === String(id));
-    const box = actions?.querySelector(':scope > .drl-out-box');
-    if (o && box) { const wrap = document.createElement('div'); wrap.innerHTML = outgoingBox(o, S.confirming, S.busy); box.replaceWith(wrap.firstElementChild); }
+    const box = actions?.querySelector(':scope > .drl-sheet-box');
+    if (o && box) { const wrap = document.createElement('div'); wrap.innerHTML = sheetBox(o, S.confirming, S.busy, Boolean(actions.querySelector('.p3-arrived-chip'))); box.replaceWith(wrap.firstElementChild); }
   }
 
   /* ── Pintado (se reinserta cada vez que la app vuelve a dibujar su lista) ── */
@@ -236,5 +262,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _receivedBox: receivedBox, _state: S };
 })();

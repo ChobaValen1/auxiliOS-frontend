@@ -50,3 +50,10 @@
 .drl-box .drl-id { margin-bottom: 2px; }
 .drl-box .drl-btn + .drl-btn, .drl-box .drl-maps + .drl-btn { margin-top: 0; }
 .drl-box .drl-note { margin-top: 2px; }
+
+/* Ventana de detalle (1º chofer): chip a la derecha del vehículo, punto de encuentro como dirección y un solo botón principal. */
+#p3-service-preview .p3-sheet-vehicle { position: relative; padding-right: 150px; }
+.drl-chip-side { position: absolute; right: 0; top: 50%; transform: translateY(-50%); max-width: 140px; white-space: normal; text-align: center; line-height: 1.2; justify-content: center; }
+.drl-meet .drl-b { color: #c4b5fd; }
+#p3-preview-actions .drl-sheet-box { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; border: 0; background: none; }
+#p3-preview-actions .drl-sheet-box:not(:has(.drl-btn)) { margin-top: 6px; }
