@@ -14,8 +14,10 @@ async function as(role, uid) {
 }
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0];
 const rpc = async (sql, params = []) => Object.values(await one(sql, params))[0];
-const setRelay = (service = S(1), { address = 'Estación de servicio, Gonnet', lat = -34.87, lng = -58.02, driver = d2, truck = 7 } = {}) =>
-  rpc('select public.set_operator_service_relay_v1($1,$2,$3,$4,$5,$6,$7) r', [service, address, lat, lng, 'place-b', driver, truck]);
+const setRelay = (service = S(1), { address = 'Estación de servicio, Gonnet', lat = -34.87, lng = -58.02, driver = d2 } = {}) =>
+  rpc('select public.set_operator_service_relay_v1($1,$2,$3,$4,$5,$6) r', [service, address, lat, lng, 'place-b', driver]);
+// Jornada activa de un chofer con un móvil (de ahí sale el móvil que recibe el vehículo).
+const jornada = (driver, truck) => db.query('insert into daily_logs(driver_id, truck_id) values ($1, $2)', [driver, truck]);
 const handover = (service = S(1)) => rpc('select public.mark_operator_service_relay_handover_v1($1) r', [service]);
 const completed = async () => (await db.query('select service_id, driver_id, remito_id from app_private.completed_driver_services_v2() order by service_id, driver_id')).rows;
 
@@ -43,24 +45,38 @@ test('Operaciones carga el relevo con el punto B ubicado y el chofer y móvil qu
   assert.equal(r.to_driver_name, 'Lucas P.');
   assert.equal(r.from_driver_name, 'Martín R.', 'antes de entregar, el 1º es el chofer asignado');
   assert.equal(r.handed_over, false);
+  assert.equal(r.to_has_active_jornada, false, 'sin jornada todavía: no hay móvil');
+  assert.equal(r.to_truck_id, null);
   assert.equal(Number(r.exchange_lat), -34.87);
   assert.equal((await one("select count(*)::int n from operator_service_events where event_type='relay_set'")).n, 1);
 });
 
 test('rechaza lo que no corresponde cargar', async () => {
-  await assert.rejects(setRelay(S(1), { driver: d1, truck: 7 }), /distinto del que lo retira/);
-  await assert.rejects(setRelay(S(1), { driver: d2, truck: 12 }), /móvil que recibe tiene que ser distinto/);
-  await assert.rejects(setRelay(S(1), { driver: sup, truck: 7 }), /Chofer inválido o inactivo/);
-  await assert.rejects(setRelay(S(1), { driver: d2, truck: 9 }), /Móvil inválido o inactivo/);
+  await assert.rejects(setRelay(S(1), { driver: d1 }), /distinto del que lo retira/);
+  await assert.rejects(setRelay(S(1), { driver: sup }), /Chofer inválido o inactivo/);
+  await assert.rejects(setRelay(S(1), { driver: null }), /Seleccioná el chofer/);
   await assert.rejects(setRelay(S(1), { lat: null, lng: null }), /buscador/);
   await assert.rejects(setRelay(S(1), { address: '  ' }), /dirección/);
-  await db.query("insert into daily_logs(driver_id, truck_id) values ($1, 7)", [other]);
-  await assert.rejects(setRelay(S(1)), /jornada activa con otro chofer/);
+  await jornada(d2, 12); // la jornada del 2º chofer usa el mismo móvil que el 1º
+  await assert.rejects(setRelay(S(1)), /mismo que el del primer tramo/);
   await as('chofer', d1);
   await assert.rejects(setRelay(), /Sin permiso/);
   await as('operador', op);
   await db.query("update operator_services set status='completed', completed_at=now() where service_id=$1", [S(1)]);
   await assert.rejects(setRelay(), /ya está cerrado/);
+});
+
+test('el móvil que recibe es el de la jornada activa del 2º chofer', async () => {
+  await jornada(d2, 7);
+  const r = await setRelay();
+  assert.equal(r.to_has_active_jornada, true);
+  assert.equal(r.to_truck_id, 7);
+  assert.equal(r.to_truck_label, '7');
+  const info = await rpc('select public.get_relay_receiver_truck_v1($1) r', [d2]);
+  assert.deepEqual({ has: info.has_active_jornada, truck: info.truck_id, plate: info.truck_plate }, { has: true, truck: 7, plate: 'AC456DE' });
+  assert.equal((await rpc('select public.get_relay_receiver_truck_v1($1) r', [other])).has_active_jornada, false);
+  await as('chofer', d1);
+  await assert.rejects(rpc('select public.get_relay_receiver_truck_v1($1) r', [d2]), /Sin permiso/);
 });
 
 test('el 2º chofer ve el servicio antes de que se lo entreguen, con el punto B y el vehículo', async () => {
@@ -81,6 +97,7 @@ test('el 2º chofer ve el servicio antes de que se lo entreguen, con el punto B 
 });
 
 test('el 1º chofer no puede crear viaje ni remito hasta entregar; después lo crea el 2º', async () => {
+  await jornada(d2, 7);
   await setRelay();
   await assert.rejects(db.query('update operator_services set trip_id=55 where service_id=$1', [S(1)]), /RELEVO_PENDIENTE/);
   await assert.rejects(db.query('update operator_services set remito_id=77 where service_id=$1', [S(1)]), /RELEVO_PENDIENTE/);
@@ -91,7 +108,8 @@ test('el 1º chofer no puede crear viaje ni remito hasta entregar; después lo c
   assert.equal((await one('select trip_id from operator_services where service_id=$1', [S(1)])).trip_id, 56);
 });
 
-test('la entrega pasa el servicio al 2º chofer y deja al 1º en el historial', async () => {
+test('la entrega pasa el servicio al 2º chofer, con el móvil de su jornada activa, y deja al 1º en el historial', async () => {
+  await jornada(d2, 7);
   await setRelay();
   await as('chofer', d1);
   const r = await handover();
@@ -109,8 +127,24 @@ test('la entrega pasa el servicio al 2º chofer y deja al 1º en el historial', 
   assert.equal((await rpc('select public.get_driver_relay_incoming_v1() r')).length, 0);
 });
 
+test('la entrega necesita que el 2º chofer haya iniciado su jornada con un móvil', async () => {
+  await setRelay();
+  await as('chofer', d1);
+  await assert.rejects(handover(), /RELEVO_SIN_JORNADA: Lucas P\. todavía no inició su jornada/);
+  assert.equal((await one('select assigned_driver_id from operator_services where service_id=$1', [S(1)])).assigned_driver_id, d1, 'no se movió nada');
+  await jornada(d2, 12);
+  await assert.rejects(handover(), /mismo que el del primer tramo/);
+  // Cambia de móvil: vale la jornada abierta más reciente.
+  await db.query("update daily_logs set status='closed', hora_fin=now() where driver_id=$1", [d2]);
+  await jornada(d2, 3);
+  const r = await handover();
+  assert.equal(r.to_truck_id, 3);
+  assert.equal((await one('select assigned_truck_id from operator_services where service_id=$1', [S(1)])).assigned_truck_id, 3);
+});
+
 test('quién puede entregar y cuándo', async () => {
   await assert.rejects(handover(S(2)), /no tiene relevo/);
+  await jornada(d2, 7);
   await setRelay();
   await as('chofer', other);
   await assert.rejects(handover(), /no está asignado a este chofer/);
@@ -136,6 +170,7 @@ test('el relevo se puede quitar mientras no se entregó', async () => {
 });
 
 test('sueldos: el servicio completado cuenta para los dos choferes; los demás no cambian', async () => {
+  await jornada(d2, 7);
   await setRelay();
   await as('chofer', d1);
   await handover();
@@ -172,7 +207,7 @@ test('consultas: Operaciones ve todo; un chofer sólo lo suyo', async () => {
 test('permisos y exposición de las funciones', async () => {
   const sql = fs.readFileSync(MIGRATION, 'utf8');
   assert.match(sql, /revoke all on public\.operator_service_relays from public, anon, authenticated;/);
-  for (const fn of ['set_operator_service_relay_v1\\(uuid, text, numeric, numeric, text, uuid, integer\\)', 'remove_operator_service_relay_v1\\(uuid\\)',
+  for (const fn of ['set_operator_service_relay_v1\\(uuid, text, numeric, numeric, text, uuid\\)', 'get_relay_receiver_truck_v1\\(uuid\\)', 'remove_operator_service_relay_v1\\(uuid\\)',
     'get_operator_service_relay_v1\\(uuid\\)', 'list_operator_service_relays_v1\\(uuid\\[\\]\\)', 'get_driver_relay_incoming_v1\\(\\)', 'mark_operator_service_relay_handover_v1\\(uuid\\)']) {
     assert.match(sql, new RegExp(`grant execute on function public\\.${fn} to authenticated;`));
   }

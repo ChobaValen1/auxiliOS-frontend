@@ -2,6 +2,7 @@
 -- Un mismo servicio lo hacen dos choferes: el 1º lleva el vehículo del cliente del origen (A) al punto de
 -- intercambio (B) y el 2º, con otro móvil, lo lleva de B al destino (C). Es UN servicio y UN remito.
 --   · El 2º chofer ve el servicio desde que se carga (get_driver_relay_incoming_v1) y va hacia B.
+--   · El móvil del 2º chofer NO se elige: es el de su jornada activa (se toma al entregar el vehículo).
 --   · Cuando el 1º marca «Entregué el vehículo», el servicio pasa al 2º (misma reasignación de siempre:
 --     el historial de asignaciones queda guardado por el trigger existente).
 --   · El 1º chofer no crea remito (un trigger lo impide hasta la entrega).
@@ -15,7 +16,8 @@ create table if not exists public.operator_service_relays (
   exchange_lng numeric not null check (exchange_lng between -180 and 180),
   exchange_place_id text,
   to_driver_id uuid not null references public.users(user_id),
-  to_truck_id integer not null references public.trucks(truck_id),
+  -- Móvil de la jornada activa del 2º chofer: se completa al entregar (antes se muestra el de su jornada de hoy).
+  to_truck_id integer references public.trucks(truck_id),
   -- Se completan al entregar: quién llevó el primer tramo.
   from_driver_id uuid references public.users(user_id),
   from_truck_id integer references public.trucks(truck_id),
@@ -51,6 +53,15 @@ create trigger operator_services_relay_remito_guard_v1
 before update of trip_id, remito_id on public.operator_services
 for each row execute function app_private.relay_block_first_driver_remito_v1();
 
+-- Móvil de la jornada activa de un chofer (la última abierta); null si no inició jornada.
+create or replace function app_private.relay_receiver_truck_v1(p_driver uuid)
+returns integer language sql stable security definer set search_path = '' as $f$
+  select dl.truck_id from public.daily_logs dl
+  where dl.driver_id = p_driver and coalesce(dl.status, 'open') = 'open' and dl.hora_fin is null and dl.truck_id is not null
+  order by dl.log_date desc, dl.hora_inicio desc, dl.log_id desc limit 1
+$f$;
+revoke all on function app_private.relay_receiver_truck_v1(uuid) from public, anon, authenticated;
+
 -- Datos del relevo para pantallas (nombres de choferes y móviles incluidos).
 create or replace function app_private.relay_json_v1(p_service_id uuid)
 returns jsonb language sql stable security definer set search_path = '' as $f$
@@ -59,7 +70,8 @@ returns jsonb language sql stable security definer set search_path = '' as $f$
     'exchange_address', r.exchange_address, 'exchange_lat', r.exchange_lat, 'exchange_lng', r.exchange_lng,
     'exchange_place_id', r.exchange_place_id,
     'to_driver_id', r.to_driver_id, 'to_driver_name', tu.full_name,
-    'to_truck_id', r.to_truck_id, 'to_truck_label', coalesce(tt.numero_interno::text, tt.plate), 'to_truck_plate', tt.plate,
+    'to_truck_id', tt.truck_id, 'to_truck_label', coalesce(tt.numero_interno::text, tt.plate), 'to_truck_plate', tt.plate,
+    'to_has_active_jornada', aj.truck_id is not null,
     -- Antes de entregar, el 1º chofer es el que tiene el servicio asignado.
     'from_driver_id', coalesce(r.from_driver_id, s.assigned_driver_id), 'from_driver_name', fu.full_name,
     'from_truck_id', coalesce(r.from_truck_id, s.assigned_truck_id), 'from_truck_label', coalesce(ft.numero_interno::text, ft.plate), 'from_truck_plate', ft.plate,
@@ -67,39 +79,48 @@ returns jsonb language sql stable security definer set search_path = '' as $f$
   from public.operator_service_relays r
   join public.operator_services s on s.service_id = r.service_id
   left join public.users tu on tu.user_id = r.to_driver_id
-  left join public.trucks tt on tt.truck_id = r.to_truck_id
+  left join lateral (select app_private.relay_receiver_truck_v1(r.to_driver_id) as truck_id) aj on true
+  left join public.trucks tt on tt.truck_id = coalesce(r.to_truck_id, aj.truck_id)
   left join public.users fu on fu.user_id = coalesce(r.from_driver_id, s.assigned_driver_id)
   left join public.trucks ft on ft.truck_id = coalesce(r.from_truck_id, s.assigned_truck_id)
   where r.service_id = p_service_id
 $f$;
 revoke all on function app_private.relay_json_v1(uuid) from public, anon, authenticated;
 
--- Chofer y móvil válidos para recibir el servicio (mismas reglas que la reasignación).
-create or replace function app_private.relay_check_receiver_v1(p_driver uuid, p_truck integer)
+-- Chofer válido para recibir el servicio (mismas reglas que la reasignación).
+create or replace function app_private.relay_check_receiver_v1(p_driver uuid)
 returns void language plpgsql stable security definer set search_path = '' as $f$
-declare v_active uuid;
 begin
-  if p_driver is null or p_truck is null then raise exception 'Seleccioná el chofer y el móvil que reciben el vehículo'; end if;
+  if p_driver is null then raise exception 'Seleccioná el chofer que recibe el vehículo'; end if;
   if not exists (select 1 from public.users u join public.roles r on r.role_id = u.role_id
                  where u.user_id = p_driver and coalesce(u.is_active, true) and r.name = 'chofer') then
     raise exception 'Chofer inválido o inactivo';
   end if;
-  if not exists (select 1 from public.trucks t where t.truck_id = p_truck and t.status = 'active') then
-    raise exception 'Móvil inválido o inactivo';
-  end if;
-  select dl.driver_id into v_active from public.daily_logs dl
-  where dl.truck_id = p_truck and coalesce(dl.status, 'open') = 'open' and dl.hora_fin is null
-  order by dl.log_date desc, dl.hora_inicio desc, dl.log_id desc limit 1;
-  if v_active is not null and v_active is distinct from p_driver then
-    raise exception 'El móvil tiene una jornada activa con otro chofer';
-  end if;
 end $f$;
-revoke all on function app_private.relay_check_receiver_v1(uuid, integer) from public, anon, authenticated;
+revoke all on function app_private.relay_check_receiver_v1(uuid) from public, anon, authenticated;
+
+-- Operaciones: móvil de la jornada activa del chofer que recibe (para mostrarlo en el formulario).
+create or replace function public.get_relay_receiver_truck_v1(p_driver_id uuid)
+returns jsonb language plpgsql stable security definer set search_path = '' as $f$
+declare v_truck integer; t public.trucks%rowtype; v_since timestamptz;
+begin
+  if auth.uid() is null or coalesce(app_private.current_auxilios_role(), '') not in ('administracion', 'operador', 'supervision') then
+    raise exception 'Sin permiso para consultar jornadas';
+  end if;
+  v_truck := app_private.relay_receiver_truck_v1(p_driver_id);
+  if v_truck is null then return jsonb_build_object('driver_id', p_driver_id, 'has_active_jornada', false); end if;
+  select * into t from public.trucks where truck_id = v_truck;
+  select dl.hora_inicio into v_since from public.daily_logs dl
+   where dl.driver_id = p_driver_id and dl.truck_id = v_truck and coalesce(dl.status, 'open') = 'open' and dl.hora_fin is null
+   order by dl.log_date desc, dl.hora_inicio desc, dl.log_id desc limit 1;
+  return jsonb_build_object('driver_id', p_driver_id, 'has_active_jornada', true, 'truck_id', t.truck_id,
+    'truck_label', coalesce(t.numero_interno::text, t.plate), 'truck_plate', t.plate, 'since', v_since);
+end $f$;
 
 -- Operador / Administración: cargar o cambiar el relevo de un servicio.
 create or replace function public.set_operator_service_relay_v1(
   p_service_id uuid, p_exchange_address text, p_exchange_lat numeric, p_exchange_lng numeric, p_exchange_place_id text,
-  p_to_driver_id uuid, p_to_truck_id integer)
+  p_to_driver_id uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $f$
 declare s public.operator_services%rowtype; v_uid uuid := auth.uid();
 begin
@@ -119,15 +140,18 @@ begin
   if p_exchange_lat is null or p_exchange_lng is null or abs(p_exchange_lat) > 85 or abs(p_exchange_lng) > 180 then
     raise exception 'Elegí el punto de intercambio con el buscador para ubicarlo en el mapa';
   end if;
-  perform app_private.relay_check_receiver_v1(p_to_driver_id, p_to_truck_id);
+  perform app_private.relay_check_receiver_v1(p_to_driver_id);
   if s.assigned_driver_id is not null and s.assigned_driver_id = p_to_driver_id then raise exception 'El chofer que recibe tiene que ser distinto del que lo retira'; end if;
-  if s.assigned_truck_id is not null and s.assigned_truck_id = p_to_truck_id then raise exception 'El móvil que recibe tiene que ser distinto del que lo retira'; end if;
+  -- El móvil es el de la jornada activa del 2º chofer: no puede ser el mismo que usa el 1º.
+  if s.assigned_truck_id is not null and s.assigned_truck_id = app_private.relay_receiver_truck_v1(p_to_driver_id) then
+    raise exception 'El móvil de la jornada del chofer que recibe es el mismo que el del primer tramo';
+  end if;
 
-  insert into public.operator_service_relays(service_id, exchange_address, exchange_lat, exchange_lng, exchange_place_id, to_driver_id, to_truck_id, created_by)
-  values (p_service_id, btrim(p_exchange_address), p_exchange_lat, p_exchange_lng, nullif(btrim(coalesce(p_exchange_place_id, '')), ''), p_to_driver_id, p_to_truck_id, v_uid)
+  insert into public.operator_service_relays(service_id, exchange_address, exchange_lat, exchange_lng, exchange_place_id, to_driver_id, created_by)
+  values (p_service_id, btrim(p_exchange_address), p_exchange_lat, p_exchange_lng, nullif(btrim(coalesce(p_exchange_place_id, '')), ''), p_to_driver_id, v_uid)
   on conflict (service_id) do update set exchange_address = excluded.exchange_address, exchange_lat = excluded.exchange_lat,
     exchange_lng = excluded.exchange_lng, exchange_place_id = excluded.exchange_place_id, to_driver_id = excluded.to_driver_id,
-    to_truck_id = excluded.to_truck_id, updated_at = now();
+    updated_at = now();
   insert into public.operator_service_events(service_id, event_type, from_status, to_status, notes, created_by)
   values (p_service_id, 'relay_set', s.status, s.status, 'Relevo en ' || btrim(p_exchange_address), v_uid);
   return app_private.relay_json_v1(p_service_id);
@@ -203,7 +227,7 @@ create or replace function public.mark_operator_service_relay_handover_v1(p_serv
 returns jsonb language plpgsql security definer set search_path = '' as $f$
 declare
   v_role text := coalesce(app_private.current_auxilios_role(), ''); v_uid uuid := auth.uid();
-  s public.operator_services%rowtype; r public.operator_service_relays%rowtype; v_from_driver uuid; v_from_truck integer;
+  s public.operator_services%rowtype; r public.operator_service_relays%rowtype; v_from_driver uuid; v_from_truck integer; v_to_truck integer; v_to_name text;
 begin
   if v_uid is null or v_role not in ('chofer', 'operador', 'administracion') then raise exception 'Sin permiso para entregar el vehículo'; end if;
   select * into s from public.operator_services where service_id = p_service_id for update;
@@ -215,11 +239,19 @@ begin
   if s.status not in ('assigned', 'at_origin') then raise exception 'El servicio no está en curso'; end if;
   if s.assigned_driver_id is null or s.assigned_truck_id is null then raise exception 'El servicio no tiene chofer y móvil asignados'; end if;
   if s.trip_id is not null or s.remito_id is not null then raise exception 'El servicio ya tiene un remito: no se puede entregar el vehículo'; end if;
-  perform app_private.relay_check_receiver_v1(r.to_driver_id, r.to_truck_id);
+  perform app_private.relay_check_receiver_v1(r.to_driver_id);
+  -- El vehículo pasa al móvil de la jornada activa del 2º chofer.
+  v_to_truck := app_private.relay_receiver_truck_v1(r.to_driver_id);
+  if v_to_truck is null then
+    select u.full_name into v_to_name from public.users u where u.user_id = r.to_driver_id;
+    raise exception 'RELEVO_SIN_JORNADA: % todavía no inició su jornada con un móvil; tiene que iniciarla para recibir el vehículo', coalesce(v_to_name, 'El chofer que recibe');
+  end if;
+  if v_to_truck = s.assigned_truck_id then raise exception 'El móvil de la jornada del chofer que recibe es el mismo que el del primer tramo'; end if;
+  if not exists (select 1 from public.trucks t where t.truck_id = v_to_truck and t.status = 'active') then raise exception 'Móvil inválido o inactivo'; end if;
 
   v_from_driver := s.assigned_driver_id; v_from_truck := s.assigned_truck_id;
   update public.operator_service_relays
-  set from_driver_id = v_from_driver, from_truck_id = v_from_truck, handed_over_at = now(), handed_over_by = v_uid,
+  set from_driver_id = v_from_driver, from_truck_id = v_from_truck, to_truck_id = v_to_truck, handed_over_at = now(), handed_over_by = v_uid,
       handover_source = case when v_role = 'chofer' then 'driver' else 'operator' end, updated_at = now()
   where service_id = p_service_id;
 
@@ -228,7 +260,7 @@ begin
   perform set_config('app.assignment_reason', 'relay_handover', true);
   perform set_config('app.assignment_notes', 'Entrega del vehículo en ' || r.exchange_address, true);
   update public.operator_services
-  set assigned_driver_id = r.to_driver_id, assigned_truck_id = r.to_truck_id, assigned_at = now(), assigned_by = v_uid,
+  set assigned_driver_id = r.to_driver_id, assigned_truck_id = v_to_truck, assigned_at = now(), assigned_by = v_uid,
       status = 'assigned', updated_by = v_uid
   where service_id = p_service_id;
 
@@ -269,13 +301,15 @@ language sql stable security definer set search_path to '' as $f$
 $f$;
 revoke all on function app_private.completed_driver_services_v2() from public,anon,authenticated;
 
-revoke all on function public.set_operator_service_relay_v1(uuid, text, numeric, numeric, text, uuid, integer) from public, anon;
+revoke all on function public.set_operator_service_relay_v1(uuid, text, numeric, numeric, text, uuid) from public, anon;
+revoke all on function public.get_relay_receiver_truck_v1(uuid) from public, anon;
 revoke all on function public.remove_operator_service_relay_v1(uuid) from public, anon;
 revoke all on function public.get_operator_service_relay_v1(uuid) from public, anon;
 revoke all on function public.list_operator_service_relays_v1(uuid[]) from public, anon;
 revoke all on function public.get_driver_relay_incoming_v1() from public, anon;
 revoke all on function public.mark_operator_service_relay_handover_v1(uuid) from public, anon;
-grant execute on function public.set_operator_service_relay_v1(uuid, text, numeric, numeric, text, uuid, integer) to authenticated;
+grant execute on function public.set_operator_service_relay_v1(uuid, text, numeric, numeric, text, uuid) to authenticated;
+grant execute on function public.get_relay_receiver_truck_v1(uuid) to authenticated;
 grant execute on function public.remove_operator_service_relay_v1(uuid) to authenticated;
 grant execute on function public.get_operator_service_relay_v1(uuid) to authenticated;
 grant execute on function public.list_operator_service_relays_v1(uuid[]) to authenticated;

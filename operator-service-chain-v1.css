@@ -24,3 +24,20 @@
 #modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled { cursor: not-allowed; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled > span { color: var(--ax-text-3); }
 #modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row.is-disabled input { cursor: not-allowed; }
+
+/* Los tres interruptores (Pinacars, Servicio enganchado, Servicio con relevo) van siempre en la MISMA fila:
+   columnas iguales según cuántos haya, y el texto se ajusta en dos líneas si hace falta. */
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row,
+.osv4-reactive #osv4-toggles .osv4-toggles-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: start; gap: var(--ax-sp-2) var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-toggles-list,
+.osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-toggles-list { display: grid; grid-auto-flow: row; gap: var(--ax-sp-2); min-width: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-chain-switch,
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row .osv4-relay-switch { min-width: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row,
+.osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row { width: 100%; align-items: flex-start; gap: 8px; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row > span,
+.osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row > span { min-width: 0; font-size: var(--ax-fs-sm); line-height: 1.25; overflow-wrap: anywhere; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row label.osv4-toggle-row input[type=checkbox] { margin-top: 1px; }
+@media (max-width: 480px) {
+  #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-row, .osv4-reactive #osv4-toggles .osv4-toggles-row { grid-auto-flow: row; grid-auto-columns: auto; }
+}

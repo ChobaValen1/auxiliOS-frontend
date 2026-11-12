@@ -2,7 +2,8 @@
    Un mismo servicio lo hacen dos choferes: el 1º lleva el vehículo del cliente de A hasta el punto de
    intercambio (B) y el 2º, con otro móvil, de B hasta C. Es UN servicio y UN remito.
    En el formulario: interruptor «Servicio con relevo» (misma fila que Pinacars y Enganchado) y, al activarlo,
-   el punto B (se elige con el buscador para que quede ubicado en el mapa) y el chofer y móvil que reciben.
+   el punto B (se elige con el buscador para que quede ubicado en el mapa) y el chofer que recibe. El móvil NO se
+   elige: es el de la jornada activa de ese chofer (se muestra para que Operaciones lo vea).
    Se monta como Enganchado: sync(w) al dibujar y persist(w, id) después de guardar el servicio. La entrega
    del vehículo la marca el chofer desde su app (etapa 3). */
 (() => {
@@ -22,13 +23,13 @@
   function state(w) {
     const key = String(w.serviceId || 'new');
     if (!w.relay || w.relay.key !== key) {
-      w.relay = { key, loaded: false, loading: false, on: false, original: null, address: '', placeId: '', lat: null, lng: null, toDriver: '', toTruck: '', handedOver: false,
+      w.relay = { key, loaded: false, loading: false, on: false, original: null, address: '', placeId: '', lat: null, lng: null, toDriver: '', handedOver: false, truck: null, truckFor: '',
         search: { timer: null, seq: 0, focused: false, suggestions: [], loading: false, error: '', token: '' } };
     }
     return w.relay;
   }
   const located = c => Boolean(c.address && num(c.lat) !== null && num(c.lng) !== null);
-  const missing = c => [!located(c) && 'el punto de intercambio ubicado en el mapa', !c.toDriver && 'el chofer que recibe', !c.toTruck && 'el móvil que recibe'].filter(Boolean);
+  const missing = c => [!located(c) && 'el punto de intercambio ubicado en el mapa', !c.toDriver && 'el chofer que recibe'].filter(Boolean);
 
   async function load(w) {
     const c = state(w);
@@ -41,13 +42,28 @@
         if (w.relay !== c) return;
         if (data) {
           c.original = data; c.on = true; c.address = data.exchange_address || ''; c.placeId = data.exchange_place_id || '';
-          c.lat = num(data.exchange_lat); c.lng = num(data.exchange_lng); c.toDriver = String(data.to_driver_id || ''); c.toTruck = String(data.to_truck_id || '');
+          c.lat = num(data.exchange_lat); c.lng = num(data.exchange_lng); c.toDriver = String(data.to_driver_id || '');
+          c.truck = data.to_truck_id ? { has_active_jornada: Boolean(data.to_has_active_jornada) || Boolean(data.handed_over), truck_id: data.to_truck_id, truck_label: data.to_truck_label, truck_plate: data.to_truck_plate } : null; c.truckFor = c.toDriver;
           c.handedOver = Boolean(data.handed_over);
         }
       } catch (e) { console.warn('[relevo]', e); }
     }
     c.loaded = true; c.loading = false;
     update(w);
+    void lookupTruck(w);
+  }
+
+  /* Móvil de la jornada activa del chofer que recibe (sólo se muestra: lo define la jornada). */
+  async function lookupTruck(w) {
+    const c = state(w), id = c.toDriver;
+    if (!id || !db() || c.truckFor === id || c.handedOver) return;
+    c.truckFor = id; c.truck = null; c.truckLoading = true; update(w);
+    try {
+      const { data, error } = await db().rpc('get_relay_receiver_truck_v1', { p_driver_id: id });
+      if (error) throw error;
+      if (c.toDriver === id) c.truck = data || null;
+    } catch (e) { if (c.toDriver === id) c.truck = null; console.warn('[relevo] jornada', e); }
+    c.truckLoading = false; update(w);
   }
 
   /* ── Buscador del punto de intercambio (mismo maps-proxy que Origen y Destino) ── */
@@ -124,7 +140,7 @@
           <ul id="osv4-relay-suggestions" class="osv4-relay-suggestions" role="listbox" hidden></ul></label>
         <div class="osv4-relay-grid">
           <label class="osv4-relay-field"><span>Chofer que recibe *</span><select id="osv4-relay-driver"></select></label>
-          <label class="osv4-relay-field"><span>Móvil que recibe *</span><select id="osv4-relay-truck"></select></label></div>
+          <div class="osv4-relay-field"><span>Móvil que recibe</span><div id="osv4-relay-truck" class="osv4-relay-truck" role="status"></div></div></div>
         <p class="osv4-relay-note">Es <b>un solo servicio y un solo remito</b>: lo cierra el chofer que recibe. Los dos choferes ven el servicio desde que lo guardás y los dos lo cuentan completo para el sueldo.</p>`;
       const input = box.querySelector('#osv4-relay-address');
       input.addEventListener('focus', () => { const c = state(W() || w); c.search.focused = true; paintSuggestions(c); });
@@ -141,8 +157,7 @@
       /* mousedown evita que el blur cierre la lista antes del clic. */
       box.addEventListener('mousedown', e => { if (e.target.closest('[data-relay-pick]')) e.preventDefault(); });
       box.addEventListener('click', e => { const b = e.target.closest('[data-relay-pick]'); if (b) void choose(W() || w, Number(b.dataset.relayPick)); });
-      box.querySelector('#osv4-relay-driver').addEventListener('change', e => { const cw = W() || w; state(cw).toDriver = e.target.value; cw.dirty = true; update(cw); });
-      box.querySelector('#osv4-relay-truck').addEventListener('change', e => { const cw = W() || w; state(cw).toTruck = e.target.value; cw.dirty = true; update(cw); });
+      box.querySelector('#osv4-relay-driver').addEventListener('change', e => { const cw = W() || w, c = state(cw); c.toDriver = e.target.value; c.truck = null; c.truckFor = ''; cw.dirty = true; update(cw); void lookupTruck(cw); });
     }
     return { box, slot };
   }
@@ -164,18 +179,28 @@
     box.hidden = !c.on;
     if (!c.on) return;
     const d = w.data || {}, drivers = (O()?.S?.drivers || []).filter(x => String(x.user_id) !== String(d.assigned_driver_id || ''));
-    const trucks = (O()?.S?.trucks || []).filter(x => String(x.truck_id) !== String(d.assigned_truck_id || ''));
-    const dsel = box.querySelector('#osv4-relay-driver'), tsel = box.querySelector('#osv4-relay-truck'), input = box.querySelector('#osv4-relay-address');
+    const dsel = box.querySelector('#osv4-relay-driver'), input = box.querySelector('#osv4-relay-address');
     const dHtml = optionsHtml(drivers, 'user_id', x => x.full_name, c.toDriver, 'Elegí el chofer…');
-    const tHtml = optionsHtml(trucks, 'truck_id', x => [x.numero_interno, x.plate].filter(Boolean).join(' · '), c.toTruck, 'Elegí el móvil…');
     if (dsel.dataset.html !== dHtml) { dsel.dataset.html = dHtml; dsel.innerHTML = dHtml; }
-    if (tsel.dataset.html !== tHtml) { tsel.dataset.html = tHtml; tsel.innerHTML = tHtml; }
-    dsel.value = c.toDriver; tsel.value = c.toTruck;
+    dsel.value = c.toDriver;
     if (document.activeElement !== input && input.value !== c.address) input.value = c.address;
-    for (const el of [dsel, tsel, input]) el.disabled = locked;
-    dsel.setAttribute('aria-invalid', String(!locked && !c.toDriver)); tsel.setAttribute('aria-invalid', String(!locked && !c.toTruck));
+    for (const el of [dsel, input]) el.disabled = locked;
+    dsel.setAttribute('aria-invalid', String(!locked && !c.toDriver));
+    paintTruck(c);
     input.setAttribute('aria-expanded', String(Boolean(c.search.focused && c.search.suggestions.length)));
     paintStatus(c);
+  }
+
+  function paintTruck(c) {
+    const el = document.getElementById('osv4-relay-truck'); if (!el) return;
+    const t = c.truck;
+    let html, cls = 'osv4-relay-truck';
+    if (!c.toDriver) html = 'Se toma de la jornada activa del chofer que elijas';
+    else if (c.truckLoading) html = 'Buscando su jornada activa…';
+    else if (t?.has_active_jornada && t.truck_id) { cls += ' is-ok'; html = `<b>${esc([t.truck_label, t.truck_plate].filter(Boolean).join(' · '))}</b><small>Móvil de su jornada activa</small>`; }
+    else { cls += ' is-warn'; html = 'Todavía no inició su jornada con un móvil. Se toma el de su jornada cuando el 1º entregue el vehículo, así que tiene que iniciarla antes.'; }
+    if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
+    el.className = cls;
   }
 
   function sync(w) {
@@ -203,13 +228,13 @@
       const gaps = missing(c);
       if (gaps.length) { notify(`El servicio se guardó, pero falta ${gaps.join(', ')} para cargar el relevo.`, 'warning'); return false; }
       const same = orig && orig.exchange_address === c.address && num(orig.exchange_lat) === c.lat && num(orig.exchange_lng) === c.lng
-        && String(orig.to_driver_id) === String(c.toDriver) && String(orig.to_truck_id) === String(c.toTruck);
+        && String(orig.to_driver_id) === String(c.toDriver);
       if (same) return true;
       const { data, error } = await db().rpc('set_operator_service_relay_v1', {
         p_service_id: serviceId, p_exchange_address: c.address, p_exchange_lat: c.lat, p_exchange_lng: c.lng, p_exchange_place_id: c.placeId || null,
-        p_to_driver_id: c.toDriver, p_to_truck_id: Number(c.toTruck) });
+        p_to_driver_id: c.toDriver });
       if (error) throw error;
-      c.original = data || { exchange_address: c.address, exchange_lat: c.lat, exchange_lng: c.lng, to_driver_id: c.toDriver, to_truck_id: Number(c.toTruck) };
+      c.original = data || { exchange_address: c.address, exchange_lat: c.lat, exchange_lng: c.lng, to_driver_id: c.toDriver };
       c.key = String(serviceId);
       notify(`Relevo cargado: ${data?.to_driver_name || 'el 2º chofer'} recibe en ${c.address}.`, 'success');
       return true;
@@ -219,5 +244,5 @@
     }
   }
 
-  window.AuxRelevoServicio = { sync, update, persist, visible: shown, _state: state, _missing: missing };
+  window.AuxRelevoServicio = { sync, update, persist, lookupTruck, visible: shown, _state: state, _missing: missing };
 })();
