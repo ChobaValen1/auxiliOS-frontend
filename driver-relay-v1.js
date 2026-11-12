@@ -37,7 +37,7 @@
   /* ── Sección «Vas a recibir» (2º chofer, antes de que le entreguen) ── */
   function incomingCard(x) {
     const trip = truckText(x.from_truck_label, x.from_truck_plate);
-    return `<article class="drl-card" data-drl-service="${esc(x.service_id)}" aria-label="Servicio ${esc(x.label)} con relevo">
+    return `<article class="drl-card is-actionable" data-drl-service="${esc(x.service_id)}" role="button" tabindex="0" aria-label="Ver servicio ${esc(x.label)} con relevo">
       <header><div class="drl-id"><strong>${esc(x.label || 'Servicio')}</strong><span class="drl-chip">${ico('repeat')}Tramo 2 de 2</span></div>
         <span class="drl-state">${ico('clock')}Esperando la entrega</span></header>
       <dl class="drl-facts">
@@ -48,6 +48,7 @@
       </dl>
       ${x.to_has_active_jornada ? '' : `<p class="drl-note is-warn">${ico('triangle-alert')}<span>Iniciá tu jornada con tu móvil para poder recibir el vehículo.</span></p>`}
       ${mapsButton(x.exchange_lat, x.exchange_lng, 'Ir al punto de intercambio en Maps')}
+      <span class="drl-more" aria-hidden="true">Ver detalle${ico('chevron-right')}</span>
     </article>`;
   }
   const incomingHtml = list => list.length
@@ -76,6 +77,59 @@
       <p class="drl-note is-ok">${ico('check')}<span>Recibiste el vehículo de <b>${esc(x.from_driver_name || 'el primer chofer')}</b>${trip ? ` (${esc(trip)})` : ''} en ${esc(place(x.exchange_address) || 'el punto de intercambio')}${x.handed_over_at ? ` · ${esc(time(x.handed_over_at))}` : ''}.</span></p>
       ${mapsButton(x.destination_lat, x.destination_lng, 'Ir al destino en Maps')}
     </div>`;
+  }
+
+  const when = v => { try { return new Date(v).toLocaleString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); } catch { return ''; } };
+  function incomingSheet(x) {
+    const trip = truckText(x.from_truck_label, x.from_truck_plate);
+    return `<div class="drl-sheet">
+      <p class="drl-state">${ico('clock')}Esperando que ${esc(x.from_driver_name || 'el primer chofer')} entregue el vehículo</p>
+      ${x.to_has_active_jornada ? '' : `<p class="drl-note is-warn">${ico('triangle-alert')}<span>Iniciá tu jornada con tu móvil para poder recibir el vehículo.</span></p>`}
+      <dl class="drl-facts">
+        <div><dt>Retirás en (punto de intercambio)</dt><dd class="drl-b">${esc(place(x.exchange_address) || 'Punto sin dirección')}</dd></div>
+        <div><dt>Vehículo a retirar</dt><dd>${esc(vehicle(x))}</dd></div>
+        <div><dt>Te lo trae</dt><dd>${esc(x.from_driver_name || 'El primer chofer')}${trip ? `<small> · ${esc(trip)}</small>` : ''}</dd></div>
+        <div><dt>Después lo llevás a</dt><dd>${esc(place(x.destination) || 'Destino sin informar')}</dd></div>
+        ${x.scheduled_for ? `<div><dt>Horario del servicio</dt><dd>${esc(when(x.scheduled_for))}</dd></div>` : ''}
+      </dl>
+      <p class="drl-note"><span>Cuando ${esc(x.from_driver_name || 'el primer chofer')} entregue el vehículo, el servicio pasa a tu lista y desde ahí completás el remito con el cliente.</span></p>
+    </div>`;
+  }
+  function openIncoming(id) {
+    const x = S.incoming.find(i => String(i.service_id) === String(id));
+    const P3 = window.AuxiliosPhase3;
+    if (!x || !P3?.openCustomPreview) return;
+    P3.openCustomPreview({ kicker: 'Vas a recibir · Tramo 2 de 2', title: x.label || 'Servicio', body: incomingSheet(x),
+      actions: `${mapsButton(x.exchange_lat, x.exchange_lng, 'Ir al punto de intercambio en Maps')}<small>Es un solo servicio y un solo remito: lo cerrás vos con el cliente.</small>` });
+  }
+
+  /* Ventana de detalle de un servicio normal: se le saca lo que no corresponde en un relevo. */
+  function decoratePreview(id) {
+    const actions = document.getElementById('p3-preview-actions'); if (!actions) return;
+    const key = String(id), o = S.outgoing.find(x => String(x.service_id) === key), r = S.received.find(x => String(x.service_id) === key);
+    if (!o && !r) return;
+    if (o) {
+      /* 1º chofer: no crea remito ni lo marca como activado; llega al origen, va a B y entrega. */
+      actions.querySelectorAll('[onclick*="abrirRemitoServicio"], .p3-other-actions').forEach(n => n.remove());
+      actions.querySelectorAll('small').forEach(n => { if (/remito|activado/i.test(n.textContent)) n.remove(); });
+      actions.querySelector(':scope > .drl-box')?.remove();
+      actions.insertAdjacentHTML('beforeend', outgoingBox(o, S.confirming, S.busy));
+    } else {
+      /* 2º chofer: ya tiene el vehículo (no llega a ningún origen); sigue al destino y completa el remito. */
+      actions.querySelectorAll('.p3-arrive-btn, .p3-arrived-chip').forEach(n => n.remove());
+      actions.querySelectorAll('small').forEach(n => { if (/Tocalo al llegar/i.test(n.textContent)) n.remove(); });
+      actions.querySelectorAll('[onclick*="abrirRemitoServicio"]').forEach(n => { n.classList.remove('p3-preview-secondary'); n.classList.add('p3-preview-primary'); });
+      actions.querySelector(':scope > .drl-box')?.remove();
+      actions.insertAdjacentHTML('afterbegin', receivedBox(r));
+    }
+  }
+  function refreshPreviewBox() {
+    const modal = document.getElementById('p3-service-preview');
+    if (!modal || modal.hidden) return;
+    const id = modal.dataset.serviceRouteId; if (!id) return;
+    const actions = document.getElementById('p3-preview-actions'), o = S.outgoing.find(x => String(x.service_id) === String(id));
+    const box = actions?.querySelector(':scope > .drl-out-box');
+    if (o && box) { const wrap = document.createElement('div'); wrap.innerHTML = outgoingBox(o, S.confirming, S.busy); box.replaceWith(wrap.firstElementChild); }
   }
 
   /* ── Pintado (se reinserta cada vez que la app vuelve a dibujar su lista) ── */
@@ -113,7 +167,7 @@
       footer ? footer.before(box) : card.appendChild(box);
     }
   }
-  function paint() { paintIncoming(); decorate(); }
+  function paint() { paintIncoming(); decorate(); refreshPreviewBox(); }
 
   /* ── Datos ── */
   async function refresh({ force = false } = {}) {
@@ -144,6 +198,7 @@
       notify(`Entregaste el vehículo. El servicio sigue con ${who}${who.endsWith('.') ? '' : '.'}`, 'success');
     } catch (e) { notify(friendlyError(e), 'warning'); }
     S.busy = '';
+    try { window.cerrarPreviewServicio?.(); } catch { /* sin ventana abierta */ }
     await refresh({ force: true });
     try { await window.recargarServiciosChofer?.(); } catch { /* la lista se actualiza sola en el próximo ciclo */ }
     paint();
@@ -153,8 +208,16 @@
     if (S.bound) return; S.bound = true;
     document.addEventListener('click', e => {
       const b = e.target.closest?.('[data-drl-handover]');
-      if (b) { e.preventDefault(); e.stopPropagation(); void handover(b.dataset.drlHandover); }
+      if (b) { e.preventDefault(); e.stopPropagation(); void handover(b.dataset.drlHandover); return; }
+      /* Toda la tarjeta se toca (como un servicio normal); los botones y links conservan lo suyo. */
+      const card = e.target.closest?.('.drl-card[data-drl-service]');
+      if (card && !e.target.closest('a,button,input,select,textarea,summary,label')) { if (String(window.getSelection?.() || '').trim()) return; openIncoming(card.dataset.drlService); }
     }, true);
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const card = e.target.closest?.('.drl-card[data-drl-service]');
+      if (card && e.target === card) { e.preventDefault(); openIncoming(card.dataset.drlService); }
+    });
     /* La app dibuja su lista de nuevo en cada refresco: se vuelve a decorar y se actualizan los datos. */
     window.addEventListener('auxilios:driver-queue-updated', () => { setTimeout(paint, 0); void refresh(); });
     window.addEventListener('focus', () => { void refresh({ force: true }); });
@@ -173,5 +236,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _receivedBox: receivedBox, _state: S };
 })();

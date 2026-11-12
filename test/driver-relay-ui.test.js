@@ -63,3 +63,24 @@ test('el módulo usa la consulta del chofer, la entrega y queda registrado en la
   assert.match(fs.readFileSync('ui/icons.svg', 'utf8'), /<symbol id="repeat"/);
   assert.match(fs.readFileSync('driver-relay-v1.css', 'utf8'), /\.p3-driver-task\.drl-out \.p3-task-primary \{ display: none; \}/);
 });
+
+test('«Vas a recibir» se toca como un servicio normal y abre su detalle en la misma hoja de la app', () => {
+  const html = R._incomingHtml([x]);
+  assert.match(html, /class="drl-card is-actionable"[^>]*role="button" tabindex="0"/);
+  assert.match(html, /aria-label="Ver servicio SRV-123 con relevo"/);
+  assert.match(html, /Ver detalle/);
+  const sheet = R._incomingSheet({ ...x, scheduled_for: '2026-11-13T14:30:00Z' });
+  for (const t of ['Esperando que Martín R. entregue el vehículo', 'Retirás en (punto de intercambio)', 'Fiat Cronos · AA111BB', 'Móvil 12', 'Remedios de Escalada', 'Horario del servicio', 'completás el remito con el cliente']) assert.ok(sheet.includes(t), t);
+  assert.match(src, /openCustomPreview/);
+  assert.match(src, /\.drl-card\[data-drl-service\]/);
+  assert.match(src, /e\.key !== 'Enter' && e\.key !== ' '/);
+  const bridge = fs.readFileSync('operator-service-bridge.js', 'utf8');
+  assert.match(bridge, /P3\.openCustomPreview=function/);
+  assert.match(bridge, /window\.AuxRelevoChofer\?\.decoratePreview\?\.\(id\)/);
+  assert.match(fs.readFileSync('driver-relay-v1.css', 'utf8'), /\.drl-card\.is-actionable/);
+});
+
+test('en la ventana de un servicio normal: el 1º chofer sin remito, el 2º sin «Llegué al origen»', () => {
+  for (const frag of ['abrirRemitoServicio', '.p3-other-actions', '.p3-arrive-btn', 'Tocalo al llegar', "[onclick*=\"abrirRemitoServicio\"]"]) assert.ok(src.includes(frag), frag);
+  assert.match(src, /window\.cerrarPreviewServicio\?\.\(\)/, 'al entregar se cierra la ventana');
+});

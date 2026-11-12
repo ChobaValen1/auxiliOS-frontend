@@ -34,3 +34,13 @@
 @media (prefers-reduced-motion: reduce) { .drl-danger { animation: none; } .drl-btn { transition: none; } }
 /* El 1º chofer no crea remito: se esconde el botón principal de la tarjeta (el servidor también lo impide). */
 #phase3-driver-services .p3-driver-task.drl-out .p3-task-primary { display: none; }
+
+/* La tarjeta «Vas a recibir» se toca como un servicio normal. */
+.drl-card.is-actionable { cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .12s ease; }
+.drl-card.is-actionable:hover, .drl-card.is-actionable:focus-visible { border-color: #a78bfa; outline: none; background: color-mix(in srgb, #a78bfa 10%, var(--ax-surface-2, #191d27)); }
+.drl-card.is-actionable:active { transform: scale(.992); }
+.drl-more { display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: #c4b5fd; font-size: 12px; font-weight: 600; }
+.drl-more .ax-icon { width: 14px; height: 14px; }
+.drl-sheet { display: grid; gap: 12px; }
+.drl-sheet .drl-state { justify-self: start; margin: 0; }
+#p3-preview-actions .drl-box { margin: 0 0 10px; }
