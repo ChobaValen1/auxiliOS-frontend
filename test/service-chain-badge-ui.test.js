@@ -31,3 +31,19 @@ test('la flecha de Estado no la pisa la burbuja de tooltip (data-ax-tip)', () =>
   assert.match(rule, /background: none/);
   assert.match(css, /\[aria-expanded="true"\]::after \{ transform: translateY\(3px\) rotate\(225deg\); \}/);
 });
+
+test('Facturación: clip, recorrido bajo los km y aviso de servicio enganchado sin su compañero', () => {
+  const js = read('operator-service-chain-badge-v1.js');
+  assert.match(js, /tr\[data-billing-service\]/);
+  assert.match(js, /td\[data-col="order"\]/);
+  assert.match(js, /ob-chain-route/);
+  assert.match(js, /selectionGaps/);
+  assert.match(js, /auxilios:billing-rendered/);
+  const billing = read('operator-billing.js');
+  assert.match(billing, /dispatchEvent\(new CustomEvent\('auxilios:billing-rendered'\)\)/);
+  assert.equal((billing.match(/\$\{chainGapMarkup\(\)\}/g) || []).length, 2, 'barra de selección y modal de factura');
+  // Sólo avisa: no deshabilita el botón de facturar.
+  const sel = billing.slice(billing.indexOf('function selectionMarkup'), billing.indexOf('function invoiceModalMarkup'));
+  assert.doesNotMatch(sel.slice(0, sel.indexOf('const related')), /chainGaps/);
+  assert.match(read('operator-service-chain-badge-v1.css'), /#screen-facturacion \.ob-chain-gap/);
+});

@@ -1,16 +1,17 @@
 /* Clip de «Servicio enganchado» en la columna Código de Operaciones. */
-#screen-operaciones .os-table td.col-code:has(.os-chain-clip) .os-service-code { display: inline; }
-#screen-operaciones .os-chain-clip {
+#screen-operaciones .os-table td.col-code:has(.os-chain-clip) .os-service-code,
+#screen-facturacion td[data-col="order"]:has(.os-chain-clip) > b { display: inline; }
+:is(#screen-operaciones, #screen-facturacion) .os-chain-clip {
   display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0 0 0 6px; padding: 0; vertical-align: middle;
   border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--ax-info, #5aa9ff); cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
-#screen-operaciones .os-chain-clip .ax-icon { width: 14px; height: 14px; transform: rotate(-35deg); transition: transform 200ms ease; }
-#screen-operaciones .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--ax-surface-3, #232838); border-color: var(--ax-border-strong, #343a4d); }
-#screen-operaciones .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) .ax-icon { transform: rotate(0deg); }
-#screen-operaciones .os-chain-clip:focus-visible { outline: none; box-shadow: var(--ax-focus); }
-@media (pointer: coarse) { #screen-operaciones .os-chain-clip { width: 32px; height: 32px; } }
-@media (prefers-reduced-motion: reduce) { #screen-operaciones .os-chain-clip, #screen-operaciones .os-chain-clip .ax-icon { transition: none; } }
+:is(#screen-operaciones, #screen-facturacion) .os-chain-clip .ax-icon { width: 14px; height: 14px; transform: rotate(-35deg); transition: transform 200ms ease; }
+:is(#screen-operaciones, #screen-facturacion) .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--ax-surface-3, #232838); border-color: var(--ax-border-strong, #343a4d); }
+:is(#screen-operaciones, #screen-facturacion) .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) .ax-icon { transform: rotate(0deg); }
+:is(#screen-operaciones, #screen-facturacion) .os-chain-clip:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+@media (pointer: coarse) { :is(#screen-operaciones, #screen-facturacion) .os-chain-clip { width: 32px; height: 32px; } }
+@media (prefers-reduced-motion: reduce) { :is(#screen-operaciones, #screen-facturacion) .os-chain-clip, :is(#screen-operaciones, #screen-facturacion) .os-chain-clip .ax-icon { transition: none; } }
 
 .os-chain-pop {
   position: fixed; z-index: 30000; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 10px 12px; display: grid; gap: 6px;
@@ -31,3 +32,10 @@
 .os-chain-pop-note { color: var(--ax-text-3, #8a91a6); font-size: var(--ax-fs-xs, 11px); }
 @keyframes os-chain-pop-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .os-chain-pop { animation: none; } }
+
+/* Facturación: recorrido que se factura, bajo los km, y aviso de A sin B. */
+#screen-facturacion .ob-chain-route { display: block; margin-top: 2px; color: var(--ax-info, #5aa9ff); font-size: var(--ax-fs-xs, 11px); font-weight: var(--ax-fw-medium, 500); white-space: normal; }
+#screen-facturacion .ob-chain-gap { display: flex; flex: 1 0 100%; align-items: flex-start; gap: var(--ax-sp-2, 8px); margin-top: 2px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ax-info, #5aa9ff) 35%, transparent); border-radius: var(--ax-radius, 10px); background: color-mix(in srgb, var(--ax-info, #5aa9ff) 8%, transparent); color: var(--ax-text-2, #b4bacb); font-size: var(--ax-fs-sm, 12px); }
+#screen-facturacion .ob-chain-gap > .ax-icon { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; color: var(--ax-info, #5aa9ff); }
+#screen-facturacion .ob-chain-gap b { color: var(--ax-text, #e8ebf4); font-weight: var(--ax-fw-semibold, 600); }
+#screen-facturacion .ob-chain-gap small { display: block; color: var(--ax-text-3, #8a91a6); }

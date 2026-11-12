@@ -20,26 +20,45 @@
   const fresh = e => e && Date.now() - e.at < TTL;
   const icon = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#paperclip"/></svg>';
 
+  /* Dónde vive cada tabla: filas, cómo sacar el id, en qué celda va el clip y (Facturación) dónde se aclara el recorrido. */
+  const SOURCES = [
+    { rows: '#os-table-body tr[data-service-id]', id: tr => tr.dataset.serviceId, cells: ['td.col-code'] },
+    { rows: '#screen-facturacion .ob-table tr[data-billing-service]', id: tr => tr.dataset.billingService,
+      cells: ['td[data-col="order"]', 'td[data-col="datetime"]'], km: 'td[data-col="km"]' }
+  ];
+  const sourceRows = () => SOURCES.flatMap(src => [...document.querySelectorAll(src.rows)].map(tr => ({ src, tr, id: src.id(tr) })));
+  const routeLabel = mode => (window.AuxEngancheServicio?._label || {})[
+    mode === 'base_origin_destination' ? 'base_origin_destination' : mode === 'origin_destination_base' ? 'origin_destination_base' : 'origin_destination'] || '';
+
   function decorate() {
-    for (const tr of document.querySelectorAll('#os-table-body tr[data-service-id]')) {
-      const td = tr.querySelector('td.col-code');
-      if (!td) continue;
-      const entry = modes.get(tr.dataset.serviceId), mode = entry?.mode;
-      const has = td.querySelector('.os-chain-clip');
-      if (!mode || !ROLE[mode]) { has?.remove(); continue; }
-      if (has) { if (has.dataset.chainMode !== mode) { has.dataset.chainMode = mode; has.setAttribute('aria-label', ROLE[mode].text); } continue; }
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'os-chain-clip'; b.dataset.chainMode = mode; b.dataset.serviceId = tr.dataset.serviceId;
-      b.setAttribute('aria-label', ROLE[mode].text); b.setAttribute('aria-haspopup', 'true'); b.setAttribute('aria-expanded', 'false');
-      b.innerHTML = icon;
-      td.appendChild(b);
+    for (const { src, tr, id } of sourceRows()) {
+      const mode = modes.get(id)?.mode, ok = Boolean(mode && ROLE[mode]);
+      const td = src.cells.map(sel => tr.querySelector(sel)).find(Boolean);
+      const has = td?.querySelector('.os-chain-clip');
+      if (!ok || !td) { has?.remove(); tr.querySelector('.ob-chain-route')?.remove(); continue; }
+      if (has) { if (has.dataset.chainMode !== mode) { has.dataset.chainMode = mode; has.setAttribute('aria-label', ROLE[mode].text); } }
+      else {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'os-chain-clip'; b.dataset.chainMode = mode; b.dataset.serviceId = id;
+        b.setAttribute('aria-label', ROLE[mode].text); b.setAttribute('aria-haspopup', 'true'); b.setAttribute('aria-expanded', 'false');
+        b.innerHTML = icon;
+        td.appendChild(b);
+      }
+      const kmCell = src.km && tr.querySelector(src.km);
+      if (kmCell) {
+        let r = kmCell.querySelector('.ob-chain-route');
+        const text = routeLabel(mode);
+        if (!r) { r = document.createElement('small'); r.className = 'ob-chain-route'; kmCell.appendChild(r); }
+        if (r.textContent !== text) r.textContent = text;
+        r.title = 'Recorrido que se factura por estar enganchado';
+      }
     }
   }
 
   async function refresh() {
     const client = db();
     if (!client || inflight) return decorate();
-    const ids = [...document.querySelectorAll('#os-table-body tr[data-service-id]')].map(tr => tr.dataset.serviceId).filter(id => !fresh(modes.get(id)));
+    const ids = [...new Set(sourceRows().map(r => r.id))].filter(id => !fresh(modes.get(id)));
     decorate();
     if (!ids.length) return;
     inflight = true;
@@ -134,7 +153,37 @@
   window.addEventListener('scroll', () => { if (anchor) close(); }, true);
   window.addEventListener('resize', close);
   document.addEventListener('auxilios:services-rendered', refresh);
+document.addEventListener('auxilios:billing-rendered', refresh);
+
+  /* Facturación: de lo seleccionado, qué servicios enganchados tienen a su compañero fuera de la selección.
+     Devuelve [{ id, label, missing: [{ id, label, relation }] }]. Sólo informa: no bloquea nada. */
+  async function selectionGaps(selectedIds) {
+    const ids = [...new Set((selectedIds || []).map(String))];
+    if (!ids.length || !db()) return [];
+    const need = ids.filter(id => !fresh(modes.get(id)));
+    if (need.length) {
+      try {
+        const { data, error } = await db().rpc('list_operator_service_chain_route_modes_v1', { p_service_ids: need });
+        if (error) throw error;
+        const now = Date.now();
+        for (const id of need) modes.set(id, { mode: data?.[id] || null, at: now });
+      } catch (e) { return []; }
+    }
+    const chained = ids.filter(id => modes.get(id)?.mode);
+    const out = [];
+    const sel = new Set(ids);
+    await Promise.all(chained.map(async id => {
+      try {
+        const d = await loadDetail(id);
+        const missing = [];
+        if (d?.previous && !sel.has(String(d.previous.service_id))) missing.push({ id: d.previous.service_id, label: d.previous.label, relation: 'viene de' });
+        if (d?.next && !sel.has(String(d.next.service_id))) missing.push({ id: d.next.service_id, label: d.next.label, relation: 'sigue con' });
+        if (missing.length) out.push({ id, label: d?.service?.label || '', missing });
+      } catch (e) { /* sin detalle: no se avisa */ }
+    }));
+    return out;
+  }
 
   /* Al cambiar un enganche se vuelve a leer. */
-  window.AuxEngancheClip = { refresh, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
+  window.AuxEngancheClip = { refresh, selectionGaps, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
 })();
