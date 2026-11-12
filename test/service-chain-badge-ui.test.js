@@ -47,3 +47,22 @@ test('Facturación: clip, recorrido bajo los km y aviso de servicio enganchado s
   assert.doesNotMatch(sel.slice(0, sel.indexOf('const related')), /chainGaps/);
   assert.match(read('operator-service-chain-badge-v1.css'), /#screen-facturacion \.ob-chain-gap/);
 });
+
+test('Tablas: filtro «Enganchados», barra que une A y B y columna «Enganche» en el Excel', () => {
+  const ops = read('operator-services.js');
+  assert.match(ops, /S\.status==='chained'\?Boolean\(window\.AuxEngancheClip\?\.isChained\(s\.service_id\)\)/);
+  assert.match(ops, /\['chained','Enganchados'\]/);
+  assert.match(ops, /AuxEngancheClip\?\.warm\?\.\(S\.services\.map/);
+  assert.match(ops, /auxilios:chain-modes-ready/);
+  assert.match(ops, /chained:'Enganchados'/);
+  const js = read('operator-service-chain-badge-v1.js');
+  assert.match(js, /is-chain-join-next/);
+  assert.match(js, /is-chain-join-prev/);
+  assert.match(js, /isChained, warm/);
+  assert.match(read('operator-service-chain-badge-v1.css'), /tr\.os-chain-row > td:first-child \{ box-shadow: inset 3px 0 0/);
+  const exp = read('operator-billing-export.js');
+  assert.match(exp, /serviceColumn\('chain','Enganche'/);
+  assert.match(exp, /chain_label/);
+  assert.match(exp, /Viene de \$\{data\.previous\.label/);
+  assert.match(exp, /Sigue con \$\{data\.next\.label/);
+});

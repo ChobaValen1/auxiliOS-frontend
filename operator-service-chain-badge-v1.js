@@ -53,6 +53,55 @@
         r.title = 'Recorrido que se factura por estar enganchado';
       }
     }
+    queueGroup();
+  }
+
+  /* Filas enganchadas: barra celeste a la izquierda; si A y B quedan una al lado de la otra, la barra las une. */
+  const idFor = tr => tr?.dataset?.serviceId || tr?.dataset?.billingService || '';
+  let grouping = false;
+  function queueGroup() {
+    if (grouping) return;
+    grouping = true;
+    Promise.resolve().then(groupRows).catch(() => {}).finally(() => { grouping = false; });
+  }
+  async function groupRows() {
+    const all = sourceRows(), chained = all.filter(r => modes.get(r.id)?.mode);
+    for (const r of all) if (!modes.get(r.id)?.mode) r.tr.classList.remove('os-chain-row', 'is-chain-join-next', 'is-chain-join-prev');
+    for (const r of chained) r.tr.classList.add('os-chain-row');
+    await Promise.all(chained.slice(0, 80).map(r => loadDetail(r.id).catch(() => null)));
+    for (const r of chained) {
+      const d = details.get(r.id)?.data;
+      const next = r.tr.nextElementSibling, prev = r.tr.previousElementSibling;
+      r.tr.classList.toggle('is-chain-join-next', Boolean(d?.next && next && idFor(next) === String(d.next.service_id)));
+      r.tr.classList.toggle('is-chain-join-prev', Boolean(d?.previous && prev && idFor(prev) === String(d.previous.service_id)));
+    }
+  }
+
+  /* Filtro «Enganchados»: se pide el estado de todos los servicios de la vista (de a 1000) y se guarda. */
+  let warming = false;
+  const isChained = id => Boolean(modes.get(String(id))?.mode);
+  async function warm(ids) {
+    const client = db();
+    const need = [...new Set((ids || []).map(String))].filter(id => !(modes.get(id) && Date.now() - modes.get(id).at < 300000)).slice(0, 2000);
+    if (!need.length || !client || warming) return false;
+    warming = true;
+    let changed = false;
+    try {
+      for (let i = 0; i < need.length; i += 1000) {
+        const chunk = need.slice(i, i + 1000);
+        try {
+          const { data, error } = await client.rpc('list_operator_service_chain_route_modes_v1', { p_service_ids: chunk });
+          if (error) throw error;
+          const now = Date.now();
+          for (const id of chunk) { const mode = data?.[id] || null; if (Boolean(mode) !== isChained(id)) changed = true; modes.set(id, { mode, at: now }); }
+        } catch (e) {
+          const now = Date.now() - TTL + 8000;
+          for (const id of chunk) if (!modes.has(id)) modes.set(id, { mode: null, at: now });
+        }
+      }
+    } finally { warming = false; }
+    if (changed) document.dispatchEvent(new CustomEvent('auxilios:chain-modes-ready'));
+    return changed;
   }
 
   async function refresh() {
@@ -185,5 +234,5 @@ document.addEventListener('auxilios:billing-rendered', refresh);
   }
 
   /* Al cambiar un enganche se vuelve a leer. */
-  window.AuxEngancheClip = { refresh, selectionGaps, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
+  window.AuxEngancheClip = { refresh, selectionGaps, isChained, warm, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
 })();

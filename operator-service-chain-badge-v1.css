@@ -39,3 +39,14 @@
 #screen-facturacion .ob-chain-gap > .ax-icon { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; color: var(--ax-info, #5aa9ff); }
 #screen-facturacion .ob-chain-gap b { color: var(--ax-text, #e8ebf4); font-weight: var(--ax-fw-semibold, 600); }
 #screen-facturacion .ob-chain-gap small { display: block; color: var(--ax-text-3, #8a91a6); }
+
+/* Filas enganchadas: barra celeste a la izquierda y un velo suave. Si A y B son vecinas, la barra las une. */
+tr.os-chain-row > td:first-child { box-shadow: inset 3px 0 0 var(--ax-info, #5aa9ff); }
+tr.os-chain-row { background-image: linear-gradient(color-mix(in srgb, var(--ax-info, #5aa9ff) 5%, transparent), color-mix(in srgb, var(--ax-info, #5aa9ff) 5%, transparent)); }
+tr.os-chain-row.is-chain-join-next > td { border-bottom-color: transparent; }
+tr.os-chain-row.is-chain-join-prev > td { border-top-color: transparent; }
+/* En tarjetas (celular) la barra va en la tarjeta, no en la primera celda. */
+@media (max-width: 720px) {
+  tr.os-chain-row > td:first-child { box-shadow: none; }
+  #screen-operaciones tr.os-chain-row { box-shadow: inset 3px 0 0 var(--ax-info, #5aa9ff); }
+}
