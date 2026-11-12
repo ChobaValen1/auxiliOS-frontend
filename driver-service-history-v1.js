@@ -26,7 +26,17 @@ function stateHTML(row){
   const state=row.historyState;
   const label=state==='activado'&&row.historyService?.activation_kind==='movement'?'Activado · Movida'
     :state==='activado'&&row.historyService?.activation_kind==='origin'?'Activado · Origen':labels[state]||'Registrado';
-  return `<span class="rmx-state ${state==='anulado'?'is-void':state==='activado'?'is-activated':'is-ok'}">${esc(label)}</span>`;
+  const rr=row.historyService?.relay_role;
+  const relay=rr?` <span class="rmx-state is-activated" title="Servicio con relevo">Relevo · Tramo ${rr==='primero'?1:2}</span>`:'';
+  return `<span class="rmx-state ${state==='anulado'?'is-void':state==='activado'?'is-activated':'is-ok'}">${esc(label)}</span>${relay}`;
+}
+function relayFields(s){
+  if(!s?.relay_role)return '';
+  const first=s.relay_role==='primero';
+  return `<div><dt>Servicio con relevo</dt><dd>${first?'Hiciste el tramo 1 (origen → intercambio)':'Hiciste el tramo 2 (intercambio → destino)'}</dd></div>`
+    +(s.relay_other_driver?`<div><dt>${first?'Lo recibió':'Lo entregó'}</dt><dd>${esc(s.relay_other_driver)}</dd></div>`:'')
+    +(s.relay_exchange_address?`<div><dt>Punto de intercambio</dt><dd>${esc(s.relay_exchange_address)}</dd></div>`:'')
+    +(first?`<div><dt>Remito</dt><dd>Lo cerró ${esc(s.relay_other_driver||'el otro chofer')}</dd></div>`:'');
 }
 let dialog,opener;
 function close(){dialog?.close();if(opener?.isConnected)opener.focus({preventScroll:true});}
@@ -42,9 +52,9 @@ function open(row){
     :s.activation_reason_detail||reasons[s.activation_reason_code];
   const field=(label,value)=>value?`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`:'';
   dialog.innerHTML=`<header><div><small>Historial de servicios</small><h2 id="dsh-title">${esc(row.srvOrden||row.srvNumero||row.nro||'Servicio')}</h2>${stateHTML(row)}</div><button type="button" data-dsh-close aria-label="Cerrar">×</button></header>
-    <div class="dsh-body"><dl>${field('Fecha de cierre / registro',at(row.historyAt))}${field('Móvil',s.truck_label)}${field('Cliente',row.cliente)}${field('Vehículo',[row.patente,row.marca].filter(Boolean).join(' · '))}${field('Servicio',row.tipoReal)}${field('Origen',row.origen)}${field('Destino',row.destino)}${field('Motivo',reason)}</dl>
+    <div class="dsh-body"><dl>${field('Fecha de cierre / registro',at(row.historyAt))}${field('Móvil',s.truck_label)}${field('Cliente',row.cliente)}${field('Vehículo',[row.patente,row.marca].filter(Boolean).join(' · '))}${field('Servicio',row.tipoReal)}${field('Origen',row.origen)}${field('Destino',row.destino)}${field('Motivo',reason)}${relayFields(s)}</dl>
     ${window.AuxiliosHistoryTolls?.render(row.historyTolls,{heading:true})||''}
-    <p class="dsh-document">${row.historyRemito?'Remito '+esc(row.nro||'registrado'):'Servicio registrado sin remito.'}</p></div>
+    <p class="dsh-document">${row.historyRemito?'Remito '+esc(row.nro||'registrado'):s.relay_role==='primero'?'Sin remito propio: lo cierra el chofer que recibe.':'Servicio registrado sin remito.'}</p></div>
     <footer>${row.historyRemito?'<button type="button" data-dsh-remito>Ver remito</button>':''}<button type="button" data-dsh-close>Cerrar</button></footer>`;
   dialog.querySelector('[data-dsh-remito]')?.addEventListener('click',()=>{
     close();window.verRemitoModal({...row.historyRemito,historyEntry:false});

@@ -55,8 +55,15 @@ function imagen(src,{png=false,max=900}={}){
 const urlDe=u=>{if(!u)return'';try{if(typeof ENV!=='undefined'&&ENV.API_BASE_URL&&!/^(https?:|data:)/.test(u))return ENV.API_BASE_URL+u}catch(_){}return u};
 function encajar(im,w,h){const r=Math.min(w/im.w,h/im.h);return{w:im.w*r,h:im.h*r}}
 
+async function relayDe(d,opts){
+  if(opts.relay!==undefined)return opts.relay;
+  const id=d.operatorServiceId||d.operator_service_id;
+  if(!id||typeof _db==='undefined'||!_db?.rpc)return null;
+  try{const {data,error}=await _db.rpc('get_operator_service_relay_v1',{p_service_id:id});return error?null:data}catch(_){return null}
+}
 async function build(d,opts={}){
   if(!d)throw new Error('No hay datos para el PDF');
+  const relay=await relayDe(d,opts);
   const J=ctor(),doc=new J({unit:'mm',format:'a4',orientation:'portrait',compress:true});
   let empresa=opts.empresa||{};if(!opts.empresa){try{empresa=await window.CompanyDocuments?.load?.()||{}}catch(_){}}
   const firmaEmpresaSrc=empresa.signature_in_pdf&&empresa.signature_image?empresa.signature_image:'';
@@ -110,6 +117,10 @@ async function build(d,opts={}){
   const unaDireccion=d.origen&&d.destino&&clean(d.origen)===clean(d.destino);
   const tramo=(k,v)=>{font(7.5,'normal',MUTED);doc.text(k,M,y);font(9.5,'normal');const t=lineas(v,CW-22);doc.text(t,M+22,y);y+=t.length*4.2+1.6};
   tramo(unaDireccion?'Dirección':'Origen',d.origen);if(!unaDireccion)tramo('Destino',d.destino);
+  if(relay&&relay.handed_over){
+    const t1=clean(`Servicio con relevo: ${relay.from_driver_name||'1º chofer'} (origen → ${relay.exchange_address||'punto de intercambio'}) y ${relay.to_driver_name||'2º chofer'} (intercambio → destino).`);
+    font(8,'normal',MUTED);const ll=lineas(t1,CW);doc.text(ll,M,y+1);y+=ll.length*3.8+2;
+  }
   font(7.5,'normal',MUTED);doc.text(clean(`Inicio ${fechaHora(d.createdAt)}   ·   Firma ${fechaHora(d.firmadoAt)}`),M,y+1);y+=5;separador();y+=5;
 
   /* Cargos */

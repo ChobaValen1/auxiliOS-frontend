@@ -70,6 +70,17 @@ function ensure(){
   });
 }
 
+async function cargarRelevo(serviceId){
+  if(!serviceId||typeof _db==='undefined')return null;
+  try{const {data,error}=await _db.rpc('get_operator_service_relay_v1',{p_service_id:serviceId});return error?null:data}catch(_){return null}
+}
+function relevoFilas(rel){
+  if(!rel)return '';
+  const hecho=rel.handed_over;
+  return fila('Relevo',hecho?'<b>Servicio con relevo</b>':'<span class="rmp-empty">Relevo cargado, todavía sin entregar</span>')+
+    fila('Tramo 1',`${esc(rel.from_driver_name||'—')} · móvil ${esc(rel.from_truck_label||'—')}<br><small>Origen → ${esc(rel.exchange_address||'—')}</small>`)+
+    fila('Tramo 2',`${esc(rel.to_driver_name||'—')} · móvil ${esc(rel.to_truck_label||'—')}<br><small>${esc(rel.exchange_address||'—')} → destino</small>`);
+}
 async function cargarServicio(remitoId,serviceId){
   if(!serviceId)return null;
   try{
@@ -123,9 +134,9 @@ async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   if(seq!==P.openSeq)return;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
   P.remito=r;
-  const loaded=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id),cargarPeajes(r)]);
+  const loaded=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id),cargarPeajes(r),cargarRelevo(r.operator_service_id)]);
   if(seq!==P.openSeq)return;
-  [P.servicio,P.encuesta,P.cobro,P.peajes]=loaded;P.rechazandoCobro=false;
+  [P.servicio,P.encuesta,P.cobro,P.peajes,P.relevo]=loaded;P.rechazandoCobro=false;
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();
@@ -147,7 +158,7 @@ async function close(){
   const closingSeq=++P.openSeq;
   panel.classList.remove('is-open');$('rmp-backdrop').hidden=true;
   setTimeout(()=>{if(closingSeq===P.openSeq)panel.hidden=true},180);
-  P.remito=null;P.servicio=null;P.encuesta=null;P.editing=false;P.annulling=false;
+  P.remito=null;P.servicio=null;P.relevo=null;P.encuesta=null;P.editing=false;P.annulling=false;
 }
 
 const puedeAnular=()=>isAdmin()&&P.remito&&P.remito.status!=='anulado'&&!P.remito.operator_service_id;
@@ -230,7 +241,7 @@ function renderDetalle(r,s){
     fila('N° de servicio',valorCampo(campo('nro_servicio'),r))+
     fila('Tipo',tipo?esc(tipo):'<span class="rmp-empty">Sin clasificar</span>')+
     fila('Desde',esc(r.origen||'—'))+fila('Hasta',esc(r.destino||'—'))+
-    fila('Km',r.km_reales!=null?`${Number(r.km_reales).toLocaleString('es-AR')} km`:'<span class="rmp-empty">Sin cargar</span>'),irServicio);
+    fila('Km',r.km_reales!=null?`${Number(r.km_reales).toLocaleString('es-AR')} km`:'<span class="rmp-empty">Sin cargar</span>')+relevoFilas(P.relevo),irServicio);
   const aprobado=r.accepted_imp_total_extras!=null&&Number(r.accepted_imp_total_extras)!==Number(r.imp_total_extras||0);
   const pagos=[[r.pago_1_metodo,r.pago_1_monto],[r.pago_2_metodo,r.pago_2_monto]].filter(([m])=>m).map(([m,v])=>`${esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))} ${v!=null?money(v):''}`).join(' + ');
   const cargos=seccion('Cargos y pago',
