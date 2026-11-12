@@ -1,0 +1,33 @@
+/* Clip de «Servicio enganchado» en la columna Código de Operaciones. */
+#screen-operaciones .os-table td.col-code:has(.os-chain-clip) .os-service-code { display: inline; }
+#screen-operaciones .os-chain-clip {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0 0 0 6px; padding: 0; vertical-align: middle;
+  border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--ax-info, #5aa9ff); cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+#screen-operaciones .os-chain-clip .ax-icon { width: 14px; height: 14px; transform: rotate(-35deg); transition: transform 200ms ease; }
+#screen-operaciones .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--ax-surface-3, #232838); border-color: var(--ax-border-strong, #343a4d); }
+#screen-operaciones .os-chain-clip:is(:hover, :focus-visible, [aria-expanded="true"]) .ax-icon { transform: rotate(0deg); }
+#screen-operaciones .os-chain-clip:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+@media (pointer: coarse) { #screen-operaciones .os-chain-clip { width: 32px; height: 32px; } }
+@media (prefers-reduced-motion: reduce) { #screen-operaciones .os-chain-clip, #screen-operaciones .os-chain-clip .ax-icon { transition: none; } }
+
+.os-chain-pop {
+  position: fixed; z-index: 30000; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 10px 12px; display: grid; gap: 6px;
+  border: 1px solid var(--ax-border-strong, #343a4d); border-radius: var(--ax-radius, 10px); background: var(--ax-surface-2, #191d27);
+  box-shadow: var(--ax-shadow-pop, 0 8px 24px rgba(0, 0, 0, .35)); color: var(--ax-text, #e8ebf4); font-family: var(--ax-font, inherit); font-size: var(--ax-fs-sm, 12px); line-height: 1.35;
+  animation: os-chain-pop-in 140ms ease both;
+}
+.os-chain-pop[hidden] { display: none; }
+.os-chain-pop-head { display: flex; align-items: center; gap: 6px; color: var(--ax-info, #5aa9ff); }
+.os-chain-pop-head .ax-icon { width: 14px; height: 14px; }
+.os-chain-pop-head b { color: var(--ax-text, #e8ebf4); font-weight: var(--ax-fw-semibold, 600); }
+.os-chain-pop p { display: grid; gap: 1px; margin: 0; }
+.os-chain-pop p > span { color: var(--ax-text-3, #8a91a6); font-size: var(--ax-fs-xs, 11px); text-transform: uppercase; letter-spacing: .04em; }
+.os-chain-pop p > b { font-weight: var(--ax-fw-semibold, 600); }
+.os-chain-pop p > small { color: var(--ax-text-2, #b4bacb); }
+.os-chain-pop-route { padding-top: 6px; border-top: 1px solid var(--ax-border, #262b3a); }
+.os-chain-pop-route > b { color: var(--ax-info, #5aa9ff); }
+.os-chain-pop-note { color: var(--ax-text-3, #8a91a6); font-size: var(--ax-fs-xs, 11px); }
+@keyframes os-chain-pop-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .os-chain-pop { animation: none; } }

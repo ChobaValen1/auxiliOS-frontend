@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v644-flota-v608-solo-v625';
+const CACHE_NAME='auxilios-v645-flota-v608-solo-v625';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
@@ -12,7 +12,7 @@ const PRECACHE_ASSETS=[
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',
   '/ui/service-improvements-v1.js','/ui/service-improvements-v1.css','/ui/export-picker-v1.js','/ui/export-picker-v1.css','/ui/drag-sort-v1.js','/ui/drag-sort-v1.css','/ui/theme-v1.js','/ui/theme-light-v1.css',
-  '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/fuel-tickets-v1.js','/fuel-tickets-v1.css','/outsourced-providers-v1.js','/outsourced-providers-v1.css','/outsourced-rates-v1.js','/outsourced-service-cost-v1.js','/operator-service-chain-v1.js','/operator-service-chain-v1.css','/outsourced-service-cost-v1.css','/outsourced-settlements-v1.js','/outsourced-settlements-v1.css','/payroll-matrix.js', '/payroll-view.js', '/payroll-export-v1.js',
+  '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/fuel-tickets-v1.js','/fuel-tickets-v1.css','/outsourced-providers-v1.js','/outsourced-providers-v1.css','/outsourced-rates-v1.js','/outsourced-service-cost-v1.js','/operator-service-chain-v1.js','/operator-service-chain-badge-v1.js','/operator-service-chain-badge-v1.css','/operator-service-chain-v1.css','/outsourced-service-cost-v1.css','/outsourced-settlements-v1.js','/outsourced-settlements-v1.css','/payroll-matrix.js', '/payroll-view.js', '/payroll-export-v1.js',
   '/empresas-v2.js','/empresas-v2.css',
   '/billing-bases.js',
   '/service-types-catalog-v2.js','/tariff-types-catalog-v1.js',

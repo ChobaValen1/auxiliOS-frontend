@@ -65,6 +65,7 @@
         c.next = data?.next || null;
         c.selectedId = c.previous?.service_id || null;
         c.originalId = c.selectedId;
+      window.AuxEngancheClip?.invalidate?.();
         c.on = Boolean(c.selectedId);
       } catch (e) { c.error = 'No se pudo leer el enganche del servicio.'; console.warn('[enganche]', e); }
     }

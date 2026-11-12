@@ -226,7 +226,14 @@
   content: ""; flex: 0 0 6px; width: 6px; height: 6px; margin: -3px 1px 0 7px;
   border: solid currentColor; border-width: 0 1.5px 1.5px 0; opacity: .8;
   transform: rotate(45deg); transition: transform 160ms ease;
+  /* El tooltip pasa el title a data-ax-tip y components.css dibuja la burbuja en este mismo ::after:
+     al pasar o tocar la pastilla la flecha desaparecía. Acá se anula esa burbuja. */
+  position: static; left: auto; bottom: auto; z-index: auto; max-width: none; padding: 0;
+  border-radius: 0; background: none; box-shadow: none; font-size: 0; line-height: 0; pointer-events: none;
+  transition-delay: 0s;
 }
+#screen-operaciones .col-status .os-status[role="button"]:is(:hover, :focus-visible)::after { opacity: .8; transform: rotate(45deg); }
+#screen-operaciones .col-status .os-status[role="button"][aria-expanded="true"]:is(:hover, :focus-visible)::after { transform: translateY(3px) rotate(225deg); }
 #screen-operaciones .os-table td.col-status .os-status[role="button"] { width: auto; max-width: 100%; white-space: nowrap; }
 #screen-operaciones .os-table td.col-status .os-status-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #screen-operaciones .col-status .os-status:not([role="button"]) { cursor: default; transform: none; filter: none; }
