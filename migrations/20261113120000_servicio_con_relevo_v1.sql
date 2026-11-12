@@ -102,7 +102,7 @@ revoke all on function app_private.relay_check_receiver_v1(uuid) from public, an
 -- Operaciones: móvil de la jornada activa del chofer que recibe (para mostrarlo en el formulario).
 create or replace function public.get_relay_receiver_truck_v1(p_driver_id uuid)
 returns jsonb language plpgsql stable security definer set search_path = '' as $f$
-declare v_truck integer; t public.trucks%rowtype; v_since timestamptz;
+declare v_truck integer; t public.trucks%rowtype; v_since time;
 begin
   if auth.uid() is null or coalesce(app_private.current_auxilios_role(), '') not in ('administracion', 'operador', 'supervision') then
     raise exception 'Sin permiso para consultar jornadas';

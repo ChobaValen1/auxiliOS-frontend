@@ -74,6 +74,7 @@ test('el móvil que recibe es el de la jornada activa del 2º chofer', async () 
   assert.equal(r.to_truck_label, '7');
   const info = await rpc('select public.get_relay_receiver_truck_v1($1) r', [d2]);
   assert.deepEqual({ has: info.has_active_jornada, truck: info.truck_id, plate: info.truck_plate }, { has: true, truck: 7, plate: 'AC456DE' });
+  assert.match(String(info.since), /^\d{2}:\d{2}:\d{2}/, 'la hora de inicio de la jornada es una hora (time), como en producción');
   assert.equal((await rpc('select public.get_relay_receiver_truck_v1($1) r', [other])).has_active_jornada, false);
   await as('chofer', d1);
   await assert.rejects(rpc('select public.get_relay_receiver_truck_v1($1) r', [d2]), /Sin permiso/);

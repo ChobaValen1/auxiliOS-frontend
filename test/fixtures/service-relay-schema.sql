@@ -5,8 +5,9 @@ create function app_private.current_auxilios_role() returns text language sql as
 create table public.roles(role_id integer primary key, name text not null);
 create table public.users(user_id uuid primary key, full_name text, is_active boolean default true, role_id integer references public.roles(role_id));
 create table public.trucks(truck_id integer primary key, plate text, numero_interno text, status text default 'active');
-create table public.daily_logs(log_id serial primary key, driver_id uuid, truck_id integer, status text default 'open', hora_fin timestamptz,
-  log_date date default current_date, hora_inicio timestamptz default now());
+-- hora_inicio y hora_fin son de tipo hora (time), igual que en producción.
+create table public.daily_logs(log_id serial primary key, driver_id uuid, truck_id integer, status text default 'open', hora_fin time,
+  log_date date default current_date, hora_inicio time default localtime);
 create table public.operator_services(service_id uuid primary key, service_number text, service_order_number text, status text not null default 'pending',
   logistics_type text default 'own', driver_activated boolean default false, activation_kind text, activation_driver_id uuid, billing_status text default 'not_ready',
   scheduled_for timestamptz default now(), completed_at timestamptz, assigned_driver_id uuid, assigned_truck_id integer, assigned_at timestamptz, assigned_by uuid,
