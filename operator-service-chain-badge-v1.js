@@ -1,7 +1,9 @@
 /* AuxiliOS · Servicios enganchados · clip en la columna Código (12/11/2026)
    En la tabla de Operaciones, los servicios que forman parte de un enganche muestran un clip al final del
    código. Al pasar el mouse, tocar o enfocar el clip aparece un micro resumen (viene de / sigue con / cómo se factura).
-   Una sola consulta liviana por tabla (list_operator_service_chain_route_modes_v1); el detalle se pide recién al abrir. */
+   Una sola consulta liviana por tabla (list_operator_service_chain_route_modes_v1); el detalle se pide recién al abrir.
+   Servicio con relevo (13/11/2026): los servicios con dos choferes llevan además un ícono violeta de relevo en el mismo lugar,
+   con su resumen (tramo 1, tramo 2, punto de intercambio y estado de la entrega). Sale de list_operator_service_relays_v1. */
 (() => {
   'use strict';
   const db = () => (typeof _db !== 'undefined' ? _db : null);
@@ -9,6 +11,7 @@
   const TTL = 45000;
   const modes = new Map();      // service_id → { mode: string|null, at }
   const details = new Map();    // service_id → { data, at }
+  const relays = new Map();     // service_id → { data: relevo|null, at }
   let inflight = false, pop = null, anchor = null, pinned = false, hideTimer = 0;
 
   const ROLE = {
@@ -19,6 +22,7 @@
   const place = v => String(v || '—').split(',')[0];
   const fresh = e => e && Date.now() - e.at < TTL;
   const icon = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#paperclip"/></svg>';
+  const relayIcon = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#repeat"/></svg>';
 
   /* Dónde vive cada tabla: filas, cómo sacar el id, en qué celda va el clip y (Facturación) dónde se aclara el recorrido. */
   const SOURCES = [
@@ -30,10 +34,25 @@
   const routeLabel = mode => (window.AuxEngancheServicio?._label || {})[
     mode === 'base_origin_destination' ? 'base_origin_destination' : mode === 'origin_destination_base' ? 'origin_destination_base' : 'origin_destination'] || '';
 
+  /* Ícono de relevo: al final del código, junto al clip si lo hay. */
+  function decorateRelay(tr, td, id) {
+    const r = relays.get(id)?.data, has = td?.querySelector('.os-relay-mark');
+    tr.classList.toggle('os-relay-row', Boolean(r));
+    if (!r || !td) { has?.remove(); return; }
+    const label = r.handed_over ? 'Servicio con relevo: el vehículo ya se entregó' : 'Servicio con relevo: esperando la entrega del vehículo';
+    if (has) { if (has.getAttribute('aria-label') !== label) has.setAttribute('aria-label', label); has.dataset.relayDone = String(Boolean(r.handed_over)); return; }
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'os-relay-mark'; b.dataset.serviceId = id; b.dataset.relayDone = String(Boolean(r.handed_over));
+    b.setAttribute('aria-label', label); b.setAttribute('aria-haspopup', 'true'); b.setAttribute('aria-expanded', 'false');
+    b.innerHTML = relayIcon;
+    td.appendChild(b);
+  }
+
   function decorate() {
     for (const { src, tr, id } of sourceRows()) {
       const mode = modes.get(id)?.mode, ok = Boolean(mode && ROLE[mode]);
       const td = src.cells.map(sel => tr.querySelector(sel)).find(Boolean);
+      decorateRelay(tr, td, id);
       const has = td?.querySelector('.os-chain-clip');
       if (!ok || !td) { has?.remove(); tr.querySelector('.ob-chain-route')?.remove(); continue; }
       if (has) { if (has.dataset.chainMode !== mode) { has.dataset.chainMode = mode; has.setAttribute('aria-label', ROLE[mode].text); } }
@@ -94,6 +113,7 @@
           if (error) throw error;
           const now = Date.now();
           for (const id of chunk) { const mode = data?.[id] || null; if (Boolean(mode) !== isChained(id)) changed = true; modes.set(id, { mode, at: now }); }
+          if (await fetchRelays(chunk)) changed = true;
         } catch (e) {
           const now = Date.now() - TTL + 8000;
           for (const id of chunk) if (!modes.has(id)) modes.set(id, { mode: null, at: now });
@@ -104,13 +124,33 @@
     return changed;
   }
 
+  /* Relevos de un grupo de servicios: una sola consulta. Sin permiso (p. ej. chofer) o sin la actualización de la base: sin ícono. */
+  async function fetchRelays(ids) {
+    const client = db();
+    if (!client || !ids.length) return false;
+    let changed = false;
+    try {
+      const { data, error } = await client.rpc('list_operator_service_relays_v1', { p_service_ids: ids });
+      if (error) throw error;
+      const now = Date.now();
+      for (const id of ids) { const d = data?.[id] || null; if (JSON.stringify(d) !== JSON.stringify(relays.get(id)?.data ?? null)) changed = true; relays.set(id, { data: d, at: now }); }
+    } catch (e) {
+      const now = Date.now() - TTL + 8000;
+      for (const id of ids) if (!relays.has(id)) relays.set(id, { data: null, at: now });
+    }
+    return changed;
+  }
+  const isRelay = id => Boolean(relays.get(String(id))?.data);
+  const relayOf = id => relays.get(String(id))?.data || null;
+
   async function refresh() {
     const client = db();
     if (!client || inflight) return decorate();
-    const ids = [...new Set(sourceRows().map(r => r.id))].filter(id => !fresh(modes.get(id)));
+    const ids = [...new Set(sourceRows().map(r => r.id))].filter(id => !fresh(modes.get(id)) || !fresh(relays.get(id)));
     decorate();
     if (!ids.length) return;
     inflight = true;
+    void fetchRelays(ids).then(changed => { if (changed) decorate(); });
     try {
       const { data, error } = await client.rpc('list_operator_service_chain_route_modes_v1', { p_service_ids: ids });
       if (error) throw error;
@@ -143,6 +183,22 @@
       <small class="os-chain-pop-note">Cada servicio cobra su movida; entre uno y otro no se factura la vuelta a la base.</small>`;
   }
 
+  const hhmm = v => { try { return new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); } catch { return ''; } };
+  const truckTxt = (label, plate) => [label && `Móvil ${label}`, plate].filter(Boolean).join(' · ');
+  function relayBody(r) {
+    if (!r) return `<div class="os-chain-pop-head">${relayIcon}<b>Servicio con relevo</b></div><small class="os-chain-pop-note">No se pudo leer el relevo.</small>`;
+    const t1 = [r.from_driver_name || 'Primer chofer', truckTxt(r.from_truck_label, r.from_truck_plate)].filter(Boolean).join(' · ');
+    const jornada = r.to_truck_label ? truckTxt(r.to_truck_label, r.to_truck_plate) : '';
+    const t2 = [r.to_driver_name || 'Segundo chofer', jornada || (r.handed_over ? '' : 'sin jornada iniciada')].filter(Boolean).join(' · ');
+    const state = r.handed_over ? `Entregado${r.handed_over_at ? ` a las ${hhmm(r.handed_over_at)}` : ''}${r.handover_source === 'operator' ? ' (lo marcó Operaciones)' : ''}` : 'Esperando la entrega del vehículo';
+    return `<div class="os-chain-pop-head os-relay-pop-head">${relayIcon}<b>Servicio con relevo</b></div>
+      <p><span>Tramo 1 · A → B</span><b>${esc(t1)}</b></p>
+      <p><span>Punto de intercambio</span><b>${esc(place(r.exchange_address))}</b></p>
+      <p><span>Tramo 2 · B → C</span><b>${esc(t2)}</b></p>
+      <p class="os-chain-pop-route os-relay-pop-state${r.handed_over ? ' is-done' : ''}"><span>Estado</span><b>${esc(state)}</b></p>
+      <small class="os-chain-pop-note">Un solo servicio y un solo remito: lo cierra el 2º chofer. Los dos cuentan el servicio completo.</small>`;
+  }
+
   function ensurePop() {
     if (pop) return pop;
     pop = document.createElement('div');
@@ -165,6 +221,7 @@
     anchor = btn; pinned = Boolean(pin);
     btn.setAttribute('aria-expanded', 'true'); btn.setAttribute('aria-describedby', 'os-chain-pop');
     const el = ensurePop(), mode = btn.dataset.chainMode, id = btn.dataset.serviceId;
+    if (btn.classList.contains('os-relay-mark')) { el.hidden = false; el.dataset.state = 'ready'; el.innerHTML = relayBody(relayOf(id)); place_(el); return; }
     el.hidden = false; el.dataset.state = 'loading';
     el.innerHTML = `<div class="os-chain-pop-head">${icon}<b>Servicio enganchado</b></div><small class="os-chain-pop-note">${esc(ROLE[mode]?.short || 'Cargando')}. Cargando el detalle…</small>`;
     place_(el);
@@ -186,7 +243,7 @@
     anchor = null; pinned = false;
   }
   const schedule = () => { clearTimeout(hideTimer); hideTimer = setTimeout(close, 160); };
-  const clipOf = t => t?.closest?.('.os-chain-clip');
+  const clipOf = t => t?.closest?.('.os-chain-clip, .os-relay-mark');
 
   /* Capturando antes que la fila, para que tocar el clip no abra el servicio. */
   document.addEventListener('click', e => {
@@ -249,5 +306,5 @@ document.addEventListener('auxilios:billing-rendered', refresh);
   }
 
   /* Al cambiar un enganche se vuelve a leer. */
-  window.AuxEngancheClip = { refresh, selectionGaps, isChained, warm, cached: cachedDetail, modeOf, ensureDetails, invalidate() { modes.clear(); details.clear(); refresh(); }, _decorate: decorate };
+  window.AuxEngancheClip = { refresh, selectionGaps, isChained, isRelay, relayOf, warm, cached: cachedDetail, modeOf, ensureDetails, invalidate() { modes.clear(); details.clear(); relays.clear(); refresh(); }, _decorate: decorate };
 })();

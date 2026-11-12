@@ -56,3 +56,23 @@ test('servicios enganchados: sin el módulo del clip el mapa sigue igual',()=>{
   const a=api();const x={...s,service_id:'X'};
   assert.equal(a.chainBlock(x),'');assert.equal(a.chainLinks([x]).length,0);assert.equal(a.chainOrdered([x]).map(r=>r.service_id).join(),'X');
 });
+
+test('servicio con relevo: bloque en el panel con los dos tramos, el punto de intercambio y el estado de la entrega',()=>{
+  const relay={from_driver_name:'Martín R.',from_truck_label:'12',from_truck_plate:'AB123CD',to_driver_name:'Lucas P.',to_truck_label:'7',to_truck_plate:'AC456DE',exchange_address:'Estación de servicio, Gonnet, Buenos Aires',exchange_lat:-34.87,exchange_lng:-58.02,handed_over:false};
+  const clip={isChained:()=>false,cached:()=>null,modeOf:()=>null,ensureDetails:async()=>false,relayOf:id=>id==='R'?relay:id==='D'?{...relay,handed_over:true,handed_over_at:'2026-11-13T14:42:00Z',handover_source:'operator'}:null};
+  const a=api({},{AuxEngancheClip:clip});
+  const html=a.relayBlock({...s,service_id:'R'});
+  for(const t of ['Servicio con relevo','Tramo 1 · A → B','Martín R. · Móvil 12 · AB123CD','Punto de intercambio','Estación de servicio','Tramo 2 · B → C','Lucas P. · Móvil 7 · AC456DE','Esperando la entrega del vehículo'])assert.ok(html.includes(t),t);
+  const done=a.relayBlock({...s,service_id:'D'});
+  assert.match(done,/Entregado a las /);assert.match(done,/lo marcó Operaciones/);assert.match(done,/is-done/);
+  assert.equal(a.relayBlock({...s,service_id:'X'}),'');
+  assert.equal(a.isRelayS({...s,service_id:'R'}),true);assert.equal(a.isRelayS({...s,service_id:'X'}),false);
+  const map=fs.readFileSync('operator-services-map-v1.js','utf8');
+  assert.match(map,/Punto de intercambio · \$\{code\(s\)\}/);
+  assert.match(map,/\$\{chainBlock\(s\)\}\$\{relayBlock\(s\)\}/);
+  assert.match(map,/\$\{chainMark\(s\)\}\$\{relayMark\(s\)\}/);
+});
+test('servicio con relevo: sin el módulo del ícono el mapa no cambia',()=>{
+  const a=api();const x={...s,service_id:'X'};
+  assert.equal(a.relayBlock(x),'');assert.equal(a.isRelayS(x),false);
+});

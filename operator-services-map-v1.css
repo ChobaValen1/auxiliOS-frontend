@@ -263,3 +263,13 @@
 .osm-chain-route>span{color:var(--ax-text-3,#8a91a6);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
 .osm-chain-route>b{color:var(--ax-info,#5aa9ff);font-size:12px}
 .osm-chain>small{color:var(--ax-text-3,#8a91a6)}
+
+/* Servicio con relevo: violeta, para distinguirlo del enganche (celeste). */
+.osm-relay-mark{color:#a78bfa}.osm-relay-mark.is-done{color:var(--ax-ok,#3ddc84)}
+.osm-pin-clip.is-relay{background:#a78bfa;right:auto;left:-7px;color:#fff}
+.osm-relay{border-color:color-mix(in srgb,#a78bfa 45%,transparent);background:color-mix(in srgb,#a78bfa 7%,transparent)}
+.osm-relay h4{color:#a78bfa}
+.osm-relay-leg{display:grid;gap:1px;margin:0}
+.osm-relay-leg>span{color:var(--ax-text-3,#8a91a6);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.osm-relay-leg>b{font-size:12px}
+.osm-relay-state>b{color:var(--ax-warn,#f5a623)}.osm-relay-state.is-done>b{color:var(--ax-ok,#3ddc84)}

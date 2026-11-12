@@ -50,3 +50,17 @@ tr.os-chain-row.is-chain-join-prev > td { border-top-color: transparent; }
   tr.os-chain-row > td:first-child { box-shadow: none; }
   #screen-operaciones tr.os-chain-row { box-shadow: inset 3px 0 0 var(--ax-info, #5aa9ff); }
 }
+
+/* Servicio con relevo: ícono violeta (distinto del clip celeste de los enganches) y barra violeta en la fila. */
+:is(#screen-operaciones, #screen-facturacion) .os-relay-mark { display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0 0 0 4px; padding: 0; vertical-align: middle;
+  border: 1px solid transparent; border-radius: 999px; background: transparent; color: #a78bfa; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+:is(#screen-operaciones, #screen-facturacion) .os-relay-mark .ax-icon { width: 14px; height: 14px; }
+:is(#screen-operaciones, #screen-facturacion) .os-relay-mark[data-relay-done="true"] { color: var(--ax-ok, #3ddc84); }
+:is(#screen-operaciones, #screen-facturacion) .os-relay-mark:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--ax-surface-3, #232838); border-color: var(--ax-border-strong, #343a4d); }
+:is(#screen-operaciones, #screen-facturacion) .os-relay-mark:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+@media (pointer: coarse) { :is(#screen-operaciones, #screen-facturacion) .os-relay-mark { width: 32px; height: 32px; } }
+@media (prefers-reduced-motion: reduce) { :is(#screen-operaciones, #screen-facturacion) .os-relay-mark { transition: none; } }
+tr.os-relay-row:not(.os-chain-row) > td:first-child { box-shadow: inset 3px 0 0 #a78bfa; }
+.os-relay-pop-head { color: #a78bfa; }
+.os-chain-pop .os-relay-pop-state > b { color: var(--ax-warn, #f5a623); }
+.os-chain-pop .os-relay-pop-state.is-done > b { color: var(--ax-ok, #3ddc84); }
