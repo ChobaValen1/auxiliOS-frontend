@@ -1,7 +1,7 @@
 import { Audio } from "@remotion/media";
 import React from "react";
-import { AbsoluteFill, Easing, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { clamp, display, mono, sans } from "../theme";
+import { AbsoluteFill, Easing, interpolate, random, staticFile, useCurrentFrame } from "remotion";
+import { clamp, display, hand, mono, sans } from "../theme";
 import { SAFE } from "../gastos/common";
 import { ReelsGuide } from "../monogrua/StepFrame";
 import { Camara, Grano, Toma } from "../reel/Gancho";
@@ -36,12 +36,13 @@ export const PIERDE = COSTO - PAGO; // 4.040
 
 const VOZ: [string, number][] = [
   ["ctb-p1", 8], ["ctb-p1b", 222], ["ctb-p2", 356], ["ctb-p3", 596], ["ctb-p4", 712], ["ctb-p5", 846],
-  ["ctb-p6", 1100], ["ctb-p7", 1186], ["ctb-p8", 1300], ["ctb-p9", 1460],
+  ["ctb-p6", 1100], ["ctb-p7", 1186], ["ctb-m1", 1302], ["ctb-m2", 1416], ["ctb-b1", 1652],
 ];
 const CORTE_B = 345;
 const CORTE_C = 1030;
 const CORTE_D = 1290;
-export const FASE2_DUR = 1720;
+const CORTE_E = 1640;
+export const FASE2_DUR = 1840;
 
 // ── A · ¿Cuánto te cuesta cada km? ──────────────────────────────────
 const PorKm: React.FC<{ f: number }> = ({ f }) => {
@@ -252,32 +253,116 @@ const Cuentita: React.FC<{ f: number }> = ({ f }) => {
   );
 };
 
-// ── D · Esto es lo que no estás haciendo: la cuenta ─────────────────
-const LA_CUENTA = 1404;
-const Remate: React.FC<{ f: number }> = ({ f }) => {
-  const t1 = r(f, CORTE_D + 12, CORTE_D + 28);
-  const shake = temblor(f, LA_CUENTA + 10, 22);
-  const sub = r(f, 1462, 1480);
+// ── D · Y si te pasa dos veces por semana: el mes en barras ─────────
+const MES = PIERDE * 8; // 2 por semana × 4 semanas
+const BARRA0 = 1320; // las barras de cada semana bajan de a una
+const BLOQUE_CADA = 12;
+const TOTAL_AT = 1452; // «son treinta y dos mil por mes»
+const SIN_ENTERARTE = 1566;
+const Mes: React.FC<{ f: number }> = ({ f }) => {
+  const t1 = r(f, CORTE_D + 8, CORTE_D + 24);
+  const cero = 560, BLK = 82, BW = 150, GAP = 46;
+  const x0 = 540 - (4 * BW + 3 * GAP) / 2;
+  const cae = (s: number, b: number) => r(f, BARRA0 + (s * 2 + b) * BLOQUE_CADA, BARRA0 + (s * 2 + b) * BLOQUE_CADA + 14, Easing.out(Easing.back(1.4)));
+  const acum = (k: number) => cero + 6 + k * (BLK + 6); // dónde cae cada bloque de la semana
+  const shake = temblor(f, TOTAL_AT + 10, 20);
   return (
-    <Camara f={f} zoom={[1.06, 1]} from={CORTE_D} to={FASE2_DUR}>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 42%, #1d2740, #070a12 72%)", translate: `${shake}px 0px` }} />
-      <Palabra f={f} from={LA_CUENTA} to={FASE2_DUR} top={700}>LA CUENTA</Palabra>
-      <div style={{ position: "absolute", top: 360, left: IN_L, width: IN_W, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 62, lineHeight: 1.15, color: "#eef0f5", opacity: t1, translate: `0px ${(1 - t1) * 30}px` }}>
-          Esto es lo que
-          <br />
-          no estás haciendo:
+    <Camara f={f} zoom={[1.04, 1]} from={CORTE_D} to={CORTE_E + 10}>
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 40%, #1a2236, #070a12 72%)", translate: `${shake}px 0px` }} />
+      <Palabra f={f} from={TOTAL_AT} to={CORTE_E} top={700}>POR MES</Palabra>
+      <div style={{ position: "absolute", top: 320, left: IN_L, width: IN_W, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 48, color: "#eef0f5", opacity: t1, translate: `0px ${(1 - t1) * 24}px` }}>
+        Y si te pasa <span style={{ color: CORAL }}>2 veces por semana</span>…
       </div>
-      {f >= LA_CUENTA ? (
-        <div style={{ position: "absolute", top: 540, left: IN_L - 60, width: IN_W + 120, textAlign: "center", fontFamily: display, fontSize: 210, lineHeight: 1, color: AMBER, scale: slam(f, LA_CUENTA), opacity: r(f, LA_CUENTA, LA_CUENTA + 4), translate: `${shake}px 0px`, textShadow: "0 16px 70px rgba(245,166,35,.3)" }}>
-          la cuenta.
+      <div style={{ position: "absolute", left: x0 - 30, width: 4 * BW + 3 * GAP + 60, top: cero, height: 4, background: GRIS, opacity: t1 }} />
+      <div style={{ position: "absolute", left: x0 - 30, top: cero - 40, fontFamily: mono, fontWeight: 700, fontSize: 22, color: GRIS, opacity: t1 }}>$ 0</div>
+      {[0, 1, 2, 3].map((s) => (
+        <React.Fragment key={s}>
+          <div style={{ position: "absolute", left: x0 + s * (BW + GAP), top: cero - 50, width: BW, textAlign: "center", fontFamily: mono, fontWeight: 700, fontSize: 24, color: f >= BARRA0 + s * 2 * BLOQUE_CADA ? "#eef0f5" : "#4a5163" }}>
+            SEM {s + 1}
+          </div>
+          {[0, 1].map((b) => {
+            const k = cae(s, b);
+            if (k <= 0) return null;
+            return (
+              <div
+                key={b}
+                style={{
+                  position: "absolute", left: x0 + s * (BW + GAP), top: acum(b) - (1 - k) * 160, width: BW, height: BLK, borderRadius: 12, opacity: Math.min(1, k * 1.5),
+                  background: `repeating-linear-gradient(135deg, ${CORAL} 0 14px, ${CORAL}bb 14px 28px)`, display: "grid", placeItems: "center", fontFamily: mono, fontWeight: 700, fontSize: 24, color: "#14161b",
+                }}
+              >
+                − 4.040
+              </div>
+            );
+          })}
+        </React.Fragment>
+      ))}
+      {f >= TOTAL_AT ? (
+        <div style={{ position: "absolute", top: 850, left: IN_L - 40, width: IN_W + 80, textAlign: "center", fontFamily: display, fontSize: 128, lineHeight: 1, color: CORAL, scale: slam(f, TOTAL_AT), opacity: r(f, TOTAL_AT, TOTAL_AT + 4), textShadow: "0 14px 60px rgba(255,122,107,.35)" }}>
+          − {peso(MES)} al mes
         </div>
       ) : null}
-      <div style={{ position: "absolute", top: 860, left: IN_L, width: IN_W, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 48, lineHeight: 1.25, color: "#c9cfdc", opacity: sub, translate: `0px ${(1 - sub) * 24}px` }}>
-        Si no la hacés, capaz estás
-        <br />
-        perdiendo plata <span style={{ color: AMBER }}>y no te enterás.</span>
+      <div style={{ position: "absolute", top: 1030, left: IN_L, width: IN_W, textAlign: "center", fontFamily: sans, fontWeight: 700, fontSize: 48, color: "#eef0f5", opacity: r(f, SIN_ENTERARTE, SIN_ENTERARTE + 14) }}>
+        Sin enterarte.
       </div>
     </Camara>
+  );
+};
+
+// ── E · Esta cuenta nadie la hace adentro del camión ────────────────
+// Pantalla partida: a la izquierda la cabina de noche con la servilleta; a la derecha entra la app,
+// que termina comiéndose la pantalla para pasar a la fase 3.
+const ENTRA_APP = 1736;
+const COME = 1790;
+const Puente: React.FC<{ f: number }> = ({ f }) => {
+  const t1 = r(f, CORTE_E + 10, CORTE_E + 26);
+  const serv = r(f, CORTE_E + 4, CORTE_E + 24, Easing.out(Easing.back(1.2)));
+  const corte = interpolate(f, [ENTRA_APP, ENTRA_APP + 18, COME, FASE2_DUR], [1080, 540, 540, 0], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+  const lluvia = Array.from({ length: 40 });
+  return (
+    <AbsoluteFill>
+      {/* cabina por dentro, de noche */}
+      <Camara f={f} zoom={[1.06, 1]} from={CORTE_E} to={FASE2_DUR}>
+        <AbsoluteFill style={{ background: "linear-gradient(180deg, #05070c 0%, #0d1322 45%, #0a0d14 60%, #050608 100%)" }} />
+        {/* parabrisas: la calle afuera, balizas y gotas */}
+        <div style={{ position: "absolute", left: -40, right: -40, top: 150, height: 640, borderRadius: "0 0 80px 80px", background: "radial-gradient(ellipse at 60% 70%, rgba(255,140,40,.18), transparent 55%), linear-gradient(180deg, #0b1220, #131b2c)", border: "18px solid #0b0d12" }} />
+        {lluvia.map((_, i) => {
+          const y = 190 + ((random(`ly${i}`) * 560 + f * (1.5 + random(`lv${i}`))) % 560);
+          return <div key={i} style={{ position: "absolute", left: random(`lx${i}`) * 1080, top: y, width: 5 + random(`ls${i}`) * 8, height: 9 + random(`ls${i}`) * 14, borderRadius: "50%", background: "rgba(200,220,255,.2)" }} />;
+        })}
+        {/* tablero y volante */}
+        <div style={{ position: "absolute", left: -60, right: -60, top: 780, height: 260, borderRadius: "70px 70px 0 0", background: "linear-gradient(180deg, #1d212b, #0f1117)", boxShadow: "0 -16px 50px rgba(0,0,0,.6)" }} />
+        <div style={{ position: "absolute", left: 540 - 420, top: 900, width: 840, height: 840, borderRadius: "50%", border: "56px solid #0b0d12", boxShadow: "inset 0 0 0 22px #1d212b, 0 0 0 4px #1d212b" }} />
+        {/* la servilleta apoyada en el volante */}
+        <div
+          style={{
+            position: "absolute", left: 300, top: 840, width: 380, height: 300, background: "#f7f4ee", padding: 24, rotate: `${-6 + (1 - serv) * 20}deg`,
+            boxShadow: "0 20px 40px rgba(0,0,0,.5)", opacity: serv, translate: `0px ${(1 - serv) * 120}px`,
+          }}
+        >
+          <div style={{ fontFamily: hand, fontWeight: 700, fontSize: 46, color: "#1f2a5c", lineHeight: 1.05 }}>
+            38.000
+            <br />− gasoil ¿?
+            <br />− peaje… <span style={{ textDecoration: "line-through" }}>cubiertas</span>
+            <br />= ¿¿??
+          </div>
+        </div>
+        <div style={{ position: "absolute", top: 300, left: IN_L - 10, width: Math.min(IN_W - 20, Math.max(420, corte - IN_L - 30)), fontFamily: display, fontSize: corte < 1000 ? 84 : 96, lineHeight: 0.95, color: "#f2f3f6", opacity: t1, translate: `0px ${(1 - t1) * 30}px`, textShadow: "0 10px 40px rgba(0,0,0,.7)" }}>
+          Esta cuenta nadie la hace <span style={{ color: AMBER }}>adentro del camión.</span>
+        </div>
+      </Camara>
+      {/* la app entra por la derecha y se come la pantalla */}
+      <div style={{ position: "absolute", left: corte, top: 0, right: 0, bottom: 0, overflow: "hidden", background: "radial-gradient(ellipse at 50% 38%, #ffffff 0%, #eef0f4 62%, #e2e5ec 100%)" }}>
+        <div style={{ position: "absolute", left: (1080 - corte) / 2 - 160, top: 660, width: 320, height: 560, borderRadius: 44, background: "#14161b", padding: 18, boxShadow: "0 30px 60px rgba(10,12,18,.3)" }}>
+          <div style={{ width: "100%", height: "100%", borderRadius: 30, background: "#1d212b", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
+            <div style={{ width: 170, height: 170, borderRadius: "50%", border: `30px solid ${AMBER}`, borderRightColor: "#565e70", boxShadow: "0 0 30px rgba(245,166,35,.4)" }} />
+            <div style={{ fontFamily: sans, fontWeight: 700, fontSize: 24, color: GRIS }}>te quedan</div>
+            <div style={{ fontFamily: display, fontSize: 64, lineHeight: 1, color: AMBER }}>$ 47.105</div>
+          </div>
+        </div>
+      </div>
+      {corte < 1080 && corte > 0 ? <div style={{ position: "absolute", left: corte - 4, top: 0, width: 8, height: 1920, background: AMBER, boxShadow: "0 0 30px rgba(245,166,35,.7)" }} /> : null}
+    </AbsoluteFill>
   );
 };
 
@@ -294,8 +379,11 @@ export const Fase2: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       <Toma f={f} from={CORTE_C} to={CORTE_D}>
         <Cuentita f={f} />
       </Toma>
-      <Toma f={f} from={CORTE_D} to={FASE2_DUR + 20}>
-        <Remate f={f} />
+      <Toma f={f} from={CORTE_D} to={CORTE_E}>
+        <Mes f={f} />
+      </Toma>
+      <Toma f={f} from={CORTE_E} to={FASE2_DUR + 20}>
+        <Puente f={f} />
       </Toma>
       <Vineta />
       <Grano f={f} />
@@ -306,7 +394,7 @@ export const Fase2: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
       <Audio name="Gasoil" src={staticFile("sfx/mouse-click.wav")} from={140} volume={0.35} />
       <Audio name="Desgaste" src={staticFile("sfx/mouse-click.wav")} from={182} volume={0.35} />
       <Audio name="Por km" src={staticFile("sfx/whip.wav")} from={232} volume={0.7} />
-      {[CORTE_B, CORTE_C, CORTE_D].map((c) => (
+      {[CORTE_B, CORTE_C, CORTE_D, CORTE_E].map((c) => (
         <Audio key={`w${c}`} name="Corte" src={staticFile("sfx/whoosh.wav")} from={c - 6} volume={0.45} />
       ))}
       <Audio name="Pedido" src={staticFile("sfx/ding.wav")} from={CORTE_B + 12} volume={0.5} />
@@ -318,7 +406,13 @@ export const Fase2: React.FC<{ guia?: boolean }> = ({ guia = false }) => {
         <Audio key={at} name="Fila" src={staticFile("sfx/page-turn.wav")} from={at} volume={0.3} />
       ))}
       <Audio name="Perdiste" src={staticFile("sfx/whip.wav")} from={1190} volume={0.8} />
-      <Audio name="La cuenta" src={staticFile("sfx/whip.wav")} from={LA_CUENTA + 2} volume={0.9} />
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Audio key={`m${i}`} name="Semana" src={staticFile("sfx/mouse-click.wav")} from={BARRA0 + i * BLOQUE_CADA} volume={0.3} />
+      ))}
+      <Audio name="Al mes" src={staticFile("sfx/whip.wav")} from={TOTAL_AT + 2} volume={0.85} />
+      <Audio name="Servilleta" src={staticFile("sfx/page-turn.wav")} from={CORTE_E + 4} volume={0.4} />
+      <Audio name="Entra la app" src={staticFile("sfx/whoosh.wav")} from={ENTRA_APP - 4} volume={0.45} />
+      <Audio name="Se come la pantalla" src={staticFile("sfx/whoosh.wav")} from={COME} volume={0.4} />
       {guia ? <ReelsGuide /> : null}
     </AbsoluteFill>
   );
