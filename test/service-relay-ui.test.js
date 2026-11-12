@@ -78,7 +78,7 @@ test('el móvil que recibe no se elige: sale de la jornada activa del chofer', (
   assert.doesNotMatch(src, /osv4-relay-truck"[^>]*><\/select>|toTruck|p_to_truck_id/);
   assert.match(src, /get_relay_receiver_truck_v1/);
   assert.match(src, /Móvil de su jornada activa/);
-  assert.match(src, /Todavía no inició su jornada con un móvil/);
+  assert.match(src, /Todavía no inició su jornada\./);
 });
 
 test('los tres interruptores comparten la misma fila', () => {
@@ -107,4 +107,20 @@ test('sin jornada activa no hay móvil y el relevo igual se puede cargar', async
   await R.lookupTruck(w);
   assert.equal(w.relay.truck.has_active_jornada, false);
   assert.equal(R._missing(w.relay).length, 0);
+});
+
+test('sin jornada no es un bloqueo: se aclara que se puede cargar igual; si la consulta falla, no dice que no inició jornada', async () => {
+  assert.match(src, /Podés cargar el relevo igual/);
+  const w = wizard({ relay: { ...located, toDriver: 'd2', truckFor: '', truck: null } });
+  const { R } = load({ rpc: async () => ({ data: null, error: { message: 'Could not find the function public.get_relay_receiver_truck_v1' } }) }, w);
+  await R.lookupTruck(w);
+  assert.equal(w.relay.truckError, true);
+  assert.equal(w.relay.truck, null);
+  assert.match(src, /No se pudo consultar su jornada/);
+});
+
+test('si la base todavía no tiene el relevo, el aviso lo dice claro al guardar', async () => {
+  const { R, toasts } = load({ rpc: async () => ({ error: { message: 'Could not find the function public.set_operator_service_relay_v1(...) in the schema cache' } }) });
+  assert.equal(await R.persist(wizard({ relay: { ...located } }), 's1'), false);
+  assert.match(toasts[0][1], /la base de datos todavía no tiene activado el relevo \(falta aplicar su actualización\)/);
 });

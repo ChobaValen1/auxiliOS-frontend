@@ -13,6 +13,7 @@
   const W = () => O()?.S?.wizard || null;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => (v === null || v === undefined || String(v).trim() === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
+  const missingFn = e => /could not find the function|PGRST202|does not exist|schema cache/i.test(String(e?.message || e?.code || e || ''));
   const notify = (m, t = 'info') => (typeof window.toast === 'function' ? window.toast(m, t) : console[t === 'error' ? 'error' : 'log'](m));
   const token = () => (globalThis.crypto?.randomUUID?.() || `relay-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
@@ -57,12 +58,12 @@
   async function lookupTruck(w) {
     const c = state(w), id = c.toDriver;
     if (!id || !db() || c.truckFor === id || c.handedOver) return;
-    c.truckFor = id; c.truck = null; c.truckLoading = true; update(w);
+    c.truckFor = id; c.truck = null; c.truckError = false; c.truckLoading = true; update(w);
     try {
       const { data, error } = await db().rpc('get_relay_receiver_truck_v1', { p_driver_id: id });
       if (error) throw error;
       if (c.toDriver === id) c.truck = data || null;
-    } catch (e) { if (c.toDriver === id) c.truck = null; console.warn('[relevo] jornada', e); }
+    } catch (e) { if (c.toDriver === id) { c.truck = null; c.truckError = true; } console.warn('[relevo] jornada', e); }
     c.truckLoading = false; update(w);
   }
 
@@ -198,7 +199,8 @@
     if (!c.toDriver) html = 'Se toma de la jornada activa del chofer que elijas';
     else if (c.truckLoading) html = 'Buscando su jornada activa…';
     else if (t?.has_active_jornada && t.truck_id) { cls += ' is-ok'; html = `<b>${esc([t.truck_label, t.truck_plate].filter(Boolean).join(' · '))}</b><small>Móvil de su jornada activa</small>`; }
-    else { cls += ' is-warn'; html = 'Todavía no inició su jornada con un móvil. Se toma el de su jornada cuando el 1º entregue el vehículo, así que tiene que iniciarla antes.'; }
+    else if (c.truckError) { cls += ' is-warn'; html = 'No se pudo consultar su jornada. Podés elegirlo igual: el móvil se toma de su jornada al entregar el vehículo.'; }
+    else { cls += ' is-info'; html = 'Todavía no inició su jornada. <b>Podés cargar el relevo igual</b>: tiene que iniciarla antes de que el 1º entregue el vehículo.'; }
     if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
     el.className = cls;
   }
@@ -239,7 +241,8 @@
       notify(`Relevo cargado: ${data?.to_driver_name || 'el 2º chofer'} recibe en ${c.address}.`, 'success');
       return true;
     } catch (e) {
-      notify(`El servicio se guardó, pero no se pudo ${c.on ? 'cargar' : 'quitar'} el relevo: ${e.message || e}. Abrilo de nuevo y revisá «Servicio con relevo».`, 'warning');
+      const why = missingFn(e) ? 'la base de datos todavía no tiene activado el relevo (falta aplicar su actualización)' : (e.message || e);
+      notify(`El servicio se guardó, pero no se pudo ${c.on ? 'cargar' : 'quitar'} el relevo: ${why}. Abrilo de nuevo y revisá «Servicio con relevo».`, 'warning');
       return false;
     }
   }
