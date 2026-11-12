@@ -86,6 +86,9 @@ test('Excel: movida y km que no corresponden por la regla de la prestadora se ex
   assert.equal(col('movement_amount').value(near),50000);
   assert.equal(col('billing_rule').value(far),'Sin movida: supera 200 km · Radio cubierto: se descuentan 10 km');
   assert.equal(col('billing_rule').value(near),'Sin km: dentro del radio de 10 km');
+  // Desde el 12/11/2026 el radio es umbral: superado, se cobran todos los km (las cotizaciones viejas conservan su texto).
+  const farNew={quote:{...far.quote,billable_distance_km:215.5,covered_radius_consumption_order:'threshold_all_km'}};
+  assert.equal(col('billing_rule').value(farNew),'Sin movida: supera 200 km · Supera el radio de 10 km: se cobran todos los km');
   const X=load('excel-export.js').AuxiliosExcelExport;
   assert.ok(X.worksheet);
 });
