@@ -56,17 +56,31 @@
 
   /* ── 1º chofer: en su tarjeta, ir a B y entregar el vehículo ── */
   function outgoingBox(x, confirming, busy) {
-    const wait = busy === String(x.service_id), sure = confirming === String(x.service_id);
-    const next = x.to_driver_name ? `${esc(x.to_driver_name)}${x.to_truck_label ? `<small> · ${esc(truckText(x.to_truck_label, x.to_truck_plate))}</small>` : ''}` : 'el segundo chofer';
+    const sure = confirming === String(x.service_id), wait = busy === String(x.service_id);
     return `<div class="drl-box drl-out-box">
-      <div class="drl-id"><span class="drl-chip">${ico('repeat')}Con relevo · Tramo 1 de 2</span></div>
-      <dl class="drl-facts"><div><dt>Llevá el vehículo hasta</dt><dd class="drl-b">${esc(place(x.exchange_address) || 'Punto sin dirección')}</dd></div>
-        <div><dt>Lo recibe</dt><dd>${next}</dd></div></dl>
-      ${mapsButton(x.exchange_lat, x.exchange_lng, 'Ir al punto de intercambio en Maps')}
       <button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
         ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo en B'}</button>
       <p class="drl-note">${sure ? 'Al confirmar, el servicio pasa a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer') + ' y no vas a poder crear el remito.' : 'No hace falta crear remito: lo cierra quien recibe el vehículo.'}</p>
     </div>`;
+  }
+  const receiverText = x => `${esc(x.to_driver_name || 'El segundo chofer')}${x.to_truck_label ? ` <em>· ${esc(truckText(x.to_truck_label, x.to_truck_plate))}</em>` : ''}`;
+  const chipSide = () => `<span class="drl-chip drl-chip-side">${ico('repeat')}Con relevo · Tramo 1 de 2</span>`;
+
+  /* Tarjeta de la lista (1º chofer): el destino pasa a ser el punto de encuentro, el chip va arriba a la derecha y «Navegar»
+     apunta al punto de encuentro una vez que llegó al origen. Se repite sin duplicar cada vez que la app redibuja la lista. */
+  function patchCard(card, x) {
+    const veh = card.querySelector('.p3-task-vehicle');
+    if (veh && !veh.querySelector('.drl-chip')) veh.insertAdjacentHTML('beforeend', chipSide());
+    const rows = card.querySelectorAll('.p3-task-route > div');
+    const dest = rows[1];
+    if (dest) {
+      const label = dest.querySelector('small'), val = dest.querySelector('b'), addr = place(x.exchange_address) || 'Punto sin dirección';
+      if (label && label.textContent !== 'Llevá el vehículo hasta') label.textContent = 'Llevá el vehículo hasta';
+      if (val && val.textContent !== addr) val.textContent = addr;
+    }
+    const s = (window.AuxiliosPhase3?.queue || []).find(q => String(q.service_id) === String(x.service_id));
+    const nav = card.querySelector('.p3-quick-links a[aria-label^="Navegar"]'), href = mapsUrl(x.exchange_lat, x.exchange_lng);
+    if (nav && href && s?.status === 'at_origin' && nav.getAttribute('href') !== href) { nav.setAttribute('href', href); nav.setAttribute('aria-label', 'Navegar al punto de encuentro'); }
   }
 
   /* En la ventana de detalle todo va integrado: el punto de encuentro es una dirección más (con su pin de Maps),
@@ -76,20 +90,31 @@
     const btn = arrived ? `<button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
         ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo en B'}</button>` : '';
     const note = sure ? 'Al confirmar, el servicio pasa a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer') + ' y no vas a poder crear el remito.'
-      : `Lo recibe ${esc(x.to_driver_name || 'el segundo chofer')}${x.to_truck_label ? ' · ' + esc(truckText(x.to_truck_label, x.to_truck_plate)) : ''}. No hace falta crear remito: lo cierra quien recibe el vehículo.`;
+      : 'No hace falta crear remito: lo cierra quien recibe el vehículo.';
     return `<div class="drl-sheet-box drl-out-box">${btn}<p class="drl-note">${note}</p></div>`;
   }
   function decorateSheetBody(x) {
     const body = document.getElementById('p3-preview-body'); if (!body) return;
-    const vehicleBox = body.querySelector('.p3-sheet-vehicle');
-    if (vehicleBox && !vehicleBox.querySelector('.drl-chip')) vehicleBox.insertAdjacentHTML('beforeend', `<span class="drl-chip drl-chip-side">${ico('repeat')}Con relevo · Tramo 1 de 2</span>`);
+    const vehicleBox = body.querySelector('.p3-sheet-vehicle'), client = body.querySelector('.p3-sheet-client');
+    /* Jerarquía: dominio grande + vehículo chico, después el cliente (más chico, sin teléfono ni «Llamar»). */
+    if (vehicleBox) {
+      if (!vehicleBox.querySelector('.drl-chip')) vehicleBox.insertAdjacentHTML('beforeend', chipSide());
+      if (body.firstElementChild !== vehicleBox) body.prepend(vehicleBox);
+      if (client && vehicleBox.nextElementSibling !== client) vehicleBox.after(client);
+    }
+    if (client) {
+      client.classList.add('drl-client');
+      client.querySelectorAll(':scope > small, :scope > p, a.p3-client-call').forEach(n => n.remove());
+    }
     const route = body.querySelector('.p3-sheet-route');
     if (route && !route.querySelector('.drl-meet')) {
       const href = mapsUrl(x.exchange_lat, x.exchange_lng), addr = place(x.exchange_address) || 'Punto sin dirección';
       const pin = href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" aria-label="Navegar al punto de encuentro">${ico('map-pin')}</a>` : '';
-      const block = `<div class="p3-sheet-place drl-meet"><span><small>Punto de encuentro</small><b class="drl-b">${esc(addr)}</b></span>${pin}</div>`;
-      const first = route.querySelector('.p3-sheet-place');
-      first ? first.insertAdjacentHTML('afterend', block) : route.insertAdjacentHTML('afterbegin', block);
+      const places = route.querySelectorAll('.p3-sheet-place');
+      const meet = `<div class="p3-sheet-place drl-meet"><span><small>Punto de encuentro</small><b>${esc(addr)}</b></span>${pin}</div>`;
+      const to = `<div class="p3-sheet-place drl-to"><span><small>Se lo entregás a</small><b>${receiverText(x)}</b></span></div>`;
+      places[1]?.remove();
+      places[0] ? places[0].insertAdjacentHTML('afterend', meet + to) : route.insertAdjacentHTML('afterbegin', meet + to);
     }
   }
 
@@ -184,6 +209,7 @@
       if (o) html = outgoingBox(o, S.confirming, S.busy); else if (r) html = receivedBox(r);
       const has = card.querySelector(':scope > .drl-box');
       card.classList.toggle('drl-out', Boolean(o)); card.classList.toggle('drl-in', Boolean(r));
+      if (o) patchCard(card, o);
       if (!html) { has?.remove(); continue; }
       if (has && has.dataset.html === html) continue;
       has?.remove();
@@ -262,5 +288,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _receivedBox: receivedBox, _state: S };
 })();

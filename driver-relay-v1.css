@@ -53,7 +53,16 @@
 
 /* Ventana de detalle (1º chofer): chip a la derecha del vehículo, punto de encuentro como dirección y un solo botón principal. */
 #p3-service-preview .p3-sheet-vehicle { position: relative; padding-right: 150px; }
-.drl-chip-side { position: absolute; right: 0; top: 50%; transform: translateY(-50%); max-width: 140px; white-space: normal; text-align: center; line-height: 1.2; justify-content: center; }
-.drl-meet .drl-b { color: #c4b5fd; }
+.drl-chip-side { font-size: 11px; position: absolute; right: 0; top: 50%; transform: translateY(-50%); max-width: 140px; white-space: normal; text-align: center; line-height: 1.2; justify-content: center; }
+.drl-meet b, .drl-to b { color: var(--ax-text, #e8eaf2); }
+.drl-to em, .drl-b em { color: var(--ax-text-2, #a3acc2); font-style: normal; font-weight: 400; }
+/* Tarjeta de la lista: chip arriba a la derecha, sin «Llamar» (el 1º chofer sólo lleva el vehículo a B). */
+.p3-driver-task.drl-out .p3-task-vehicle { position: relative; padding-right: 150px; }
+.p3-driver-task.drl-out .p3-quick-links a[href^="tel:"] { display: none; }
+.p3-driver-task.drl-out .p3-quick-links { grid-template-columns: 1fr; }
+/* Cliente junto al dominio: blanco, más chico, sin caja. */
+#p3-service-preview .p3-sheet-client.drl-client { padding: 0 2px 12px; border: 0; background: none; }
+#p3-service-preview .p3-sheet-client.drl-client h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ax-text, #e8eaf2); }
+#p3-service-preview .p3-sheet-vehicle:has(.drl-chip-side) { padding-bottom: 6px; }
 #p3-preview-actions .drl-sheet-box { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; border: 0; background: none; }
 #p3-preview-actions .drl-sheet-box:not(:has(.drl-btn)) { margin-top: 6px; }

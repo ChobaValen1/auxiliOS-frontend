@@ -31,8 +31,7 @@ test('el 2º chofer ve el servicio antes: punto B, vehículo, quién se lo trae,
 
 test('el 1º chofer: va a B con Maps, entrega con doble toque y no crea remito', () => {
   const idle = R._outgoingBox(x, '', '');
-  assert.match(idle, /Con relevo · Tramo 1 de 2/);
-  assert.match(idle, /Ir al punto de intercambio en Maps/);
+  assert.doesNotMatch(idle, /Ir al punto de intercambio en Maps|drl-maps/);
   assert.match(idle, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo en B/);
   assert.match(idle, /No hace falta crear remito/);
   const sure = R._outgoingBox(x, 's1', '');
