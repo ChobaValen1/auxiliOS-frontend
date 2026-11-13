@@ -266,6 +266,11 @@
   function paint() { paintIncoming(); decorate(); refreshPreviewBox(); }
 
   /* ── Datos ── */
+  /* Servicios que estaban «por recibir» y ahora ya son del chofer: el 1º entregó el vehículo. */
+  const newlyReceived = (prevIncoming, nextReceived) => {
+    const was = new Set((prevIncoming || []).map(x => String(x.service_id)));
+    return (nextReceived || []).filter(x => was.has(String(x.service_id)));
+  };
   async function refresh({ force = false } = {}) {
     if (!isDriver() || !db() || S.loading) return false;
     if (!force && Date.now() - S.at < THROTTLE) return false;
@@ -273,8 +278,16 @@
     try {
       const { data, error } = await db().rpc('get_driver_relay_state_v1');
       if (error) throw error;
+      const prevIncoming = S.loaded ? S.incoming : [];
       S.incoming = Array.isArray(data?.incoming) ? data.incoming : []; S.outgoing = Array.isArray(data?.outgoing) ? data.outgoing : [];
       S.received = Array.isArray(data?.received) ? data.received : []; S.loaded = true; S.at = Date.now();
+      const arrived = newlyReceived(prevIncoming, S.received);
+      if (arrived.length) {
+        const x = arrived[0], who = String(x.from_driver_name || 'El primer chofer');
+        notify(`${who} te entregó el vehículo${arrived.length > 1 ? ` (y ${arrived.length - 1} más)` : ''}. Ya está en tu lista para seguir al destino.`, 'success');
+        try { navigator.vibrate?.(200); } catch { /* sin vibración */ }
+        try { void window.recargarServiciosChofer?.(); } catch { /* la lista se actualiza sola en el próximo ciclo */ }
+      }
     } catch (e) { console.warn('[relevo chofer]', e); /* sin red o sin la migración: la app sigue como siempre */ }
     S.loading = false; paint();
     return true;
@@ -325,6 +338,8 @@
       new MutationObserver(() => { if (!S.painting) { S.painting = true; try { paint(); } finally { S.painting = false; } } }).observe(list, { childList: true });
       return true;
     };
+    /* Mientras espera un vehículo, se consulta cada 15 s (sólo con la app a la vista) para avisarle apenas se lo entregan. */
+    setInterval(() => { if (document.visibilityState === 'visible' && S.incoming.length) void refresh({ force: true }); }, 15000);
     let tries = 0;
     const boot = setInterval(() => { tries++; if (isDriver() && db() && watch()) { clearInterval(boot); void refresh({ force: true }); } else if (tries > 120) clearInterval(boot); }, 500);
   }
@@ -332,5 +347,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _remitoBanner: remitoBanner, decorateRemito, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _newlyReceived: newlyReceived, _remitoBanner: remitoBanner, decorateRemito, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
 })();

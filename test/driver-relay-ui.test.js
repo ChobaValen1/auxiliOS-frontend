@@ -100,3 +100,13 @@ test('pantalla de remito del 2º chofer: banner de relevo con quién le entregó
   assert.doesNotMatch(html, /drl-chip-side/);
   assert.match(fs.readFileSync('operator-service-bridge.js', 'utf8'), /AuxRelevoChofer\?\.decorateRemito\?\.\(s\.service_id\)/);
 });
+
+test('aviso al 2º chofer cuando le entregan el vehículo: detecta lo que pasó de «por recibir» a recibido y consulta cada 15 s mientras espera', () => {
+  const prev = [{ service_id: 'a' }, { service_id: 'b' }];
+  assert.deepEqual(R._newlyReceived(prev, [{ service_id: 'b' }, { service_id: 'z' }]).map(x => x.service_id), ['b']);
+  assert.deepEqual(R._newlyReceived([], [{ service_id: 'b' }]), []);
+  assert.deepEqual(R._newlyReceived(prev, []), []);
+  assert.match(src, /te entregó el vehículo/);
+  assert.match(src, /S\.incoming\.length\) void refresh\(\{ force: true \}\), 15000|S\.incoming\.length\) void refresh\(\{ force: true \}\); \}, 15000/);
+  assert.match(src, /recargarServiciosChofer/);
+});
