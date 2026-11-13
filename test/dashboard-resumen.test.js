@@ -49,12 +49,14 @@ test('la cobertura depende del radio elegido y la hace el navegador', () => {
   assert.equal(api.cobertura(d, 30).dentro, 2);
 });
 
-test('rendimiento y ratio no dividen por cero', () => {
-  const { api } = cargarModulo();
-  assert.equal(api.realesSobreFacturados({ kmComp: 0, kmReal: 10 }), null);
-  assert.equal(api.realesSobreFacturados({ kmComp: 200, kmReal: 100 }), 50);
-  assert.equal(api.ratio({ kmReal: 0, kmComp: 10 }), null);
-  assert.equal(api.ratio({ kmReal: 100, kmComp: 120 }), 120);
+test('el Resumen ya no muestra km reales de servicios ni el ratio f/r, y el ranking es una torta con leyenda', () => {
+  const html = fs.readFileSync('Index.html', 'utf8'), src = fs.readFileSync('dashboard-resumen-v1.js', 'utf8');
+  assert.doesNotMatch(src, /Km reales de servicios|Ratio f\/r|realesSobreFacturados|claseRatio/);
+  assert.match(src, /Ticket promedio/);
+  assert.match(src, /<th class="rsm-num">Km facturados<\/th>/);
+  assert.match(src, /type:'pie'/);
+  assert.match(src, /rsm-pie-legend/);
+  assert.ok(html.includes('id="rsm-ranking"'));
 });
 
 test('los tipos de vehículo salen de vehicle_class, con Otros para lo que no tiene', () => {

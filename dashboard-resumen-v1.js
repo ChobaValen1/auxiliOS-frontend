@@ -58,6 +58,7 @@
   var sedesMarcas = [];
   var infoMapa = null;
   var chartEvol = null;
+  var chartRank = null;
   var zoomEvol = null;
   /* Zoom de la evolución (dashboard-zoom-v1.js): serie diaria larga, días
      del período dentro de ella y la ventana que se está mirando. */
@@ -262,14 +263,6 @@
       '</div>';
   }
 
-  /* Km reales sobre km facturados, sólo en los servicios que tienen km real
-     (kmComp = facturados de esos mismos servicios). Mide qué parte de lo que
-     se cobra se anduvo con el vehículo arriba; no es el rendimiento de la flota. */
-  function realesSobreFacturados(t) {
-    var comp = t.kmComp > 0 ? t.kmComp : (t.servicios > 0 && t.conDato >= t.servicios ? t.km : 0);
-    return comp > 0 && t.kmReal > 0 ? t.kmReal * 100 / comp : null;
-  }
-
   function neutralDelta(actual, anterior, rango) {
     return delta(actual, anterior, rango).replace(/is-up|is-down/g, 'is-neutral');
   }
@@ -280,24 +273,37 @@
     n.innerHTML =
       tile('Total facturado',has?pesos(t.facturado):GUION,has?neutralDelta(t.facturado,a.facturado,r):'','Servicios finalizados del período',true)+
       tile('Servicios',has?miles(t.servicios):GUION,has?neutralDelta(t.servicios,a.servicios,r):'','Finalizados en el período')+
-      tile('Km reales de servicios',has&&t.conDato>0?miles(t.kmReal)+' km':GUION,has&&t.conDato>0?neutralDelta(t.kmReal,a.kmReal,r):'',has?miles(t.conDato)+' de '+miles(t.servicios)+' servicios con dato':'Sin servicios en el período');
+      tile('Ticket promedio',has&&t.servicios>0?pesos(t.facturado/t.servicios):GUION,has&&t.servicios>0&&a.servicios>0?neutralDelta(t.facturado/t.servicios,a.facturado/a.servicios,r):'','Facturado por servicio');
     var secondary=el('rsm-secondary');
-    if(secondary) secondary.innerHTML='<dl><div><dt>Ticket promedio</dt><dd>'+ (has?pesos(t.facturado/t.servicios):GUION)+'</dd></div><div><dt>Peajes</dt><dd>'+(has?pesos(t.peajes):GUION)+'</dd></div><div><dt>Km facturados</dt><dd>'+(has?miles(t.km)+' km':GUION)+'</dd></div></dl>';
+    if(secondary) secondary.innerHTML='<dl><div><dt>Peajes</dt><dd>'+(has?pesos(t.peajes):GUION)+'</dd></div><div><dt>Km facturados</dt><dd>'+(has?miles(t.km)+' km':GUION)+'</dd></div></dl>';
     var context=el('rsm-period-context');if(context)context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
-    var quality=el('rsm-data-context');if(quality)quality.textContent=has?(t.conDato<t.servicios?'Kilómetros parciales: '+miles(t.servicios-t.conDato)+' servicios sin km reales registrados. ':'')+'Los km de servicios no representan el odómetro total de la flota.':'No hay servicios finalizados para los filtros seleccionados.';
+    var quality=el('rsm-data-context');if(quality)quality.textContent=has?'':'No hay servicios finalizados para los filtros seleccionados.';
   }
 
   function rankingRows(d){
     var all=d.empresas.slice().sort(function(a,b){return b.monto-a.monto||a.nombre.localeCompare(b.nombre);});
-    var rows=all.slice(0,5).map(function(e){return {nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
-    if(all.length>5)rows.push({nombre:'Otras '+(all.length-5)+' prestadoras',monto:all.slice(5).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(5).reduce(function(n,e){return n+e.servicios;},0)});
+    var rows=all.slice(0,5).map(function(e){return {id:e.id,nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
+    if(all.length>5)rows.push({id:null,nombre:'Otras '+(all.length-5)+' prestadoras',monto:all.slice(5).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(5).reduce(function(n,e){return n+e.servicios;},0)});
     var total=all.reduce(function(n,e){return n+e.monto;},0);
     return rows.map(function(e){return Object.assign(e,{share:total>0?e.monto*100/total:null});});
   }
+  /* Torta de participación: el color de cada prestadora es el mismo que en el mapa y en su leyenda. */
   function pintarRanking(d){
     var n=el('rsm-ranking');if(!n)return;
+    if(chartRank){chartRank.destroy();chartRank=null;}
     var rows=rankingRows(d);
-    n.innerHTML=d.hayDatos&&rows.length?'<ol class="rsm-ranking-list">'+rows.map(function(e){return '<li><div><b>'+esc(e.nombre)+'</b><strong>'+pesos(e.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,e.share||0))+'%"></i></div><small>'+miles(e.servicios)+' servicios · '+(e.share===null?'Sin participación calculable':pct(e.share,1)+' del total')+'</small></li>';}).join('')+'</ol>':'<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';
+    if(!d.hayDatos||!rows.length){n.innerHTML='<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';return;}
+    var colores=coloresPrestadoras(d),color=function(e){return e.id==null?COLOR_OTROS:(colores[String(e.id)]||COLOR_OTROS);};
+    var total=rows.reduce(function(s,e){return s+e.monto;},0);
+    n.innerHTML='<div class="rsm-pie"><div class="rsm-pie-canvas"><canvas id="rsm-pie-canvas" role="img" aria-label="Participación de cada prestadora en la facturación del período. Total: '+esc(pesos(total))+'"></canvas></div>'+
+      '<ol class="rsm-pie-legend">'+rows.map(function(e){return '<li><i style="background:'+color(e)+'" aria-hidden="true"></i><span><b>'+esc(e.nombre)+'</b><small>'+miles(e.servicios)+' servicios</small></span><strong>'+pesos(e.monto)+'<em>'+(e.share===null?GUION:pct(e.share,1))+'</em></strong></li>';}).join('')+'</ol></div>';
+    var cv=el('rsm-pie-canvas');
+    if(!cv||typeof global.Chart==='undefined')return;
+    var borde=(global.getComputedStyle?global.getComputedStyle(document.documentElement).getPropertyValue('--card'):'')||'#161a22';
+    chartRank=new global.Chart(cv,{type:'pie',
+      data:{labels:rows.map(function(e){return e.nombre;}),datasets:[{data:rows.map(function(e){return e.monto;}),backgroundColor:rows.map(color),borderColor:borde.trim()||'#161a22',borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){var e=rows[c.dataIndex];return ' '+e.nombre+': '+pesos(e.monto)+(e.share===null?'':' · '+pct(e.share,1));}}}}}});
   }
 
   function chartColors(){var light=document.documentElement?.dataset.theme==='light';return {accent:light?'#a86600':'#f5a623',previous:light?'#66758b':'#8590ab',grid:light?'rgba(70,85,110,.15)':'rgba(100,115,140,.2)'};}
@@ -779,25 +785,11 @@
 
   /* ── prestadoras y sus bases ──────────────────────────────────────────── */
 
-  /* Km facturados sobre km reales del mismo subconjunto (los servicios que
-     tienen km real). Por encima de 100% se cobra más de lo que se recorre. */
-  function ratio(f) { return f.kmReal > 0 ? f.kmComp * 100 / f.kmReal : null; }
-
-  function claseRatio(v) {
-    if (v == null) return '';
-    if (v >= 115) return 'is-good';
-    if (v >= 100) return 'is-warn';
-    return 'is-bad';
-  }
-
   function celdasFila(f) {
-    var rt = ratio(f);
     return '<td class="rsm-num">' + pesos(f.monto) + '</td>' +
       '<td class="rsm-num">' + miles(f.servicios) + '</td>' +
-      '<td class="rsm-num">' + (f.kmReal > 0 ? miles(f.kmReal) + ' km' : GUION) + '</td>' +
       '<td class="rsm-num">' + (f.servicios ? pesos(f.monto / f.servicios) : GUION) + '</td>' +
-      '<td class="rsm-num rsm-muted">' + (f.servicios && f.kmReal > 0 ? miles(f.kmReal / f.servicios) : GUION) + '</td>' +
-      '<td class="rsm-num rsm-ratio ' + claseRatio(rt) + '">' + (rt == null ? GUION : pct(rt, 1)) + '</td>';
+      '<td class="rsm-num">' + (f.km > 0 ? miles(f.km) + ' km' : GUION) + '</td>';
   }
 
   function pintarTabla(d) {
@@ -810,9 +802,9 @@
     var colores = coloresPrestadoras(d);
     var total = d.empresas.reduce(function (s, e) { return s + e.monto; }, 0);
     var tot = d.empresas.reduce(function (s, e) {
-      s.monto += e.monto; s.servicios += e.servicios; s.kmReal += e.kmReal; s.kmComp += e.kmComp;
+      s.monto += e.monto; s.servicios += e.servicios; s.km += e.km;
       return s;
-    }, { monto: 0, servicios: 0, kmReal: 0, kmComp: 0 });
+    }, { monto: 0, servicios: 0, km: 0 });
 
     var filas = d.empresas.map(function (e, i) {
       var color = colores[String(e.id)];
@@ -834,23 +826,18 @@
       return html;
     }).join('');
 
-    var rtTot = ratio(tot);
     n.innerHTML = '<div class="rsm-tabla-wrap"><table class="rsm-tabla">' +
       '<thead><tr><th>Prestadora</th><th>Participación</th><th class="rsm-num">Facturado</th>' +
-      '<th class="rsm-num">Servicios</th><th class="rsm-num">Km reales</th><th class="rsm-num">$/servicio</th>' +
-      '<th class="rsm-num">Km/serv.</th><th class="rsm-num">Ratio f/r</th></tr></thead>' +
+      '<th class="rsm-num">Servicios</th><th class="rsm-num">$/servicio</th><th class="rsm-num">Km facturados</th></tr></thead>' +
       '<tbody>' + filas + '</tbody>' +
       '<tfoot><tr><td><b>Total</b></td><td class="rsm-muted">' + d.empresas.length +
         (d.empresas.length === 1 ? ' prestadora activa' : ' prestadoras activas') + '</td>' +
         '<td class="rsm-num"><b>' + pesos(tot.monto) + '</b></td>' +
         '<td class="rsm-num"><b>' + miles(tot.servicios) + '</b></td>' +
-        '<td class="rsm-num"><b>' + (tot.kmReal > 0 ? miles(tot.kmReal) + ' km' : GUION) + '</b></td>' +
         '<td class="rsm-num"><b>' + (tot.servicios ? pesos(tot.monto / tot.servicios) : GUION) + '</b></td>' +
-        '<td class="rsm-num rsm-muted">' + (tot.servicios && tot.kmReal > 0 ? miles(tot.kmReal / tot.servicios) : GUION) + '</td>' +
-        '<td class="rsm-num rsm-ratio ' + claseRatio(rtTot) + '"><b>' + (rtTot == null ? GUION : pct(rtTot, 1)) + '</b></td>' +
+        '<td class="rsm-num"><b>' + (tot.km > 0 ? miles(tot.km) + ' km' : GUION) + '</b></td>' +
       '</tr></tfoot></table></div>' +
-      '<p class="rsm-nota">Ratio f/r = km facturados sobre km reales recorridos, en los servicios que tienen km real. ' +
-      'Por encima de 100% se cobra más de lo que se recorre; cuanto más bajo, más ajustado. Tocá una prestadora para ver sus bases.</p>';
+      '<p class="rsm-nota">Tocá una prestadora para ver sus bases.</p>';
   }
 
   function engancharTabla() {
@@ -993,8 +980,6 @@
       estado.radio = prev;
       return c;
     },
-    ratio: ratio,
-    realesSobreFacturados: realesSobreFacturados,
     rendimientoFlota: rendimientoFlota,
     normalizarFlota: normalizarFlota
   };

@@ -493,3 +493,15 @@
 @media (max-width: 600px) {
   #screen-dashboard .rsm-mapa-card .rsm-mapa-lienzo { height: 340px; }
 }
+
+/* ¿Qué prestadoras aportan más?: torta con su leyenda (mismos colores que el mapa). */
+#screen-dashboard .rsm-pie { display: grid; gap: 14px; }
+#screen-dashboard .rsm-pie-canvas { position: relative; height: 210px; }
+#screen-dashboard .rsm-pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#screen-dashboard .rsm-pie-legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 12px; }
+#screen-dashboard .rsm-pie-legend i { width: 10px; height: 10px; border-radius: 3px; }
+#screen-dashboard .rsm-pie-legend span { display: grid; min-width: 0; }
+#screen-dashboard .rsm-pie-legend b { font-weight: 600; overflow-wrap: anywhere; }
+#screen-dashboard .rsm-pie-legend small { color: var(--muted2); font-size: 10px; }
+#screen-dashboard .rsm-pie-legend strong { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+#screen-dashboard .rsm-pie-legend em { display: block; color: var(--muted2); font-style: normal; font-size: 10px; font-weight: 400; }
