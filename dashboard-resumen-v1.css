@@ -571,3 +571,12 @@
   #screen-dashboard .rsm-evol-seg button { padding: 5px 8px; font-size: 11px; }
   #screen-dashboard .rsm-ev-grid-prov { grid-template-columns: 1fr 1fr; gap: 8px; }
 }
+
+/* Diario, sin ruido: fuera la lectura «Total visible», la ayuda del zoom, el minimapa y los rangos (están en Tendencia).
+   La tabla de valores diarios queda sólo para lectores de pantalla. */
+#screen-dashboard .rsm-evol-card #rsm-evol-reading,
+#screen-dashboard .rsm-evol-card .axz-bar,
+#screen-dashboard .rsm-evol-card .axz-nav,
+#screen-dashboard .rsm-evol-card .axz-tip { display: none !important; }
+#screen-dashboard .rsm-evol-card .rsm-data-details { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+#screen-dashboard .rsm-evol-card .rsm-chart-key { margin: 0; font-size: 11px; }

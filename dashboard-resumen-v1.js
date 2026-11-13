@@ -695,9 +695,12 @@
     return zoomEvol;
   }
 
+  /* Diario: sólo lo necesario para leer el gráfico (este período, el anterior y el tooltip con la diferencia).
+     El zoom, el minimapa y los rangos largos viven en la pestaña Tendencia («Ver tendencia →»). */
+  var EVOL_SIMPLE = true;
   function pintarEvolucion(d) {
     var Z = global.AuxZoom, h = evol.hist;
-    if (!Z || !h || !evol.per) { pintarEvolucionPeriodo(d); return; }
+    if (EVOL_SIMPLE || !Z || !h || !evol.per) { pintarEvolucionPeriodo(d); return; }
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
     var hoy = Z.diasEntre(h.desde, Z.hoy());
@@ -763,45 +766,49 @@
   function pintarEvolucionPeriodo(d) {
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
-    var act = d.porDia.actual, ant = d.porDia.anterior;
-    pintarDatosEvol(etiquetasDias(d,Math.max(act.length,ant.length)),act,ant);
-    if (!cv || typeof global.Chart === 'undefined') return;
-    var n = Math.max(act.length, ant.length);
+    var act = d.porDia.actual.slice(), ant = d.porDia.anterior;
+    var n = Math.max(act.length, ant.length), hechos = diasTranscurridos(d, act.length || n);
+    for (var i = hechos; i < act.length; i++) act[i] = null;          /* los días que todavía no pasaron no son «cero» */
+    var etiquetas = etiquetasDias(d, n);
+    pintarDatosEvol(etiquetas, act, ant);
     var hayAnt = ant.some(function (v) { return v > 0; });
-    var ctx = cv.getContext('2d');
-    var grad = ctx.createLinearGradient(0, 0, 0, cv.clientHeight || 200);
-    grad.addColorStop(0, 'rgba(245,166,35,0.28)');
-    grad.addColorStop(1, 'rgba(245,166,35,0)');
-    var series = [{
-      label: 'Período actual', data: act, borderColor: chartColors().accent, backgroundColor: grad,
-      fill: true, borderWidth: 2, tension: 0, pointRadius: 0, pointHoverRadius: 4
-    }];
-    if (hayAnt) series.push({
-      label: 'Período anterior', data: ant, borderColor: chartColors().previous,
-      borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
-    });
+    var key = el('rsm-previous-key'); if (key) key.hidden = !hayAnt;
+    var sub = el('rsm-evol-sub');
+    if (sub) sub.textContent = 'Facturado por día';
+    if (!cv || typeof global.Chart === 'undefined') return;
+    var c = chartColors(), grad = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.clientHeight || 220);
+    grad.addColorStop(0, 'rgba(255,179,71,0.30)'); grad.addColorStop(1, 'rgba(255,179,71,0)');
+    var series = [{ label: 'Este período', data: act, borderColor: c.accent, backgroundColor: grad, fill: true, borderWidth: 2.2,
+      tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, spanGaps: false }];
+    if (hayAnt) series.push({ label: 'Período anterior', data: ant, borderColor: c.previous, borderDash: [4, 4], fill: false, borderWidth: 1.4,
+      tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 3 });
     chartEvol = new global.Chart(cv, {
       type: 'line',
-      data: { labels: etiquetasDias(d, n), datasets: series },
+      data: { labels: etiquetas, datasets: series },
       options: {
-        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
+        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? false : { duration: 180 },
         interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 6 } },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: function (c) { return ' ' + c.dataset.label + ': ' + pesos(c.parsed.y); } } }
+          tooltip: { displayColors: false, padding: 10, callbacks: {
+            title: function (it) { return it.length ? it[0].label : ''; },
+            label: function (x) { return x.parsed.y == null ? null : (x.datasetIndex === 0 ? 'Este período: ' : 'Anterior: ') + pesos(x.parsed.y); },
+            footer: function (it) {
+              var a = it.find(function (x) { return x.datasetIndex === 0; }), b = it.find(function (x) { return x.datasetIndex === 1; });
+              if (!a || !b || a.parsed.y == null || !(b.parsed.y > 0)) return '';
+              var v = (a.parsed.y - b.parsed.y) * 100 / b.parsed.y;
+              return (v >= 0 ? '▲ +' : '▼ ') + v.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' % vs. anterior';
+            } } }
         },
         scales: {
           x: { grid: { display: false }, border: { display: false },
-               ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } },
-          y: { beginAtZero: true, border: { display: false },
-               grid: { color: chartColors().grid, borderDash: [3, 3] },
-               ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 5,
-                        callback: function (v) { return pesosCorto(v).replace('$', '$ '); } } }
+               ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+          y: { beginAtZero: true, border: { display: false }, grid: { color: c.grid },
+               ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return v ? pesosCorto(v).replace('$', '$ ') : '0'; } } }
         }
       }
     });
-    var sub = el('rsm-evol-sub');
-    if (sub) sub.textContent = hayAnt ? 'Línea punteada: período anterior' : 'Sin facturación en el período anterior para comparar';
   }
 
   /* ── evolución: Acumulado (ritmo y proyección) y Por prestadora (minigráficos) ── */
