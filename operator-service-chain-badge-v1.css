@@ -64,3 +64,9 @@ tr.os-relay-row:not(.os-chain-row) > td:first-child { box-shadow: inset 3px 0 0 
 .os-relay-pop-head { color: #a78bfa; }
 .os-chain-pop .os-relay-pop-state > b { color: var(--ax-warn, #f5a623); }
 .os-chain-pop .os-relay-pop-state.is-done > b { color: var(--ax-ok, #3ddc84); }
+
+/* Operaciones: marcar la entrega del vehículo desde el ícono de relevo. */
+.os-relay-handover { width: 100%; margin: 8px 0 4px; padding: 9px 12px; border: 1px solid var(--ax-border-strong, #3a4256); border-radius: 10px; background: transparent; color: var(--ax-text, #e8eaf2); font: 600 13px/1.2 inherit; cursor: pointer; }
+.os-relay-handover:hover:not(:disabled) { background: var(--ax-surface-3, #232a38); }
+.os-relay-handover[data-sure="1"] { border-color: var(--ax-accent, #f5a623); color: var(--ax-accent, #f5a623); }
+.os-relay-handover:disabled { opacity: .6; cursor: default; }

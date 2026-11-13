@@ -196,13 +196,36 @@
       <p><span>Punto de intercambio</span><b>${esc(place(r.exchange_address))}</b></p>
       <p><span>Tramo 2 · B → C</span><b>${esc(t2)}</b></p>
       <p class="os-chain-pop-route os-relay-pop-state${r.handed_over ? ' is-done' : ''}"><span>Estado</span><b>${esc(state)}</b></p>
+      ${!r.handed_over && canHandover() ? `<button type="button" class="os-relay-handover" data-relay-handover="${esc(r.service_id)}">Marcar entrega del vehículo</button>` : ''}
       <small class="os-chain-pop-note">Un solo servicio y un solo remito: lo cierra el 2º chofer. Los dos cuentan el servicio completo.</small>`;
+  }
+  const canHandover = () => ['administracion', 'operador'].includes(typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO?.roles?.name : '');
+  /* Operaciones puede marcar la entrega si el chofer no pudo (mismo efecto que el botón del chofer). Doble toque para confirmar. */
+  async function markHandover(btn) {
+    const id = btn.dataset.relayHandover, client = db();
+    if (!client || btn.disabled) return;
+    if (btn.dataset.sure !== '1') { btn.dataset.sure = '1'; btn.textContent = 'Tocá de nuevo para confirmar la entrega'; return; }
+    btn.disabled = true; btn.textContent = 'Entregando…';
+    try {
+      const { error } = await client.rpc('mark_operator_service_relay_handover_v1', { p_service_id: id });
+      if (error) throw error;
+      relays.delete(id); await fetchRelays([id]);
+      if (pop && !pop.hidden && anchor?.dataset.serviceId === id) { pop.innerHTML = relayBody(relayOf(id)); place_(pop); }
+      if (typeof window.toast === 'function') window.toast('Vehículo entregado: el servicio pasó al segundo chofer', 'success');
+      try { await window.OperatorServices?.loadServices?.(); } catch (_) {}
+      decorate();
+    } catch (e) {
+      btn.disabled = false; btn.dataset.sure = ''; btn.textContent = 'Marcar entrega del vehículo';
+      const msg = String(e?.message || 'No se pudo marcar la entrega').replace(/^[A-Z_]{4,}:\s*/, '');
+      if (typeof window.toast === 'function') window.toast(msg, 'error'); else console.error(msg);
+    }
   }
 
   function ensurePop() {
     if (pop) return pop;
     pop = document.createElement('div');
     pop.id = 'os-chain-pop'; pop.className = 'os-chain-pop'; pop.setAttribute('role', 'tooltip'); pop.hidden = true;
+    pop.addEventListener('click', e => { const b = e.target.closest?.('[data-relay-handover]'); if (b) { e.preventDefault(); e.stopPropagation(); markHandover(b); } });
     pop.addEventListener('mouseenter', () => clearTimeout(hideTimer));
     pop.addEventListener('mouseleave', () => { if (!pinned) schedule(); });
     document.body.appendChild(pop);

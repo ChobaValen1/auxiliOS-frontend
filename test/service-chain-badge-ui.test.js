@@ -90,3 +90,15 @@ test('Relevo: ícono violeta con resumen en Operaciones y Facturación, desde un
   assert.match(read('operator-service-chain-badge-v1.css'), /\.os-relay-mark/);
   assert.match(read('ui/icons.svg'), /<symbol id="repeat"/);
 });
+
+test('Operaciones: marca la entrega desde el ícono de relevo (doble toque) y avisa al finalizar un relevo sin entregar', () => {
+  const js = read('operator-service-chain-badge-v1.js'), life = read('operator-service-lifecycle.js');
+  assert.match(js, /mark_operator_service_relay_handover_v1/);
+  assert.match(js, /data-relay-handover/);
+  assert.match(js, /\['administracion', 'operador'\]/);
+  assert.match(js, /Tocá de nuevo para confirmar la entrega/);
+  assert.match(read('operator-service-chain-badge-v1.css'), /\.os-relay-handover/);
+  assert.match(life, /AuxEngancheClip\?\.relayOf\?\.\(id\)/);
+  assert.match(life, /Servicio con relevo sin entregar/);
+  assert.match(life, /rel&&!rel\.handed_over/);
+});
