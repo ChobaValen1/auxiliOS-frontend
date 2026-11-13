@@ -51,7 +51,9 @@
     res: null,
     filtros: null,
     rankSel: null,
-    evolVista: 'diario'
+    evolVista: 'diario',
+    vista: 'puntos',      /* mapa: 'puntos' (agrupados al alejar) o 'calor' */
+    soloFuera: false
   };
 
   var mapa = null;
@@ -59,6 +61,14 @@
   var cargandoLib = null;
   var sedesMarcas = [];
   var infoMapa = null;
+  var grupoMarcas = [];
+  var ocultosGrupo = Object.create(null);
+  var capaCalor = null;
+  var zoomAgrupado = null;
+  var COLOR_FUERA = '#ff5c5c';
+  var CELDA_GRUPO = 60;        /* px de pantalla: los puntos a menos de esto del centro de un grupo se juntan */
+  var MIN_GRUPO = 4;           /* menos que esto se dibujan sueltos */
+  var ZOOM_SIN_GRUPOS = 14;
   var chartEvol = null;
   var chartRank = null;
   var zoomEvol = null;
@@ -403,14 +413,15 @@
     var basePorId = Object.create(null);
     d.bases.forEach(function (b) { basePorId[String(b.id)] = b; });
     var puntos = [], lineas = [];
-    d.puntos.forEach(function (p) {
+    d.puntos.forEach(function (p, idx) {
       var lng = num(p[0]), lat = num(p[1]);
       var color = colores[String(p[2])] || COLOR_OTROS;
       var km = p[4] == null ? null : num(p[4]);
       puntos.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] },
-        properties: { kind: 'punto', color: color, km: km, dentro: km != null && km <= estado.radio ? 1 : 0 } });
+        properties: { kind: 'punto', idx: idx, color: color, km: km, monto: montoPunto(p),
+                      dentro: km != null && km <= estado.radio ? 1 : 0, base: (basePorId[String(p[3])] || {}).nombre || null } });
       var b = basePorId[String(p[3])];
-      if (b) lineas.push({ type: 'Feature', properties: { kind: 'linea', color: color },
+      if (b) lineas.push({ type: 'Feature', properties: { kind: 'linea', idx: idx, color: color, dentro: km != null && km <= estado.radio ? 1 : 0 },
         geometry: { type: 'LineString', coordinates: [[num(b.lng), num(b.lat)], [lng, lat]] } });
     });
     var radios = d.bases.map(function (b) {
@@ -436,10 +447,92 @@
              pct: ev ? dentro * 100 / ev : null, media: ev ? suma / ev : null };
   }
 
+  /* Lo facturado por el servicio: sexto elemento del punto (null si la base todavía no lo manda). */
+  function montoPunto(p) { return p && p.length > 5 && p[5] != null ? num(p[5]) : null; }
+  function hayMontoPuntos(d) { return d.puntos.some(function (p) { return montoPunto(p) != null; }); }
+
+  /* Servicios fuera del radio elegido, por base: cuántos y cuánto facturan. */
+  function fueraDeRadio(d) {
+    var nombres = Object.create(null), por = Object.create(null), tot = { servicios: 0, monto: 0, montoTotal: 0 };
+    d.bases.forEach(function (b) { nombres[String(b.id)] = String(b.nombre || 'Base'); });
+    d.puntos.forEach(function (p) {
+      var m = montoPunto(p) || 0;
+      tot.montoTotal += m;
+      if (p[4] == null || num(p[4]) <= estado.radio) return;
+      var k = String(p[3]);
+      var g = por[k] || (por[k] = { base: nombres[k] || 'Sin base', servicios: 0, monto: 0 });
+      g.servicios++; g.monto += m; tot.servicios++; tot.monto += m;
+    });
+    var filas = Object.keys(por).map(function (k) { return por[k]; })
+      .sort(function (a, b) { return b.servicios - a.servicios || b.monto - a.monto || a.base.localeCompare(b.base); });
+    return { filas: filas, servicios: tot.servicios, monto: tot.monto, montoTotal: tot.montoTotal, conMonto: hayMontoPuntos(d) };
+  }
+
+  /* Agrupa por distancia en pantalla (como MarkerClusterer): cada punto se suma al
+     primer grupo cuyo centro inicial está a menos de `celda` px; si no, abre uno.
+     items {x, y, i} en píxeles del mundo al zoom actual. Los grupos chicos quedan sueltos. */
+  function agrupar(items, celda, minimo) {
+    var grupos = [];
+    items.forEach(function (it) {
+      var g = null;
+      for (var k = 0; k < grupos.length; k++) {
+        var c = grupos[k];
+        if (Math.abs(c.sx - it.x) < celda && Math.abs(c.sy - it.y) < celda) { g = c; break; }
+      }
+      if (!g) { g = { sx: it.x, sy: it.y, items: [] }; grupos.push(g); }
+      g.items.push(it);
+    });
+    /* Segunda pasada: dos grupos cuyos centros quedaron cerca se funden, así no se pisan las burbujas. */
+    var centro = function (g) {
+      return { x: g.items.reduce(function (t, it) { return t + it.x; }, 0) / g.items.length,
+               y: g.items.reduce(function (t, it) { return t + it.y; }, 0) / g.items.length };
+    };
+    for (var junto = true; junto;) {
+      junto = false;
+      for (var i = 0; i < grupos.length && !junto; i++) {
+        if (grupos[i].items.length < minimo) continue;
+        for (var j = i + 1; j < grupos.length; j++) {
+          if (grupos[j].items.length < minimo) continue;
+          var ci = centro(grupos[i]), cj = centro(grupos[j]);
+          if (Math.hypot(ci.x - cj.x, ci.y - cj.y) < celda * 0.75) {
+            grupos[i].items = grupos[i].items.concat(grupos[j].items);
+            grupos.splice(j, 1); junto = true; break;
+          }
+        }
+      }
+    }
+    var sueltos = [], salida = [];
+    grupos.forEach(function (g) {
+      var a = g.items;
+      if (a.length < minimo) { a.forEach(function (it) { sueltos.push(it.i); }); return; }
+      salida.push({ x: a.reduce(function (t, it) { return t + it.x; }, 0) / a.length,
+                    y: a.reduce(function (t, it) { return t + it.y; }, 0) / a.length,
+                    idx: a.map(function (it) { return it.i; }) });
+    });
+    return { sueltos: sueltos, grupos: salida };
+  }
+
+  function pintarFueraLista(d) {
+    var box = el('rsm-mapa-fuera');
+    if (!box) return;
+    if (!estado.soloFuera || !d || !d.puntos.length) { box.hidden = true; box.innerHTML = ''; return; }
+    var f = fueraDeRadio(d);
+    box.hidden = false;
+    box.innerHTML = f.filas.length
+      ? f.filas.map(function (g) {
+          return '<div class="rsm-fuera-fila"><span>' + esc(g.base) + '</span><b>' + miles(g.servicios) + ' fuera</b>' +
+            (f.conMonto ? '<em>' + pesosCorto(g.monto) + '</em>' : '') + '</div>';
+        }).join('')
+      : '<div class="rsm-fuera-fila is-vacia">Todos los servicios están dentro de ' + estado.radio + ' km de su base.</div>';
+  }
+
   function pintarLecturaMapa(d) {
-    var c = cobertura(d);
+    var c = cobertura(d), fu = fueraDeRadio(d);
     var sub = el('rsm-mapa-sub');
-    if (sub) {
+    if (sub && estado.soloFuera && d.puntos.length) {
+      sub.textContent = miles(fu.servicios) + (fu.servicios === 1 ? ' servicio' : ' servicios') + ' a más de ' + estado.radio + ' km de su base' +
+        (fu.conMonto && fu.servicios ? ' · facturan ' + pesosCorto(fu.monto) + (fu.montoTotal > 0 ? ' (' + pct(fu.monto * 100 / fu.montoTotal) + ' del total)' : '') : '');
+    } else if (sub) {
       var sinUbicar = Math.max(0, d.servicios - d.puntos.length);
       sub.textContent = d.puntos.length
         ? miles(d.puntos.length) + ' servicios ubicados en su base más cercana · ' +
@@ -452,10 +545,15 @@
       st.innerHTML =
         '<div><span>Cobertura</span><b>' + (c.pct == null ? GUION : pct(c.pct)) + '</b></div>' +
         '<div><span>Dist. media</span><b>' + (c.media == null ? GUION : miles(c.media, 1) + ' km') + '</b></div>' +
-        '<div class="' + (c.fuera ? 'is-alert' : '') + '"><span>Fuera de radio</span><b>' + miles(c.fuera) + '</b></div>';
+        '<button type="button" class="rsm-stat-fuera' + (c.fuera ? ' is-alert' : '') + (estado.soloFuera ? ' is-on' : '') + '" data-solo-fuera aria-pressed="' + (estado.soloFuera ? 'true' : 'false') + '" title="Ver sólo los servicios fuera del radio">' +
+          '<span>Fuera de radio</span><b>' + miles(c.fuera) + (fu.conMonto && c.fuera ? ' · ' + pesosCorto(fu.monto) : '') + '</b></button>';
     }
     var lg = el('rsm-mapa-leyenda');
-    if (lg) {
+    if (lg && estado.vista === 'calor') {
+      lg.innerHTML = '<div class="rsm-lg-title">Servicios</div><div class="rsm-lg-calor"></div><div class="rsm-lg-calor-et"><span>Pocos</span><span>Muchos</span></div>' +
+        '<div class="rsm-lg-row is-base"><i></i><span>Base operativa</span></div>';
+      lg.hidden = false;
+    } else if (lg) {
       var colores = coloresPrestadoras(d);
       var total = d.empresas.reduce(function (s, e) { return s + e.monto; }, 0);
       lg.innerHTML = '<div class="rsm-lg-title">Prestadora</div>' +
@@ -470,6 +568,7 @@
     }
     var rv = el('rsm-radio-valor');
     if (rv) rv.textContent = estado.radio + ' km';
+    pintarFueraLista(d);
   }
 
   /* Capas de datos de Google: puntos, líneas y radios salen del mismo GeoJSON; el estilo decide qué se ve. */
@@ -479,18 +578,174 @@
       return { visible: !!estado.circulos, clickable: false, fillColor: '#e8eaf2', fillOpacity: 0.07,
                strokeColor: '#e8eaf2', strokeOpacity: 0.55, strokeWeight: 1.2, zIndex: 1 };
     }
-    if (k === 'linea') {
-      return { visible: !!estado.lineas, clickable: false, strokeColor: f.getProperty('color'), strokeOpacity: 0.6, strokeWeight: 1.4, zIndex: 2 };
-    }
     var dentro = f.getProperty('dentro') === 1;
-    return { clickable: true, zIndex: 3,
-      icon: { path: maps.SymbolPath.CIRCLE, scale: 5.5, fillColor: f.getProperty('color'), fillOpacity: dentro ? 0.95 : 0.65,
-              strokeColor: '#0c0e12', strokeWeight: 1.5 } };
+    if (k === 'linea') {
+      return { visible: !!estado.lineas && estado.vista !== 'calor' && !(estado.soloFuera && dentro),
+               clickable: false, strokeColor: f.getProperty('color'), strokeOpacity: 0.6, strokeWeight: 1.4, zIndex: 2 };
+    }
+    var visible = estado.vista !== 'calor' && !(estado.soloFuera && dentro) && !ocultosGrupo[f.getProperty('idx')];
+    var fuera = !dentro && f.getProperty('km') != null;
+    return { visible: visible, clickable: true, zIndex: fuera ? 4 : 3,
+      icon: { path: maps.SymbolPath.CIRCLE, scale: fuera ? 6 : 5.5, fillColor: f.getProperty('color'), fillOpacity: 0.95,
+              strokeColor: fuera ? COLOR_FUERA : '#0c0e12', strokeWeight: fuera ? 2 : 1.5 } };
   }
 
   function aplicarVisibilidadCapas() {
     if (!mapa) return;
+    reagrupar(true);
+    mostrarCalor(estado.vista === 'calor');
     mapa.data.setStyle(estiloCapa);
+  }
+
+  /* ── puntos agrupados ─────────────────────────────────────────────────── */
+
+  function iconoGrupo(n, color, fuera) {
+    var R = Math.min(30, 12 + Math.sqrt(n) * 2.4), S = Math.ceil((R + 5) * 2), c = S / 2;
+    var arco = '';
+    if (fuera > 0) {
+      var rr = R + 3, L = 2 * Math.PI * rr, parte = Math.min(1, fuera / n) * L;
+      arco = '<circle cx="' + c + '" cy="' + c + '" r="' + rr + '" fill="none" stroke="' + COLOR_FUERA + '" stroke-width="2.5" stroke-dasharray="' +
+        parte.toFixed(1) + ' ' + L.toFixed(1) + '" transform="rotate(-90 ' + c + ' ' + c + ')"/>';
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + S + '" height="' + S + '" viewBox="0 0 ' + S + ' ' + S + '">' +
+      '<circle cx="' + c + '" cy="' + c + '" r="' + (R + 3) + '" fill="' + color + '" fill-opacity=".25"/>' +
+      '<circle cx="' + c + '" cy="' + c + '" r="' + R + '" fill="' + color + '" stroke="#0c0e12" stroke-width="2"/>' + arco +
+      '<text x="' + c + '" y="' + c + '" dy=".35em" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="' + (n > 99 ? 11 : 12) +
+      '" font-weight="800" fill="#0c0e12">' + n + '</text></svg>';
+    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), size: S };
+  }
+
+  function limpiarGrupos() {
+    grupoMarcas.forEach(function (m) { m.setMap(null); });
+    grupoMarcas = [];
+    ocultosGrupo = Object.create(null);
+  }
+
+  function reagrupar(forzar) {
+    if (!mapa) return;
+    var maps = global.google.maps, proj = mapa.getProjection && mapa.getProjection(), z = mapa.getZoom();
+    if (!forzar && z === zoomAgrupado) return;
+    limpiarGrupos();
+    zoomAgrupado = proj ? z : null;            /* sin proyección todavía: se agrupa en el primer 'idle' */
+    var d = estado.res;
+    if (!d || !proj || z == null || estado.vista === 'calor' || z >= ZOOM_SIN_GRUPOS) return;
+    var escala = Math.pow(2, z), colores = coloresPrestadoras(d), basePorId = Object.create(null);
+    d.bases.forEach(function (b) { basePorId[String(b.id)] = String(b.nombre || 'Base'); });
+    var items = [];
+    d.puntos.forEach(function (p, i) {
+      var fuera = p[4] != null && num(p[4]) > estado.radio;
+      if (estado.soloFuera && !fuera) return;
+      var w = proj.fromLatLngToPoint(new maps.LatLng(num(p[1]), num(p[0])));
+      if (w) items.push({ x: w.x * escala, y: w.y * escala, i: i });
+    });
+    agrupar(items, CELDA_GRUPO, MIN_GRUPO).grupos.forEach(function (g) {
+      var cuenta = Object.create(null), bases = Object.create(null), fuera = 0, monto = 0, conMonto = false;
+      var bounds = new maps.LatLngBounds();
+      g.idx.forEach(function (i) {
+        var p = d.puntos[i], col = colores[String(p[2])] || COLOR_OTROS, nb = basePorId[String(p[3])] || 'Sin base';
+        ocultosGrupo[i] = true;
+        cuenta[col] = (cuenta[col] || 0) + 1;
+        bases[nb] = (bases[nb] || 0) + 1;
+        if (p[4] != null && num(p[4]) > estado.radio) fuera++;
+        if (montoPunto(p) != null) { conMonto = true; monto += montoPunto(p); }
+        bounds.extend({ lat: num(p[1]), lng: num(p[0]) });
+      });
+      var mas = function (o) { return Object.keys(o).sort(function (a, b) { return o[b] - o[a]; })[0]; };
+      var ic = iconoGrupo(g.idx.length, mas(cuenta), fuera);
+      var m = new maps.Marker({
+        map: mapa, zIndex: 12, position: proj.fromPointToLatLng(new maps.Point(g.x / escala, g.y / escala)),
+        icon: { url: ic.url, size: new maps.Size(ic.size, ic.size), scaledSize: new maps.Size(ic.size, ic.size), anchor: new maps.Point(ic.size / 2, ic.size / 2) },
+        title: g.idx.length + ' servicios'
+      });
+      var texto = '<div class="rsm-mapa-popup"><b>' + esc(mas(bases)) + ' · ' + miles(g.idx.length) + ' servicios</b>' +
+        (conMonto ? '<br>' + pesosCorto(monto) + ' facturados' : '') +
+        (fuera ? '<br><span class="is-fuera">' + miles(fuera) + ' fuera de radio</span>' : '') +
+        '<br><span class="is-ayuda">Tocá para acercar</span></div>';
+      m.addListener('mouseover', function () { if (!infoMapa) return; infoMapa.setContent(texto); infoMapa.open({ map: mapa, anchor: m }); });
+      m.addListener('mouseout', function () { if (infoMapa) infoMapa.close(); });
+      m.addListener('click', function () {
+        if (infoMapa) infoMapa.close();
+        if (bounds.getNorthEast().equals(bounds.getSouthWest())) { mapa.setCenter(bounds.getCenter()); mapa.setZoom(Math.min(ZOOM_SIN_GRUPOS, z + 2)); }
+        else mapa.fitBounds(bounds, 60);
+      });
+      grupoMarcas.push(m);
+    });
+  }
+
+  /* ── calor ────────────────────────────────────────────────────────────── */
+  /* Google retiró su capa de calor: se dibuja en un canvas propio sobre el mapa.
+     Cada servicio suma una mancha suave; la intensidad se normaliza a la zona más
+     cargada de lo que se ve y se pinta con una escala celeste → amarillo → rojo. */
+
+  var paletaCalor = null;
+  function paleta() {
+    if (paletaCalor) return paletaCalor;
+    var c = document.createElement('canvas'); c.width = 256; c.height = 1;
+    var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 256, 0);
+    g.addColorStop(0, 'rgba(56,189,248,0)'); g.addColorStop(0.22, 'rgba(56,189,248,.55)');
+    g.addColorStop(0.55, 'rgba(255,200,92,.85)'); g.addColorStop(1, 'rgba(255,92,92,.95)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 1);
+    paletaCalor = x.getImageData(0, 0, 256, 1).data;
+    return paletaCalor;
+  }
+
+  function crearCapaCalor(maps) {
+    function Capa() { this.canvas = document.createElement('canvas'); this.canvas.className = 'rsm-calor'; this.puntos = []; }
+    Capa.prototype = new maps.OverlayView();
+    Capa.prototype.onAdd = function () {
+      this.getPanes().overlayLayer.appendChild(this.canvas);
+      var self = this;
+      this.idle = maps.event.addListener(this.getMap(), 'idle', function () { self.draw(); });
+    };
+    Capa.prototype.onRemove = function () {
+      if (this.idle) maps.event.removeListener(this.idle);
+      if (this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
+    };
+    Capa.prototype.draw = function () {
+      var map = this.getMap(), proj = this.getProjection();
+      if (!map || !proj || !map.getBounds()) return;
+      var div = map.getDiv(), w = div.clientWidth, h = div.clientHeight;
+      if (!w || !h) return;
+      var b = map.getBounds(), ne = proj.fromLatLngToDivPixel(b.getNorthEast()), sw = proj.fromLatLngToDivPixel(b.getSouthWest());
+      var x0 = sw.x, y0 = ne.y, dpr = Math.min(2, global.devicePixelRatio || 1);
+      var cv = this.canvas;
+      cv.style.left = x0 + 'px'; cv.style.top = y0 + 'px'; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      var ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      var z = map.getZoom() || 8, r = Math.max(14, Math.min(46, 10 * Math.pow(1.35, z - 8))) * dpr;
+      this.puntos.forEach(function (ll) {
+        var p = proj.fromLatLngToDivPixel(ll);
+        var x = (p.x - x0) * dpr, y = (p.y - y0) * dpr;
+        if (x < -r || y < -r || x > cv.width + r || y > cv.height + r) return;
+        var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(0,0,0,.12)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      });
+      var img = ctx.getImageData(0, 0, cv.width, cv.height), px = img.data, max = 0, i;
+      for (i = 3; i < px.length; i += 4) if (px[i] > max) max = px[i];
+      if (!max) return;
+      var pal = paleta(), k = 255 / max;
+      for (i = 0; i < px.length; i += 4) {
+        var a = px[i + 3];
+        if (!a) continue;
+        var j = Math.min(255, Math.round(a * k)) * 4;
+        px[i] = pal[j]; px[i + 1] = pal[j + 1]; px[i + 2] = pal[j + 2]; px[i + 3] = pal[j + 3];
+      }
+      ctx.putImageData(img, 0, 0);
+    };
+    return new Capa();
+  }
+
+  function mostrarCalor(on) {
+    if (!mapa) return;
+    if (!on) { if (capaCalor) capaCalor.setMap(null); return; }
+    var maps = global.google.maps, d = estado.res;
+    if (!capaCalor) capaCalor = crearCapaCalor(maps);
+    capaCalor.puntos = d ? d.puntos.filter(function (p) {
+      return !estado.soloFuera || (p[4] != null && num(p[4]) > estado.radio);
+    }).map(function (p) { return new maps.LatLng(num(p[1]), num(p[0])); }) : [];
+    if (capaCalor.getMap() !== mapa) capaCalor.setMap(mapa); else capaCalor.draw();
   }
 
   function pintarSedes(d) {
@@ -539,6 +794,9 @@
     if (observador) { observador.disconnect(); observador = null; }
     sedesMarcas.forEach(function (m) { m.setMap(null); });
     sedesMarcas = [];
+    limpiarGrupos();
+    zoomAgrupado = null;
+    if (capaCalor) { capaCalor.setMap(null); capaCalor = null; }
     if (infoMapa) { infoMapa.close(); infoMapa = null; }
     mapa = null;                                                /* Google no tiene remove(): se descarta el contenedor */
     var c = el(ID_MAPA);
@@ -566,8 +824,9 @@
         zoomControlOptions: { position: maps.ControlPosition.RIGHT_TOP }
       });
       var propio = mapa;
-      actualizarFuentes(d);
       tooltipMapa();
+      actualizarFuentes(d);
+      maps.event.addListener(propio, 'idle', function () { if (mapa === propio) { if (zoomAgrupado !== propio.getZoom()) { reagrupar(); propio.data.setStyle(estiloCapa); } } });
       /* En la pestaña oculta el contenedor mide 0: al mostrarse se redibuja y se reencuadra. */
       if (typeof global.ResizeObserver === 'function') {
         observador = new global.ResizeObserver(function () {
@@ -587,7 +846,9 @@
     mapa.data.addListener('mouseover', function (e) {
       var km = e.feature.getProperty('km');
       if (e.feature.getProperty('kind') !== 'punto') return;
-      infoMapa.setContent('<div class="rsm-mapa-popup">' + (km == null ? 'Servicio' : miles(km, 1) + ' km a la base más cercana') + '</div>');
+      var monto = e.feature.getProperty('monto'), base = e.feature.getProperty('base'), fuera = km != null && km > estado.radio;
+      infoMapa.setContent('<div class="rsm-mapa-popup">' + (km == null ? 'Servicio' : miles(km, 1) + ' km a ' + (base ? esc(base) : 'la base más cercana')) +
+        (monto != null ? '<br>' + pesosCorto(monto) : '') + (fuera ? '<br><span class="is-fuera">Fuera de radio</span>' : '') + '</div>');
       infoMapa.setPosition(e.latLng);
       infoMapa.open(mapa);
     });
@@ -606,6 +867,36 @@
       });
       pintarSlider(r);
     }
+    var cambiarSoloFuera = function (v) {
+      estado.soloFuera = v;
+      var sw = el('rsm-solo-fuera');
+      if (sw) sw.setAttribute('aria-checked', v ? 'true' : 'false');
+      if (estado.res) pintarLecturaMapa(estado.res);
+      aplicarVisibilidadCapas();
+    };
+    var sf = el('rsm-solo-fuera');
+    if (sf && sf.dataset.listo !== '1') {
+      sf.dataset.listo = '1';
+      sf.addEventListener('click', function () { cambiarSoloFuera(!estado.soloFuera); });
+    }
+    var st = el('rsm-mapa-stats');
+    if (st && st.dataset.listo !== '1') {
+      st.dataset.listo = '1';
+      st.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-solo-fuera]')) cambiarSoloFuera(!estado.soloFuera); });
+    }
+    var vs = document.querySelectorAll ? document.querySelectorAll('[data-mapa-vista]') : [];
+    Array.prototype.forEach.call(vs, function (b) {
+      if (b.dataset.listo === '1') return;
+      b.dataset.listo = '1';
+      b.addEventListener('click', function () {
+        estado.vista = b.getAttribute('data-mapa-vista') === 'calor' ? 'calor' : 'puntos';
+        Array.prototype.forEach.call(document.querySelectorAll('[data-mapa-vista]'), function (o) {
+          o.setAttribute('aria-pressed', o === b ? 'true' : 'false');
+        });
+        if (estado.res) pintarLecturaMapa(estado.res);
+        aplicarVisibilidadCapas();
+      });
+    });
     [['rsm-circulos', 'circulos'], ['rsm-lineas', 'lineas']].forEach(function (par) {
       var b = el(par[0]);
       if (!b || b.dataset.listo === '1') return;
@@ -1226,6 +1517,15 @@
     pintarRanking: pintarRanking,
     filasTipos: filasTipos,
     pintarTipos: pintarTipos,
+    agrupar: agrupar,
+    fueraDeRadio: function (d, radio) {
+      var prev = estado.radio;
+      if (radio != null) estado.radio = radio;
+      var f = fueraDeRadio(d);
+      estado.radio = prev;
+      return f;
+    },
+    iconoGrupo: iconoGrupo,
     lecturaTipos: lecturaTipos,
     cobertura: function (d, radio) {
       var prev = estado.radio;

@@ -180,3 +180,55 @@ test('facturación por tipo: % facturado contra % de servicios y lectura sólo s
   assert.match(index, /<p>¿Qué tipo deja más por servicio\?<\/p>/);
   assert.match(css, /\.rsm-tv-row \{ display: grid/);
 });
+
+test('mapa: agrupa por celda de pantalla y deja sueltos los grupos chicos', () => {
+  const { api } = cargarModulo();
+  const items = [
+    { x: 10, y: 10, i: 0 }, { x: 20, y: 30, i: 1 }, { x: 40, y: 50, i: 2 }, { x: 50, y: 12, i: 3 },
+    { x: 300, y: 300, i: 4 }, { x: 310, y: 305, i: 5 }
+  ];
+  const g = api.agrupar(items, 56, 4);
+  assert.equal(g.grupos.length, 1);
+  assert.deepEqual(Array.from(g.grupos[0].idx), [0, 1, 2, 3]);
+  assert.equal(g.grupos[0].x, 30);
+  assert.deepEqual(Array.from(g.sueltos), [4, 5]);
+});
+
+test('mapa: fuera de radio por base, con lo facturado si el punto lo trae', () => {
+  const { api } = cargarModulo();
+  const d = api.normalizar({}, {
+    bases: [{ id: 'b1', nombre: 'CABA', lat: -34.6, lng: -58.4 }, { id: 'b2', nombre: 'La Plata', lat: -34.9, lng: -57.9 }],
+    puntos: [[-58.4, -34.6, 'e1', 'b1', 5, 1000], [-58.5, -34.7, 'e1', 'b1', 31, 2500], [-58.6, -34.8, 'e2', 'b1', 40, 500],
+             [-57.9, -34.9, 'e2', 'b2', 25, 4000], [-57.8, -34.9, 'e2', 'b2', null, 100]]
+  });
+  const f20 = api.fueraDeRadio(d, 20);
+  assert.equal(f20.servicios, 3);
+  assert.equal(f20.monto, 7000);
+  assert.equal(f20.montoTotal, 8100);
+  assert.equal(f20.conMonto, true);
+  assert.equal(JSON.stringify(f20.filas.map(x => [x.base, x.servicios, x.monto])), JSON.stringify([['CABA', 2, 3000], ['La Plata', 1, 4000]]));
+  assert.equal(api.fueraDeRadio(d, 35).servicios, 1);
+  const viejo = api.normalizar({}, { bases: [], puntos: [[-58.4, -34.6, 'e1', 'b1', 50]] });
+  assert.equal(api.fueraDeRadio(viejo, 20).conMonto, false, 'sin el sexto elemento no inventa montos');
+  assert.match(api.iconoGrupo(12, '#7c8cff', 3).url, /^data:image\/svg\+xml/);
+});
+
+test('mapa: vista Puntos/Calor, solo fuera de radio y migración con el monto por punto', () => {
+  const mig = fs.readFileSync('migrations/20261113190000_dashboard_resumen_monto_por_punto_v1.sql', 'utf8');
+  assert.match(mig, /round\(u\.km::numeric, 1\), round\(u\.monto::numeric, 0\)\)\)/);
+  assert.match(mig, /cer\.base_id, cer\.km, a\.monto/);
+  assert.match(index, /data-mapa-vista="puntos" aria-pressed="true">Puntos<\/button><button type="button" data-mapa-vista="calor"/);
+  assert.match(index, /id="rsm-solo-fuera" role="switch" aria-checked="false"/);
+  assert.match(index, /id="rsm-mapa-fuera" hidden/);
+  assert.match(js, /new maps\.OverlayView\(\)/);
+  assert.doesNotMatch(js, /HeatmapLayer|visualization/);
+});
+
+test('mapa: dos grupos con centros cercanos se funden para que las burbujas no se pisen', () => {
+  const { api } = cargarModulo();
+  const a = [70, 80, 90, 99].map((x, i) => ({ x, y: 100, i }));
+  const b = [101, 102, 103, 104].map((x, i) => ({ x, y: 100, i: i + 4 }));
+  const g = api.agrupar(a.concat(b), 30, 4);
+  assert.equal(g.grupos.length, 1);
+  assert.equal(g.grupos[0].idx.length, 8);
+});

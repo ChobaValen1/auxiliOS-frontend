@@ -83,7 +83,7 @@ if (AUXILIOS_RUNTIME.edition === 'monogruero' && !/\/solo(\.html)?$/.test(locati
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'flota-v663-20261113';
+window.AUXILIOS_BUILD_ID = 'flota-v664-20261113';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
