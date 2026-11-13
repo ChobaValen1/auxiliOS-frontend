@@ -24,10 +24,8 @@
   var ID_MAPA  = 'dashx-fact-mapa';
   var ID_TABLA = 'dashx-fact-empresas';
 
-  var LIB_JS  = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js';
-  var LIB_CSS = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css';
-  var ESTILO  = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-  var VISTA_INICIAL = { center: [-58.4, -34.7], zoom: 8 };
+  /* Mapa de Google Maps (mismo SDK y clave de navegador que el mapa de Operaciones). */
+  var VISTA_INICIAL = { center: { lat: -34.7, lng: -58.4 }, zoom: 8 };
 
   var GUION = '—';
   var MAX_PRESTADORAS = 7;
@@ -51,13 +49,18 @@
     lineas: false,
     fact: null,
     res: null,
-    filtros: null
+    filtros: null,
+    rankSel: null,
+    evolVista: 'diario'
   };
 
   var mapa = null;
   var observador = null;
   var cargandoLib = null;
+  var sedesMarcas = [];
+  var infoMapa = null;
   var chartEvol = null;
+  var chartRank = null;
   var zoomEvol = null;
   /* Zoom de la evolución (dashboard-zoom-v1.js): serie diaria larga, días
      del período dentro de ella y la ventana que se está mirando. */
@@ -167,7 +170,7 @@
      en su leyenda y en la tabla. Más allá de siete, gris de "Otros": la paleta
      validada no se cicla. */
   function coloresPrestadoras(d) {
-    var pal = (ch() && ch().PALETA) || ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9'];
+    var pal = ['#7c8cff', '#ff8a5b', '#3ddc97', '#ffc85c', '#f472b6', '#38bdf8', '#a3e635'];
     var m = Object.create(null);
     d.empresas.forEach(function (e, i) {
       m[String(e.id)] = i < MAX_PRESTADORAS ? pal[i % pal.length] : COLOR_OTROS;
@@ -253,21 +256,14 @@
       (puntos ? ' pts' : '%') + '</span>';
   }
 
+  /* KPI compacto: etiqueta arriba, valor y variación en la misma línea; la aclaración queda como tooltip. */
   function tile(label, valor, deltaHtml, pie, destacado) {
-    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + '">' +
+    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + '" title="' + esc(String(pie || '').replace(/<[^>]+>/g, '')) + '">' +
       '<div class="rsm-kpi-label">' + esc(label) + '</div>' +
-      '<div class="rsm-kpi-value">' + valor + '</div>' +
-      (deltaHtml ? '<div class="rsm-kpi-delta">' + deltaHtml + '</div>' : '') +
+      '<div class="rsm-kpi-row"><div class="rsm-kpi-value">' + valor + '</div>' +
+      (deltaHtml ? '<div class="rsm-kpi-delta">' + deltaHtml + '</div>' : '') + '</div>' +
       '<div class="rsm-kpi-foot">' + pie + '</div>' +
       '</div>';
-  }
-
-  /* Km reales sobre km facturados, sólo en los servicios que tienen km real
-     (kmComp = facturados de esos mismos servicios). Mide qué parte de lo que
-     se cobra se anduvo con el vehículo arriba; no es el rendimiento de la flota. */
-  function realesSobreFacturados(t) {
-    var comp = t.kmComp > 0 ? t.kmComp : (t.servicios > 0 && t.conDato >= t.servicios ? t.km : 0);
-    return comp > 0 && t.kmReal > 0 ? t.kmReal * 100 / comp : null;
   }
 
   function neutralDelta(actual, anterior, rango) {
@@ -280,24 +276,85 @@
     n.innerHTML =
       tile('Total facturado',has?pesos(t.facturado):GUION,has?neutralDelta(t.facturado,a.facturado,r):'','Servicios finalizados del período',true)+
       tile('Servicios',has?miles(t.servicios):GUION,has?neutralDelta(t.servicios,a.servicios,r):'','Finalizados en el período')+
-      tile('Km reales de servicios',has&&t.conDato>0?miles(t.kmReal)+' km':GUION,has&&t.conDato>0?neutralDelta(t.kmReal,a.kmReal,r):'',has?miles(t.conDato)+' de '+miles(t.servicios)+' servicios con dato':'Sin servicios en el período');
+      tile('Ticket promedio',has&&t.servicios>0?pesos(t.facturado/t.servicios):GUION,has&&t.servicios>0&&a.servicios>0?neutralDelta(t.facturado/t.servicios,a.facturado/a.servicios,r):'','Facturado por servicio')+
+      tile('Peajes',has?pesos(t.peajes):GUION,has?neutralDelta(t.peajes,a.peajes,r):'','Peajes de los servicios del período');
     var secondary=el('rsm-secondary');
-    if(secondary) secondary.innerHTML='<dl><div><dt>Ticket promedio</dt><dd>'+ (has?pesos(t.facturado/t.servicios):GUION)+'</dd></div><div><dt>Peajes</dt><dd>'+(has?pesos(t.peajes):GUION)+'</dd></div><div><dt>Km facturados</dt><dd>'+(has?miles(t.km)+' km':GUION)+'</dd></div></dl>';
-    var context=el('rsm-period-context');if(context)context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
-    var quality=el('rsm-data-context');if(quality)quality.textContent=has?(t.conDato<t.servicios?'Kilómetros parciales: '+miles(t.servicios-t.conDato)+' servicios sin km reales registrados. ':'')+'Los km de servicios no representan el odómetro total de la flota.':'No hay servicios finalizados para los filtros seleccionados.';
+    if(secondary) secondary.innerHTML='';
+    var context=el('rsm-period-context');if(context)n.title=context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
+    var quality=el('rsm-data-context');if(quality)quality.textContent=has?'':'No hay servicios finalizados para los filtros seleccionados.';
   }
 
   function rankingRows(d){
     var all=d.empresas.slice().sort(function(a,b){return b.monto-a.monto||a.nombre.localeCompare(b.nombre);});
-    var rows=all.slice(0,5).map(function(e){return {nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
-    if(all.length>5)rows.push({nombre:'Otras '+(all.length-5)+' prestadoras',monto:all.slice(5).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(5).reduce(function(n,e){return n+e.servicios;},0)});
+    var corte=all.length===6?6:5,rows=all.slice(0,corte).map(function(e){return {id:e.id,nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
+    if(all.length>corte)rows.push({id:null,nombre:'Otras '+(all.length-corte)+' prestadoras',monto:all.slice(corte).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(corte).reduce(function(n,e){return n+e.servicios;},0)});
     var total=all.reduce(function(n,e){return n+e.monto;},0);
     return rows.map(function(e){return Object.assign(e,{share:total>0?e.monto*100/total:null});});
   }
+  /* Torta de participación (donut con etiquetas y guías, dibujado con d3-shape). Tocar una prestadora —en la
+     torta o en la lista— la ilumina y el centro muestra su importe; tocarla de nuevo vuelve al total.
+     Con lugar (≥ 430 px) van las etiquetas afuera; desde 720 px la lista va al costado; si no, gráfico arriba y lista abajo. */
+  var D3_SHAPE = '/vendor/d3-shape-3.2.1.min.js';
+  var cargandoD3 = null, rankObs = null, rankAncho = 0, rankDatos = null;
+  function cargarD3() {
+    if (global.d3 && global.d3.arc && global.d3.pie) return Promise.resolve(global.d3);
+    if (!cargandoD3) cargandoD3 = (typeof global.loadAuxiliosModule === 'function'
+        ? global.loadAuxiliosModule('d3-shape-js', D3_SHAPE) : Promise.reject(new Error('sin cargador')))
+      .then(function () { return global.d3; }).catch(function (e) { cargandoD3 = null; throw e; });
+    return cargandoD3;
+  }
+  function svgTorta(rows, colores, total, servicios, sel, ancho) {
+    var d3 = global.d3, conEtiquetas = ancho >= 430, W = conEtiquetas ? 430 : Math.max(220, Math.min(ancho, 340)), H = conEtiquetas ? 290 : 250;
+    var R = Math.min(W, H) / 2 - (conEtiquetas ? 40 : 14), uid = 'rsmp';
+    var pie = d3.pie().sort(null).value(function (e) { return e.monto; }).padAngle(.022)(rows);
+    var arc = d3.arc().innerRadius(R * .64).outerRadius(R).cornerRadius(7), arcA = d3.arc().innerRadius(R * .62).outerRadius(R + 9).cornerRadius(8);
+    var defs = '<defs>' + rows.map(function (e, i) {
+      var base = colores[i];
+      return '<linearGradient id="' + uid + 'g' + i + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + base + '" stop-opacity="1"/><stop offset="1" stop-color="' + base + '" stop-opacity=".72"/></linearGradient>';
+    }).join('') + '<filter id="' + uid + 'glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+    var hay = sel != null;
+    var porciones = pie.map(function (p, i) {
+      var on = sel === i;
+      return '<path class="rsm-pie-slice" data-i="' + i + '" d="' + (on ? arcA(p) : arc(p)) + '" fill="url(#' + uid + 'g' + i + ')"' + (on ? ' filter="url(#' + uid + 'glow)"' : '') +
+        ' style="opacity:' + (hay && !on ? .28 : 1) + '"><title>' + esc(rows[i].nombre) + ': ' + esc(pesos(rows[i].monto)) + '</title></path>';
+    }).join('');
+    var etiquetas = '';
+    if (conEtiquetas) {
+      var o = d3.arc().innerRadius(R + 6).outerRadius(R + 6);
+      etiquetas = pie.filter(function (p) { return p.endAngle - p.startAngle > .22; }).map(function (p) {
+        var i = p.index, a = o.centroid(p), m = (p.startAngle + p.endAngle) / 2, s = m < Math.PI ? 1 : -1, bx = a[0] * 1.18, by = a[1] * 1.18;
+        var share = rows[i].share == null ? '' : ' · ' + Math.round(rows[i].share) + '%';
+        return '<g style="opacity:' + (hay && sel !== i ? .25 : 1) + '"><polyline fill="none" stroke="' + colores[i] + '" stroke-width="1.2" opacity=".8" points="' + a.join(',') + ' ' + bx + ',' + by + ' ' + (bx + s * 14) + ',' + by + '"/>' +
+          '<text x="' + (bx + s * 18) + '" y="' + (by + 4) + '" text-anchor="' + (s > 0 ? 'start' : 'end') + '" class="rsm-pie-lbl">' + esc(String(rows[i].nombre).split(' ')[0] + share) + '</text></g>';
+      }).join('');
+    }
+    var e = hay ? rows[sel] : null;
+    var centro = '<g text-anchor="middle">' +
+      '<text y="-12" class="rsm-pie-c1"' + (e ? ' style="fill:' + colores[sel] + ';font-weight:600"' : '') + '>' + esc(e ? e.nombre : 'Total facturado') + '</text>' +
+      '<text y="12" class="rsm-pie-c2" style="font-size:' + (R > 100 ? 19 : 17) + 'px">' + esc(pesos(e ? e.monto : total)) + '</text>' +
+      '<text y="31" class="rsm-pie-c3">' + esc(e ? (e.share == null ? '' : pct(e.share, 1) + ' del total') : miles(servicios) + ' servicios') + '</text></g>';
+    return '<svg class="rsm-pie-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Participación de cada prestadora en la facturación del período">' + defs +
+      '<g transform="translate(' + W / 2 + ',' + H / 2 + ')"><circle r="' + (R + 15) + '" fill="none" class="rsm-pie-track"/>' + porciones + etiquetas + centro + '</g></svg>';
+  }
   function pintarRanking(d){
-    var n=el('rsm-ranking');if(!n)return;
+    var n=el('rsm-ranking');if(!n)return;rankDatos=d;
+    if(chartRank){chartRank.destroy();chartRank=null;}
     var rows=rankingRows(d);
-    n.innerHTML=d.hayDatos&&rows.length?'<ol class="rsm-ranking-list">'+rows.map(function(e){return '<li><div><b>'+esc(e.nombre)+'</b><strong>'+pesos(e.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,e.share||0))+'%"></i></div><small>'+miles(e.servicios)+' servicios · '+(e.share===null?'Sin participación calculable':pct(e.share,1)+' del total')+'</small></li>';}).join('')+'</ol>':'<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';
+    if(!d.hayDatos||!rows.length){n.innerHTML='<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';return;}
+    var mapa=coloresPrestadoras(d),colores=rows.map(function(e){return e.id==null?COLOR_OTROS:(mapa[String(e.id)]||COLOR_OTROS);});
+    var total=rows.reduce(function(s,e){return s+e.monto;},0),servicios=rows.reduce(function(s,e){return s+e.servicios;},0);
+    var sel=estado.rankSel==null?-1:rows.findIndex(function(e){return e.nombre===estado.rankSel;});if(sel<0)sel=null;
+    var leyenda='<ol class="rsm-pie-legend">'+rows.map(function(e,i){var on=sel===i,dim=sel!=null&&!on;return '<li role="button" tabindex="0" data-i="'+i+'" aria-pressed="'+on+'" class="'+(on?'is-on':'')+(dim?' is-dim':'')+'" style="--c:'+colores[i]+'"><i aria-hidden="true"></i><span><b>'+esc(e.nombre)+'</b><small>'+miles(e.servicios)+' servicios</small></span><strong>'+pesos(e.monto)+'<em>'+(e.share===null?GUION:pct(e.share,1))+'</em></strong></li>';}).join('')+'</ol>';
+    var ancho=n.clientWidth||0;rankAncho=ancho;
+    var dibujar=function(){n.innerHTML='<div class="rsm-pie'+(ancho>=720?' is-wide':'')+'"><div class="rsm-pie-chart">'+(global.d3&&global.d3.arc?svgTorta(rows,colores,total,servicios,sel,ancho>=720?430:(ancho||340)):'')+'</div>'+leyenda+'</div>';};
+    dibujar();
+    if(!(global.d3&&global.d3.arc))cargarD3().then(function(){if(estado.res===d)pintarRanking(d);}).catch(function(){});
+    if(!n.dataset.pieBound){n.dataset.pieBound='1';
+      var elegir=function(i,teclado){if(!rankDatos)return;var rs=rankingRows(rankDatos),nom=rs[i]&&rs[i].nombre;estado.rankSel=estado.rankSel===nom?null:nom;pintarRanking(rankDatos);if(teclado){var b=n.querySelector('li[data-i="'+i+'"]');if(b)b.focus({preventScroll:true});}};
+      n.addEventListener('click',function(ev){var t=ev.target.closest&&ev.target.closest('[data-i]');if(t)elegir(Number(t.getAttribute('data-i')));});
+      n.addEventListener('keydown',function(ev){if(ev.key!=='Enter'&&ev.key!==' ')return;var t=ev.target.closest&&ev.target.closest('li[data-i]');if(t){ev.preventDefault();elegir(Number(t.getAttribute('data-i')),true);}});
+      if(typeof global.ResizeObserver==='function'){rankObs=new global.ResizeObserver(function(){var w=n.clientWidth||0;if(Math.abs(w-rankAncho)>24&&rankDatos)pintarRanking(rankDatos);});rankObs.observe(n);}
+    }
   }
 
   function chartColors(){var light=document.documentElement?.dataset.theme==='light';return {accent:light?'#a86600':'#f5a623',previous:light?'#66758b':'#8590ab',grid:light?'rgba(70,85,110,.15)':'rgba(100,115,140,.2)'};}
@@ -316,22 +373,14 @@
   /* ── mapa ─────────────────────────────────────────────────────────────── */
 
   function cargarLibreria() {
-    if (global.maplibregl) return Promise.resolve();
+    if (global.google && global.google.maps && global.google.maps.Map && global.ServiceRouteMap) return Promise.resolve(global.google.maps);
     if (cargandoLib) return cargandoLib;
-    cargandoLib = new Promise(function (resolve, reject) {
-      if (!document.getElementById('maplibre-css')) {
-        var css = document.createElement('link');
-        css.id = 'maplibre-css'; css.rel = 'stylesheet'; css.href = LIB_CSS;
-        document.head.appendChild(css);
-      }
-      var s = document.createElement('script');
-      s.src = LIB_JS; s.async = true;
-      s.addEventListener('load', function () {
-        global.maplibregl ? resolve() : reject(new Error('maplibre no quedó disponible'));
-      }, { once: true });
-      s.addEventListener('error', function () { reject(new Error('No se pudo cargar el mapa')); }, { once: true });
-      document.body.appendChild(s);
-    }).catch(function (e) { cargandoLib = null; throw e; });
+    var modulo = global.ServiceRouteMap ? Promise.resolve()
+      : (typeof global.loadAuxiliosModule === 'function'
+          ? global.loadAuxiliosModule('service-route-map-js', '/service-route-map.js')
+          : Promise.reject(new Error('No se pudo cargar el mapa')));
+    cargandoLib = modulo.then(function () { return global.ServiceRouteMap.loadSdk(); })
+      .catch(function (e) { cargandoLib = null; throw e; });
     return cargandoLib;
   }
 
@@ -359,13 +408,13 @@
       var color = colores[String(p[2])] || COLOR_OTROS;
       var km = p[4] == null ? null : num(p[4]);
       puntos.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] },
-        properties: { color: color, km: km, dentro: km != null && km <= estado.radio ? 1 : 0 } });
+        properties: { kind: 'punto', color: color, km: km, dentro: km != null && km <= estado.radio ? 1 : 0 } });
       var b = basePorId[String(p[3])];
-      if (b) lineas.push({ type: 'Feature', properties: { color: color },
+      if (b) lineas.push({ type: 'Feature', properties: { kind: 'linea', color: color },
         geometry: { type: 'LineString', coordinates: [[num(b.lng), num(b.lat)], [lng, lat]] } });
     });
     var radios = d.bases.map(function (b) {
-      return { type: 'Feature', properties: {},
+      return { type: 'Feature', properties: { kind: 'radio' },
         geometry: { type: 'Polygon', coordinates: [circulo(num(b.lng), num(b.lat), estado.radio)] } };
     });
     var sedes = d.bases.map(function (b) {
@@ -423,35 +472,60 @@
     if (rv) rv.textContent = estado.radio + ' km';
   }
 
+  /* Capas de datos de Google: puntos, líneas y radios salen del mismo GeoJSON; el estilo decide qué se ve. */
+  function estiloCapa(f) {
+    var maps = global.google.maps, k = f.getProperty('kind');
+    if (k === 'radio') {
+      return { visible: !!estado.circulos, clickable: false, fillColor: '#e8eaf2', fillOpacity: 0.07,
+               strokeColor: '#e8eaf2', strokeOpacity: 0.55, strokeWeight: 1.2, zIndex: 1 };
+    }
+    if (k === 'linea') {
+      return { visible: !!estado.lineas, clickable: false, strokeColor: f.getProperty('color'), strokeOpacity: 0.6, strokeWeight: 1.4, zIndex: 2 };
+    }
+    var dentro = f.getProperty('dentro') === 1;
+    return { clickable: true, zIndex: 3,
+      icon: { path: maps.SymbolPath.CIRCLE, scale: 5.5, fillColor: f.getProperty('color'), fillOpacity: dentro ? 0.95 : 0.65,
+              strokeColor: '#0c0e12', strokeWeight: 1.5 } };
+  }
+
   function aplicarVisibilidadCapas() {
-    if (!mapa || !mapa.getLayer('rsm-radios-fill')) return;
-    var vc = estado.circulos ? 'visible' : 'none';
-    mapa.setLayoutProperty('rsm-radios-fill', 'visibility', vc);
-    mapa.setLayoutProperty('rsm-radios-line', 'visibility', vc);
-    mapa.setLayoutProperty('rsm-lineas', 'visibility', estado.lineas ? 'visible' : 'none');
+    if (!mapa) return;
+    mapa.data.setStyle(estiloCapa);
+  }
+
+  function pintarSedes(d) {
+    var maps = global.google.maps;
+    sedesMarcas.forEach(function (m) { m.setMap(null); });
+    sedesMarcas = d.bases.map(function (b) {
+      return new maps.Marker({
+        map: mapa, position: { lat: num(b.lat), lng: num(b.lng) }, zIndex: 10, title: String(b.nombre || 'Base'),
+        icon: { path: maps.SymbolPath.CIRCLE, scale: 8, fillColor: COLOR_BASE, fillOpacity: 1, strokeColor: '#0c0e12', strokeWeight: 3 },
+        label: { text: String(b.nombre || 'Base'), color: '#e8eaf2', fontSize: '11px', fontWeight: '600', className: 'rsm-sede-label' }
+      });
+    });
   }
 
   function actualizarFuentes(d) {
     if (!mapa) return;
     var g = datosMapa(d);
-    ['puntos', 'lineas', 'radios', 'sedes'].forEach(function (k) {
-      var s = mapa.getSource('rsm-' + k);
-      if (s) s.setData(g[k]);
-    });
+    mapa.data.forEach(function (f) { mapa.data.remove(f); });
+    ['radios', 'lineas', 'puntos'].forEach(function (k) { mapa.data.addGeoJson(g[k]); });
+    pintarSedes(d);
+    aplicarVisibilidadCapas();
   }
 
   function encuadrar(d) {
     if (!mapa) return;
-    var coords = d.puntos.map(function (p) { return [num(p[0]), num(p[1])]; })
-      .concat(d.bases.map(function (b) { return [num(b.lng), num(b.lat)]; }));
-    if (!coords.length) return;
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    coords.forEach(function (c) {
-      minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]);
-      minY = Math.min(minY, c[1]); maxY = Math.max(maxY, c[1]);
-    });
-    if (minX === maxX && minY === maxY) { mapa.jumpTo({ center: [minX, minY], zoom: 10 }); return; }
-    mapa.fitBounds([[minX, minY], [maxX, maxY]], { padding: 40, duration: 0, maxZoom: 11 });
+    var maps = global.google.maps, c = el(ID_MAPA);
+    if (c && (!c.clientWidth || !c.clientHeight)) return;      /* pestaña oculta: se reencuadra al mostrarse */
+    var pts = d.puntos.map(function (p) { return { lat: num(p[1]), lng: num(p[0]) }; })
+      .concat(d.bases.map(function (b) { return { lat: num(b.lat), lng: num(b.lng) }; }));
+    if (!pts.length) return;
+    var bounds = new maps.LatLngBounds();
+    pts.forEach(function (p) { bounds.extend(p); });
+    if (bounds.getNorthEast().equals(bounds.getSouthWest())) { mapa.setCenter(pts[0]); mapa.setZoom(11); return; }
+    mapa.fitBounds(bounds, 48);
+    maps.event.addListenerOnce(mapa, 'idle', function () { if (mapa && mapa.getZoom() > 12) mapa.setZoom(12); });
   }
 
   function mensajeMapa(texto, esError) {
@@ -463,7 +537,12 @@
 
   function destruirMapa() {
     if (observador) { observador.disconnect(); observador = null; }
-    if (mapa) { mapa.remove(); mapa = null; }
+    sedesMarcas.forEach(function (m) { m.setMap(null); });
+    sedesMarcas = [];
+    if (infoMapa) { infoMapa.close(); infoMapa = null; }
+    mapa = null;                                                /* Google no tiene remove(): se descarta el contenedor */
+    var c = el(ID_MAPA);
+    if (c) c.innerHTML = '';
   }
 
   function pintarMapa(d) {
@@ -476,80 +555,43 @@
         : 'Todavía no hay servicios en este período. Acá va a verse dónde trabaja cada prestadora.');
       return;
     }
-    return cargarLibreria().then(function () {
-      if (!el(ID_MAPA)||estado.res!==d) return;
-      if (mapa && mapa.getSource('rsm-puntos')) {
-        actualizarFuentes(d);
-        encuadrar(d);
-        return;
-      }
+    return cargarLibreria().then(function (maps) {
+      if (!el(ID_MAPA) || estado.res !== d) return;
+      if (mapa) { actualizarFuentes(d); encuadrar(d); return; }
       destruirMapa();
-      c.innerHTML = '';
-      var g = datosMapa(d);
-      mapa = new global.maplibregl.Map({
-        container: c, style: ESTILO,
-        center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom,
-        attributionControl: { compact: true },
-        dragRotate: false, pitchWithRotate: false
+      mapa = new maps.Map(c, {
+        center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom, mapTypeId: 'roadmap',
+        styles: global.ServiceRouteMap.mapStyle(), gestureHandling: 'cooperative',
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false,
+        zoomControlOptions: { position: maps.ControlPosition.RIGHT_TOP }
       });
-      mapa.addControl(new global.maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+      var propio = mapa;
+      actualizarFuentes(d);
+      tooltipMapa();
+      /* En la pestaña oculta el contenedor mide 0: al mostrarse se redibuja y se reencuadra. */
       if (typeof global.ResizeObserver === 'function') {
-        observador = new global.ResizeObserver(function () { if (mapa) mapa.resize(); });
+        observador = new global.ResizeObserver(function () {
+          if (mapa !== propio || !c.clientWidth) return;
+          maps.event.trigger(propio, 'resize');
+          if (estado.res) encuadrar(estado.res);
+        });
         observador.observe(c);
       }
-      var ownMap=mapa;
-      mapa.on('load', function () {
-        if(mapa!==ownMap||!estado.res)return;
-        d=estado.res;g=datosMapa(d);
-        mapa.addSource('rsm-radios', { type: 'geojson', data: g.radios });
-        mapa.addSource('rsm-lineas', { type: 'geojson', data: g.lineas });
-        mapa.addSource('rsm-puntos', { type: 'geojson', data: g.puntos });
-        mapa.addSource('rsm-sedes', { type: 'geojson', data: g.sedes });
-        mapa.addLayer({ id: 'rsm-radios-fill', type: 'fill', source: 'rsm-radios',
-          paint: { 'fill-color': '#e8eaf2', 'fill-opacity': 0.06 } });
-        mapa.addLayer({ id: 'rsm-radios-line', type: 'line', source: 'rsm-radios',
-          paint: { 'line-color': '#e8eaf2', 'line-opacity': 0.45, 'line-width': 1.2, 'line-dasharray': [3, 3] } });
-        mapa.addLayer({ id: 'rsm-lineas', type: 'line', source: 'rsm-lineas',
-          paint: { 'line-color': ['get', 'color'], 'line-opacity': 0.55, 'line-width': 1.2 } });
-        mapa.addLayer({ id: 'rsm-puntos', type: 'circle', source: 'rsm-puntos',
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 4, 12, 7],
-            'circle-color': ['get', 'color'],
-            'circle-stroke-color': '#0c0e12', 'circle-stroke-width': 1.5,
-            'circle-opacity': ['case', ['==', ['get', 'dentro'], 1], 0.95, 0.7]
-          } });
-        mapa.addLayer({ id: 'rsm-sedes', type: 'circle', source: 'rsm-sedes',
-          paint: { 'circle-radius': 7, 'circle-color': COLOR_BASE,
-                   'circle-stroke-color': '#0c0e12', 'circle-stroke-width': 3 } });
-        mapa.addLayer({ id: 'rsm-sedes-nombre', type: 'symbol', source: 'rsm-sedes', minzoom: 7,
-          layout: { 'text-field': ['get', 'nombre'], 'text-size': 11, 'text-offset': [0, 1.3],
-                    'text-anchor': 'top', 'text-optional': true },
-          paint: { 'text-color': '#e8eaf2', 'text-halo-color': '#0c0e12', 'text-halo-width': 2 } });
-        aplicarVisibilidadCapas();
-        tooltipMapa();
-        encuadrar(d);
-      });
+      encuadrar(d);
     }).catch(function (e) { mensajeMapa(e.message || 'No se pudo cargar el mapa', true); });
   }
 
   function tooltipMapa() {
-    var popup = new global.maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'dashx-mapa-popup' });
-    mapa.on('mouseenter', 'rsm-puntos', function (e) {
-      var f = e.features && e.features[0];
-      if (!f) return;
-      mapa.getCanvas().style.cursor = 'pointer';
-      var km = f.properties.km;
-      popup.setLngLat(f.geometry.coordinates)
-        .setText(km == null || km === 'null' ? 'Servicio' : miles(km, 1) + ' km a la base más cercana').addTo(mapa);
+    var maps = global.google.maps;
+    infoMapa = new maps.InfoWindow({ disableAutoPan: true });
+    mapa.data.addListener('mouseover', function (e) {
+      var km = e.feature.getProperty('km');
+      if (e.feature.getProperty('kind') !== 'punto') return;
+      infoMapa.setContent('<div class="rsm-mapa-popup">' + (km == null ? 'Servicio' : miles(km, 1) + ' km a la base más cercana') + '</div>');
+      infoMapa.setPosition(e.latLng);
+      infoMapa.open(mapa);
     });
-    mapa.on('mouseleave', 'rsm-puntos', function () { mapa.getCanvas().style.cursor = ''; popup.remove(); });
-    mapa.on('mouseenter', 'rsm-sedes', function (e) {
-      var f = e.features && e.features[0];
-      if (!f) return;
-      mapa.getCanvas().style.cursor = 'pointer';
-      popup.setLngLat(f.geometry.coordinates).setText(f.properties.nombre).addTo(mapa);
-    });
-    mapa.on('mouseleave', 'rsm-sedes', function () { mapa.getCanvas().style.cursor = ''; popup.remove(); });
+    mapa.data.addListener('mouseout', function () { if (infoMapa) infoMapa.close(); });
   }
 
   function montarControlesMapa() {
@@ -584,11 +626,55 @@
 
   /* ── composición por tipo ─────────────────────────────────────────────── */
 
+  var PLURAL_CLASE = { light: 'livianos', semi_heavy: 'semipesados', heavy: 'pesados', uml: 'UML', otros: 'otros' };
+
+  /* Cuánto del dinero y cuánto del trabajo se lleva cada tipo: dos barras en
+     la misma escala, el % facturado arriba (color del tipo) y el % de
+     servicios abajo (gris). Al lado, lo que deja cada servicio. */
+  function filasTipos(d) {
+    var filas = d.porClase.filter(function (k) { return k.servicios > 0; })
+      .sort(function (a, b) { return b.monto - a.monto; });
+    var tm = filas.reduce(function (s, k) { return s + k.monto; }, 0);
+    var ts = filas.reduce(function (s, k) { return s + k.servicios; }, 0);
+    filas = filas.map(function (k) {
+      return { clase: k.clase, nombre: k.nombre, color: k.color, monto: k.monto, servicios: k.servicios,
+               pm: tm > 0 ? k.monto * 100 / tm : 0, ps: ts > 0 ? k.servicios * 100 / ts : 0,
+               porServ: k.servicios > 0 ? k.monto / k.servicios : 0 };
+    });
+    return { filas: filas, tm: tm, ts: ts };
+  }
+
+  /* Una frase sólo si un tipo rinde claramente más que su peso en servicios. */
+  function lecturaTipos(t) {
+    if (t.filas.length < 2 || t.tm <= 0) return '';
+    var mejor = null;
+    t.filas.forEach(function (k) {
+      if (k.servicios < 3 || k.pm - k.ps < 3) return;
+      if (!mejor || k.pm / k.ps > mejor.pm / mejor.ps) mejor = k;
+    });
+    if (!mejor) return '';
+    var n = PLURAL_CLASE[mejor.clase] || String(mejor.nombre).toLowerCase();
+    return 'Los <b>' + esc(n) + '</b> son el ' + pct(mejor.ps) + ' de los servicios pero dejan el <b>' + pct(mejor.pm) + '</b> de lo facturado.';
+  }
+
   function pintarTipos(d) {
-    var ls=el('rsm-tipos-lista');if(!ls)return;
-    var filas=d.porClase.filter(function(k){return k.servicios>0;}).sort(function(a,b){return b.monto-a.monto;});
-    var total=filas.reduce(function(sum,k){return sum+k.monto;},0);
-    ls.innerHTML=filas.length?filas.map(function(k){var share=total>0?k.monto*100/total:null;return '<div class="rsm-type-row"><div><b>'+esc(k.nombre)+'</b><strong>'+pesos(k.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,share||0))+'%"></i></div><small>'+miles(k.servicios)+' servicios · '+miles(k.km)+' km facturados · '+(share===null?'Sin participación calculable':pct(share,1)+' del total')+'</small></div>';}).join(''):'<div class="rsm-vacio">Sin servicios en el período.</div>';
+    var ls = el('rsm-tipos-lista'); if (!ls) return;
+    var t = filasTipos(d);
+    if (!t.filas.length) { ls.innerHTML = '<div class="rsm-vacio">Sin servicios en el período.</div>'; return; }
+    var mx = Math.max.apply(null, t.filas.map(function (k) { return Math.max(k.pm, k.ps); })) || 1;
+    var ancho = function (v) { return Math.max(v > 0 ? 1.5 : 0, Math.min(100, v * 100 / mx)).toFixed(1) + '%'; };
+    var lect = lecturaTipos(t);
+    ls.innerHTML =
+      '<div class="rsm-tv-leg" aria-hidden="true"><span><i class="is-fact"></i>% de la facturación</span><span><i class="is-serv"></i>% de los servicios</span></div>' +
+      t.filas.map(function (k) {
+        return '<div class="rsm-tv-row" title="' + esc(k.nombre + ': ' + pesos(k.monto) + ' en ' + miles(k.servicios) + (k.servicios === 1 ? ' servicio' : ' servicios')) + '">' +
+          '<div class="rsm-tv-name"><b>' + esc(k.nombre) + '</b><small>' + pesosCorto(k.porServ) + ' / serv.</small></div>' +
+          '<div class="rsm-tv-bars" aria-hidden="true"><i style="width:' + ancho(k.pm) + ';background:' + k.color + '"></i><i class="is-serv" style="width:' + ancho(k.ps) + '"></i></div>' +
+          '<div class="rsm-tv-val"><b>' + pct(k.pm) + '</b><span>' + pct(k.ps) + '</span></div>' +
+          '<span class="rsm-sr-only">' + esc(k.nombre) + ': ' + pct(k.pm) + ' de la facturación, ' + pct(k.ps) + ' de los servicios, ' + pesos(k.porServ) + ' por servicio.</span>' +
+        '</div>';
+      }).join('') +
+      (lect ? '<p class="rsm-tv-lectura">' + lect + '</p>' : '');
   }
 
   /* ── evolución de facturado ───────────────────────────────────────────── */
@@ -653,9 +739,12 @@
     return zoomEvol;
   }
 
+  /* Diario: sólo lo necesario para leer el gráfico (este período, el anterior y el tooltip con la diferencia).
+     El zoom, el minimapa y los rangos largos viven en la pestaña Tendencia («Ver tendencia →»). */
+  var EVOL_SIMPLE = true;
   function pintarEvolucion(d) {
     var Z = global.AuxZoom, h = evol.hist;
-    if (!Z || !h || !evol.per) { pintarEvolucionPeriodo(d); return; }
+    if (EVOL_SIMPLE || !Z || !h || !evol.per) { pintarEvolucionPeriodo(d); return; }
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
     var hoy = Z.diasEntre(h.desde, Z.hoy());
@@ -679,10 +768,10 @@
         labels: w.labels,
         datasets: [{
           label: 'Actual', data: w.act, borderColor: chartColors().accent, backgroundColor: grad,
-          fill: true, borderWidth: 2, tension: 0, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
+          fill: true, borderWidth: 2.2, tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 5
         }, {
           label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: chartColors().previous,
-          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
+          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 3
         }]
       },
       options: {
@@ -696,6 +785,12 @@
               if (c.datasetIndex === 0) return ' Actual: ' + pesos(c.parsed.y);
               var prev = L.cs[L.i0 + c.dataIndex - c.chart.data.labels.length];
               return ' Anterior' + (prev ? ' (' + prev.et + ')' : '') + ': ' + pesos(c.parsed.y);
+            },
+            footer: function (it) {
+              var a = it.find(function (x) { return x.datasetIndex === 0; }), b = it.find(function (x) { return x.datasetIndex === 1; });
+              if (!a || !b || !(b.parsed.y > 0) || a.parsed.y == null) return '';
+              var v = (a.parsed.y - b.parsed.y) * 100 / b.parsed.y;
+              return 'Diferencia: ' + (v >= 0 ? '+' : '') + v.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' %';
             } } }
         },
         scales: {
@@ -715,45 +810,189 @@
   function pintarEvolucionPeriodo(d) {
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
-    var act = d.porDia.actual, ant = d.porDia.anterior;
-    pintarDatosEvol(etiquetasDias(d,Math.max(act.length,ant.length)),act,ant);
-    if (!cv || typeof global.Chart === 'undefined') return;
-    var n = Math.max(act.length, ant.length);
+    var act = d.porDia.actual.slice(), ant = d.porDia.anterior;
+    var n = Math.max(act.length, ant.length), hechos = diasTranscurridos(d, act.length || n);
+    for (var i = hechos; i < act.length; i++) act[i] = null;          /* los días que todavía no pasaron no son «cero» */
+    var etiquetas = etiquetasDias(d, n);
+    pintarDatosEvol(etiquetas, act, ant);
     var hayAnt = ant.some(function (v) { return v > 0; });
-    var ctx = cv.getContext('2d');
-    var grad = ctx.createLinearGradient(0, 0, 0, cv.clientHeight || 200);
-    grad.addColorStop(0, 'rgba(245,166,35,0.28)');
-    grad.addColorStop(1, 'rgba(245,166,35,0)');
-    var series = [{
-      label: 'Período actual', data: act, borderColor: chartColors().accent, backgroundColor: grad,
-      fill: true, borderWidth: 2, tension: 0, pointRadius: 0, pointHoverRadius: 4
-    }];
-    if (hayAnt) series.push({
-      label: 'Período anterior', data: ant, borderColor: chartColors().previous,
-      borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
-    });
+    var key = el('rsm-previous-key'); if (key) key.hidden = !hayAnt;
+    var sub = el('rsm-evol-sub');
+    if (sub) sub.textContent = 'Facturado por día';
+    if (!cv || typeof global.Chart === 'undefined') return;
+    var c = chartColors(), grad = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.clientHeight || 220);
+    grad.addColorStop(0, 'rgba(255,179,71,0.30)'); grad.addColorStop(1, 'rgba(255,179,71,0)');
+    var series = [{ label: 'Este período', data: act, borderColor: c.accent, backgroundColor: grad, fill: true, borderWidth: 2.2,
+      tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, spanGaps: false }];
+    if (hayAnt) series.push({ label: 'Período anterior', data: ant, borderColor: c.previous, borderDash: [4, 4], fill: false, borderWidth: 1.4,
+      tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 3 });
     chartEvol = new global.Chart(cv, {
       type: 'line',
-      data: { labels: etiquetasDias(d, n), datasets: series },
+      data: { labels: etiquetas, datasets: series },
       options: {
-        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
+        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? false : { duration: 180 },
         interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 6 } },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: function (c) { return ' ' + c.dataset.label + ': ' + pesos(c.parsed.y); } } }
+          tooltip: { displayColors: false, padding: 10, callbacks: {
+            title: function (it) { return it.length ? it[0].label : ''; },
+            label: function (x) { return x.parsed.y == null ? null : (x.datasetIndex === 0 ? 'Este período: ' : 'Anterior: ') + pesos(x.parsed.y); },
+            footer: function (it) {
+              var a = it.find(function (x) { return x.datasetIndex === 0; }), b = it.find(function (x) { return x.datasetIndex === 1; });
+              if (!a || !b || a.parsed.y == null || !(b.parsed.y > 0)) return '';
+              var v = (a.parsed.y - b.parsed.y) * 100 / b.parsed.y;
+              return (v >= 0 ? '▲ +' : '▼ ') + v.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' % vs. anterior';
+            } } }
         },
         scales: {
           x: { grid: { display: false }, border: { display: false },
-               ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } },
-          y: { beginAtZero: true, border: { display: false },
-               grid: { color: chartColors().grid, borderDash: [3, 3] },
-               ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 5,
-                        callback: function (v) { return pesosCorto(v).replace('$', '$ '); } } }
+               ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+          y: { beginAtZero: true, border: { display: false }, grid: { color: c.grid },
+               ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 4, callback: function (v) { return v ? pesosCorto(v).replace('$', '$ ') : '0'; } } }
         }
       }
     });
-    var sub = el('rsm-evol-sub');
-    if (sub) sub.textContent = hayAnt ? 'Línea punteada: período anterior' : 'Sin facturación en el período anterior para comparar';
+  }
+
+  /* ── evolución: Acumulado (ritmo y proyección) y Por prestadora (minigráficos) ── */
+  var evolProv = { clave: null, datos: null, cargando: null };
+  function escalaLineal(d0, d1, r0, r1) { return function (v) { return d1 === d0 ? r0 : r0 + (v - d0) * (r1 - r0) / (d1 - d0); }; }
+  function pasoLindo(max, n) {
+    var bruto = (max || 1) / (n || 4), p = Math.pow(10, Math.floor(Math.log10(bruto))), f = bruto / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function acumular(a) { var s = 0; return a.map(function (v) { return s += num(v); }); }
+  /* Días ya transcurridos del período (con datos). Si el período terminó, son todos. */
+  function diasTranscurridos(d, largo) {
+    if (!d.desde || !largo) return largo;
+    var ini = new Date(String(d.desde).slice(0, 10) + 'T12:00:00'), hoy = new Date();
+    var n = Math.floor((Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) - Date.UTC(ini.getFullYear(), ini.getMonth(), ini.getDate())) / 86400000) + 1;
+    return Math.max(1, Math.min(largo, n));
+  }
+  function svgEjes(W, H, m, max, ticksX, sx) {
+    var paso = pasoLindo(max, 4), tope = Math.ceil(max / paso) * paso || paso, sy = escalaLineal(0, tope, H - m.b, m.t), out = '';
+    for (var v = 0; v <= tope + 1e-6; v += paso) {
+      out += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(v) + '" y2="' + sy(v) + '" class="rsm-ev-grid"/>' +
+        '<text x="' + (m.l - 8) + '" y="' + (sy(v) + 4) + '" text-anchor="end" class="rsm-ev-tick">' + esc(v ? pesosCorto(v).replace('$', '$ ') : '0') + '</text>';
+    }
+    ticksX.forEach(function (t) { out += '<text x="' + sx(t.i) + '" y="' + (H - m.b + 17) + '" text-anchor="middle" class="rsm-ev-tick">' + esc(t.et) + '</text>'; });
+    return { html: out, sy: sy };
+  }
+  function ticksDias(d, n, cuantos) {
+    var et = etiquetasDias(d, n), out = [], k = Math.max(1, Math.ceil((n - 1) / Math.max(1, cuantos - 1)));
+    for (var i = 0; i < n; i += k) out.push({ i: i, et: et[i] });
+    if (out[out.length - 1].i !== n - 1) out.push({ i: n - 1, et: et[n - 1] });
+    return out;
+  }
+  function pintarAcumulado(d) {
+    var box = el('rsm-evol-alt'); if (!box) return;
+    var d3 = global.d3;
+    if (!(d3 && d3.line)) { box.innerHTML = '<div class="rsm-vacio">Cargando gráfico…</div>'; cargarD3().then(function () { if (estado.evolVista === 'acum' && estado.res === d) pintarAcumulado(d); }).catch(function () { box.innerHTML = '<div class="rsm-vacio">No se pudo cargar el gráfico.</div>'; }); return; }
+    var act = d.porDia.actual, ant = d.porDia.anterior, n = Math.max(act.length, ant.length);
+    if (!d.hayDatos || !n) { box.innerHTML = '<div class="rsm-vacio">Sin facturación en el período.</div>'; return; }
+    var hechos = diasTranscurridos(d, act.length || n), ca = acumular(act.slice(0, hechos)), cp = acumular(ant.slice(0, n));
+    var hoyV = ca[hechos - 1] || 0, antV = cp[Math.min(hechos, cp.length) - 1] || 0, finAnt = cp[cp.length - 1] || 0;
+    var proyecta = hechos < n && hechos >= 3, proy = proyecta ? hoyV / hechos * n : null;
+    var dif = antV > 0 ? (hoyV - antV) * 100 / antV : null;
+    var W = Math.max(280, box.clientWidth || 600), angosto = W < 520, H = angosto ? 230 : 280;
+    var m = { t: 18, r: angosto ? 12 : 96, b: 26, l: angosto ? 44 : 56 };
+    var sx = escalaLineal(0, Math.max(1, n - 1), m.l, W - m.r);
+    var ejes = svgEjes(W, H, m, Math.max(proy || 0, finAnt, hoyV) * 1.06, ticksDias(d, n, angosto ? 3 : 7), sx), sy = ejes.sy;
+    var curva = d3.curveMonotoneX, linea = d3.line().x(function (v, i) { return sx(i); }).y(sy).curve(curva);
+    var area = d3.area().x(function (v, i) { return sx(i); }).y0(H - m.b).y1(sy).curve(curva);
+    var xi = sx(hechos - 1), yi = sy(hoyV);
+    var svg = '<svg class="rsm-ev-svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Facturación acumulada del período contra el período anterior">' +
+      '<defs><linearGradient id="rsm-ev-ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb347" stop-opacity=".32"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></linearGradient></defs>' +
+      (hechos < n ? '<rect x="' + xi + '" y="' + m.t + '" width="' + (W - m.r - xi) + '" height="' + (H - m.b - m.t) + '" class="rsm-ev-futuro"/>' : '') + ejes.html +
+      (cp.length ? '<path d="' + linea(cp) + '" class="rsm-ev-ant" stroke-dasharray="4 4"/>' : '') +
+      '<path d="' + area(ca) + '" fill="url(#rsm-ev-ga)"/><path d="' + linea(ca) + '" class="rsm-ev-act"/>' +
+      (proyecta ? '<line x1="' + xi + '" y1="' + yi + '" x2="' + sx(n - 1) + '" y2="' + sy(proy) + '" class="rsm-ev-proy"/>' : '') +
+      (antV > 0 ? '<line x1="' + xi + '" x2="' + xi + '" y1="' + yi + '" y2="' + sy(antV) + '" class="rsm-ev-dif ' + (hoyV >= antV ? 'is-up' : 'is-down') + '"/>' : '') +
+      '<circle cx="' + xi + '" cy="' + yi + '" r="5.5" class="rsm-ev-hoy"/>' +
+      '<text x="' + Math.min(xi, W - m.r - 40) + '" y="' + (yi - 12) + '" text-anchor="middle" class="rsm-ev-lbl is-acc">' + esc((hechos < n ? 'Hoy · ' : '') + pesosCorto(hoyV).replace('$', '$ ')) + '</text>' +
+      (!angosto && proyecta ? '<text x="' + (W - m.r + 8) + '" y="' + (sy(proy) + 4) + '" class="rsm-ev-lbl is-acc">≈ ' + esc(pesosCorto(proy).replace('$', '$ ')) + '</text>' : '') +
+      (!angosto && finAnt > 0 ? '<text x="' + (W - m.r + 8) + '" y="' + (sy(finAnt) + 4) + '" class="rsm-ev-lbl">Ant. ' + esc(pesosCorto(finAnt).replace('$', '$ ')) + '</text>' : '') +
+      '</svg>';
+    var lectura = '<p class="rsm-ev-lectura"><b>' + esc(pesos(hoyV)) + '</b> ' + (hechos < n ? 'facturado al día ' + hechos : 'facturado en el período') +
+      (dif == null ? '' : ' · <span class="' + (dif >= 0 ? 'is-up' : 'is-down') + '">' + (dif >= 0 ? '▲ +' : '▼ ') + esc(dif.toLocaleString('es-AR', { maximumFractionDigits: 1 })) + ' %</span> vs. el período anterior al mismo día') +
+      (proyecta ? '<br>Al ritmo actual cerraría en <b class="is-acc">' + esc(pesosCorto(proy).replace('$', '$ ')) + '</b>' + (finAnt > 0 ? ' · el anterior cerró en ' + esc(pesosCorto(finAnt).replace('$', '$ ')) : '') : '') + '</p>';
+    box.innerHTML = lectura + svg + '<div class="rsm-chart-key"><span><i></i>Actual</span>' + (proyecta ? '<span><i class="is-proy"></i>Proyección</span>' : '') + '<span><i class="is-previous"></i>Anterior · igual duración</span></div>';
+  }
+
+  /* Por prestadora: la misma consulta del Resumen, una vez por cada una de las 5 principales; «Otras» es el resto. */
+  function pintarPrestadorasEvol(d) {
+    var box = el('rsm-evol-alt'); if (!box) return;
+    var d3 = global.d3;
+    if (!(d3 && d3.line)) { box.innerHTML = '<div class="rsm-vacio">Cargando gráfico…</div>'; cargarD3().then(function () { if (estado.evolVista === 'prest' && estado.res === d) pintarPrestadorasEvol(d); }).catch(function () {}); return; }
+    var rows = rankingRows(d).filter(function (r) { return r.monto > 0; });
+    if (!d.hayDatos || !rows.length) { box.innerHTML = '<div class="rsm-vacio">Sin facturación para comparar prestadoras.</div>'; return; }
+    var f = estado.filtros || {}, ids = rows.filter(function (r) { return r.id != null; }).map(function (r) { return String(r.id); });
+    var clave = JSON.stringify([f.desde, f.hasta, f.bases, ids]);
+    if (evolProv.clave !== clave) {
+      evolProv.clave = clave; evolProv.datos = null;
+      var base = { p_desde: f.desde || null, p_hasta: f.hasta || null, p_bases: paramArray(f.bases) };
+      evolProv.cargando = Promise.all(ids.map(function (id) {
+        return rpc(RPC_RES, Object.assign({ p_empresas: [id] }, base)).then(function (r) {
+          return { id: id, actual: lista(r && r.por_dia && r.por_dia.actual).map(num), anterior: lista(r && r.por_dia && r.por_dia.anterior).map(num) };
+        });
+      })).then(function (res) { if (evolProv.clave === clave) { evolProv.datos = res; if (estado.evolVista === 'prest' && estado.res) pintarPrestadorasEvol(estado.res); } })
+        .catch(function (e) { if (global.console) console.warn('[resumen] evolución por prestadora', e); if (evolProv.clave === clave) { evolProv.clave = null; box.innerHTML = '<div class="rsm-vacio">No se pudo cargar la evolución por prestadora. Volvé a abrir esta vista para reintentar.</div>'; } });
+    }
+    if (!evolProv.datos) { box.innerHTML = '<div class="rsm-vacio">Cargando la evolución de cada prestadora…</div>'; return; }
+    var porId = {}; evolProv.datos.forEach(function (s) { porId[s.id] = s; });
+    var n = Math.max(d.porDia.actual.length, d.porDia.anterior.length), hechos = diasTranscurridos(d, d.porDia.actual.length || n);
+    var series = rows.map(function (r) {
+      if (r.id != null) { var s = porId[String(r.id)] || { actual: [], anterior: [] }; return { r: r, actual: s.actual, anterior: s.anterior }; }
+      var resta = function (tot, k) { return tot.map(function (v, i) { return Math.max(0, num(v) - evolProv.datos.reduce(function (a, s) { return a + num(s[k][i]); }, 0)); }); };
+      return { r: r, actual: resta(d.porDia.actual, 'actual'), anterior: resta(d.porDia.anterior, 'anterior') };
+    });
+    var colores = coloresPrestadoras(d), color = function (r) { return r.id == null ? COLOR_OTROS : (colores[String(r.id)] || COLOR_OTROS); };
+    var Wm = 240, Hm = 58;
+    box.innerHTML = '<div class="rsm-ev-grid-prov">' + series.map(function (s, k) {
+      var a = s.actual.slice(0, hechos).reduce(function (x, v) { return x + num(v); }, 0), b = s.anterior.slice(0, hechos).reduce(function (x, v) { return x + num(v); }, 0);
+      var dv = b > 0 ? (a - b) * 100 / b : null, c = color(s.r), max = Math.max.apply(null, [1].concat(s.actual, s.anterior).map(num));
+      var sx = escalaLineal(0, Math.max(1, n - 1), 2, Wm - 2), sy = escalaLineal(0, max * 1.1, Hm - 2, 4);
+      var ln = d3.line().x(function (v, i) { return sx(i); }).y(sy).curve(d3.curveMonotoneX), ar = d3.area().x(function (v, i) { return sx(i); }).y0(Hm).y1(sy).curve(d3.curveMonotoneX);
+      var cur = s.actual.slice(0, hechos), gid = 'rsm-evp-g' + k;
+      var on = estado.filtros && lista(estado.filtros.empresas).map(String).indexOf(String(s.r.id)) >= 0;
+      return '<' + (s.r.id != null ? 'button type="button" data-evol-prov="' + esc(s.r.id) + '"' : 'div') + ' class="rsm-evp' + (on ? ' is-on' : '') + '" style="--c:' + c + '">' +
+        '<span class="rsm-evp-n"><i></i>' + esc(s.r.nombre) + '</span>' +
+        '<span class="rsm-evp-v">' + esc(pesosCorto(a).replace('$', '$ ')) + (dv == null ? '' : '<em class="' + (dv >= 0 ? 'is-up' : 'is-down') + '">' + (dv >= 0 ? '▲ +' : '▼ ') + esc(dv.toLocaleString('es-AR', { maximumFractionDigits: 1 })) + ' %</em>') + '</span>' +
+        '<span class="rsm-evp-s">vs. ' + esc(pesosCorto(b).replace('$', '$ ')) + ' en el período anterior</span>' +
+        '<svg viewBox="0 0 ' + Wm + ' ' + Hm + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c + '" stop-opacity=".35"/><stop offset="1" stop-color="' + c + '" stop-opacity="0"/></linearGradient></defs>' +
+          (s.anterior.length ? '<path d="' + ln(s.anterior.slice(0, n)) + '" class="rsm-evp-ant"/>' : '') +
+          (cur.length > 1 ? '<path d="' + ar(cur) + '" fill="url(#' + gid + ')"/><path d="' + ln(cur) + '" fill="none" stroke="' + c + '" stroke-width="2" vector-effect="non-scaling-stroke"/>' : '') + '</svg>' +
+        '</' + (s.r.id != null ? 'button' : 'div') + '>';
+    }).join('') + '</div><p class="rsm-ev-nota">Tocá una prestadora para filtrar el Resumen por ella. Línea punteada: período anterior.</p>';
+  }
+  function aplicarVistaEvol() {
+    var card = el('rsm-evol-card'), alt = el('rsm-evol-alt'), v = estado.evolVista || 'diario';
+    if (!card || !alt) return;
+    card.dataset.vista = v;
+    card.querySelectorAll('[data-evol-vista]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-evol-vista') === v)); });
+    alt.hidden = v === 'diario';
+    if (v === 'diario') { if (chartEvol) chartEvol.resize(); return; }
+    if (!estado.res) return;
+    if (v === 'acum') pintarAcumulado(estado.res); else pintarPrestadorasEvol(estado.res);
+  }
+  function montarVistasEvol() {
+    var card = el('rsm-evol-card');
+    if (!card || card.dataset.vistasListas === '1') return;
+    card.dataset.vistasListas = '1';
+    card.addEventListener('click', function (ev) {
+      var b = ev.target.closest && ev.target.closest('[data-evol-vista]');
+      if (b) { estado.evolVista = b.getAttribute('data-evol-vista'); aplicarVistaEvol(); return; }
+      var p = ev.target.closest && ev.target.closest('[data-evol-prov]');
+      if (p && global.AuxDash && typeof global.AuxDash.setFiltro === 'function') {
+        var id = p.getAttribute('data-evol-prov'), ya = estado.filtros && lista(estado.filtros.empresas).map(String).indexOf(id) >= 0;
+        global.AuxDash.setFiltro('empresas', ya ? [] : [id]);
+      }
+    });
+    if (typeof global.ResizeObserver === 'function') {
+      var ancho = 0, alt = el('rsm-evol-alt');
+      if (alt) new global.ResizeObserver(function () { var w = alt.clientWidth; if (Math.abs(w - ancho) > 30 && estado.evolVista === 'acum' && estado.res) { ancho = w; pintarAcumulado(estado.res); } else ancho = w; }).observe(alt);
+    }
   }
 
   /* ── eficiencia operativa ─────────────────────────────────────────────── */
@@ -794,25 +1033,11 @@
 
   /* ── prestadoras y sus bases ──────────────────────────────────────────── */
 
-  /* Km facturados sobre km reales del mismo subconjunto (los servicios que
-     tienen km real). Por encima de 100% se cobra más de lo que se recorre. */
-  function ratio(f) { return f.kmReal > 0 ? f.kmComp * 100 / f.kmReal : null; }
-
-  function claseRatio(v) {
-    if (v == null) return '';
-    if (v >= 115) return 'is-good';
-    if (v >= 100) return 'is-warn';
-    return 'is-bad';
-  }
-
   function celdasFila(f) {
-    var rt = ratio(f);
     return '<td class="rsm-num">' + pesos(f.monto) + '</td>' +
       '<td class="rsm-num">' + miles(f.servicios) + '</td>' +
-      '<td class="rsm-num">' + (f.kmReal > 0 ? miles(f.kmReal) + ' km' : GUION) + '</td>' +
       '<td class="rsm-num">' + (f.servicios ? pesos(f.monto / f.servicios) : GUION) + '</td>' +
-      '<td class="rsm-num rsm-muted">' + (f.servicios && f.kmReal > 0 ? miles(f.kmReal / f.servicios) : GUION) + '</td>' +
-      '<td class="rsm-num rsm-ratio ' + claseRatio(rt) + '">' + (rt == null ? GUION : pct(rt, 1)) + '</td>';
+      '<td class="rsm-num">' + (f.km > 0 ? miles(f.km) + ' km' : GUION) + '</td>';
   }
 
   function pintarTabla(d) {
@@ -825,9 +1050,9 @@
     var colores = coloresPrestadoras(d);
     var total = d.empresas.reduce(function (s, e) { return s + e.monto; }, 0);
     var tot = d.empresas.reduce(function (s, e) {
-      s.monto += e.monto; s.servicios += e.servicios; s.kmReal += e.kmReal; s.kmComp += e.kmComp;
+      s.monto += e.monto; s.servicios += e.servicios; s.km += e.km;
       return s;
-    }, { monto: 0, servicios: 0, kmReal: 0, kmComp: 0 });
+    }, { monto: 0, servicios: 0, km: 0 });
 
     var filas = d.empresas.map(function (e, i) {
       var color = colores[String(e.id)];
@@ -849,23 +1074,18 @@
       return html;
     }).join('');
 
-    var rtTot = ratio(tot);
     n.innerHTML = '<div class="rsm-tabla-wrap"><table class="rsm-tabla">' +
       '<thead><tr><th>Prestadora</th><th>Participación</th><th class="rsm-num">Facturado</th>' +
-      '<th class="rsm-num">Servicios</th><th class="rsm-num">Km reales</th><th class="rsm-num">$/servicio</th>' +
-      '<th class="rsm-num">Km/serv.</th><th class="rsm-num">Ratio f/r</th></tr></thead>' +
+      '<th class="rsm-num">Servicios</th><th class="rsm-num">$/servicio</th><th class="rsm-num">Km facturados</th></tr></thead>' +
       '<tbody>' + filas + '</tbody>' +
       '<tfoot><tr><td><b>Total</b></td><td class="rsm-muted">' + d.empresas.length +
         (d.empresas.length === 1 ? ' prestadora activa' : ' prestadoras activas') + '</td>' +
         '<td class="rsm-num"><b>' + pesos(tot.monto) + '</b></td>' +
         '<td class="rsm-num"><b>' + miles(tot.servicios) + '</b></td>' +
-        '<td class="rsm-num"><b>' + (tot.kmReal > 0 ? miles(tot.kmReal) + ' km' : GUION) + '</b></td>' +
         '<td class="rsm-num"><b>' + (tot.servicios ? pesos(tot.monto / tot.servicios) : GUION) + '</b></td>' +
-        '<td class="rsm-num rsm-muted">' + (tot.servicios && tot.kmReal > 0 ? miles(tot.kmReal / tot.servicios) : GUION) + '</td>' +
-        '<td class="rsm-num rsm-ratio ' + claseRatio(rtTot) + '"><b>' + (rtTot == null ? GUION : pct(rtTot, 1)) + '</b></td>' +
+        '<td class="rsm-num"><b>' + (tot.km > 0 ? miles(tot.km) + ' km' : GUION) + '</b></td>' +
       '</tr></tfoot></table></div>' +
-      '<p class="rsm-nota">Ratio f/r = km facturados sobre km reales recorridos, en los servicios que tienen km real. ' +
-      'Por encima de 100% se cobra más de lo que se recorre; cuanto más bajo, más ajustado. Tocá una prestadora para ver sus bases.</p>';
+      '<p class="rsm-nota">Tocá una prestadora para ver sus bases.</p>';
   }
 
   function engancharTabla() {
@@ -915,9 +1135,10 @@
   function pintar(d) {
     pintarKpis(d);
     pintarRanking(d);
-    if(el('rsm-geography')?.open) pintarMapa(d);
+    pintarMapa(d);
     pintarTipos(d);
     pintarEvolucion(d);
+    aplicarVistaEvol();
     pintarEficiencia(d);
     pintarTabla(d);
   }
@@ -976,8 +1197,8 @@
   function montar() {
     montarFiltros();
     montarControlesMapa();
-    var geo=el('rsm-geography');if(geo&&!geo.dataset.bound){geo.dataset.bound='1';geo.addEventListener('toggle',function(){if(geo.open&&estado.res){pintarMapa(estado.res);if(mapa)mapa.resize();}});}
-    var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail){detail.open=true;detail.querySelector('summary')?.focus();detail.scrollIntoView({block:'start',behavior:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}});}
+    montarVistasEvol();
+    var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail)detail.scrollIntoView({block:'start',behavior:global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
 
     engancharTabla();
     pintarKpis(normalizar(null, null));
@@ -1002,6 +1223,10 @@
   global.AuxDashResumen = {
     normalizar: normalizar,
     rankingRows: rankingRows,
+    pintarRanking: pintarRanking,
+    filasTipos: filasTipos,
+    pintarTipos: pintarTipos,
+    lecturaTipos: lecturaTipos,
     cobertura: function (d, radio) {
       var prev = estado.radio;
       if (radio != null) estado.radio = radio;
@@ -1009,8 +1234,6 @@
       estado.radio = prev;
       return c;
     },
-    ratio: ratio,
-    realesSobreFacturados: realesSobreFacturados,
     rendimientoFlota: rendimientoFlota,
     normalizarFlota: normalizarFlota
   };

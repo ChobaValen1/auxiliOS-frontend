@@ -225,7 +225,9 @@ async function placeDetails(body: Record<string, any>, apiKey: string) {
   };
 }
 
-type RouteMode = "base_origin_destination_base" | "base_origin" | "origin_destination";
+// Servicios enganchados: el primero no vuelve a la base (base_origin_destination) y el último no sale de ella
+// (origin_destination_base). Los del medio van origin_destination.
+type RouteMode = "base_origin_destination_base" | "base_origin" | "origin_destination" | "base_origin_destination" | "origin_destination_base";
 
 function routeWaypoints(body: Record<string, any>) {
   const mode = String(body.routeMode || "base_origin_destination_base") as RouteMode;
@@ -238,6 +240,12 @@ function routeWaypoints(body: Record<string, any>) {
   }
   if (mode === "origin_destination") {
     return { mode, origin: latLngWaypoint(origin), destination: latLngWaypoint(destination), intermediates: [] };
+  }
+  if (mode === "base_origin_destination") {
+    return { mode, origin: latLngWaypoint(base), destination: latLngWaypoint(destination), intermediates: [latLngWaypoint(origin)] };
+  }
+  if (mode === "origin_destination_base") {
+    return { mode, origin: latLngWaypoint(origin), destination: latLngWaypoint(base), intermediates: [latLngWaypoint(destination)] };
   }
   if (mode !== "base_origin_destination_base") throw new Error("Modo de recorrido inválido");
   return {

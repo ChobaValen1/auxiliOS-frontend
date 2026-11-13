@@ -244,3 +244,32 @@
  .osm-rec-note{font-size:9px}.osm-rec-excluded{font-size:8px}
 }
 @media(max-width:700px){#screen-operaciones.os-map-mode .os-filters .auxf-clear{font-size:0;min-width:24px;padding:0 3px}#screen-operaciones.os-map-mode .os-filters .auxf-clear:before{content:'×';font-size:18px}#screen-operaciones.os-map-mode .os-filters .auxf-clear b{display:none}}
+
+/* Servicios enganchados */
+.osm-chain-mark{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:5px;color:var(--ax-info,#5aa9ff);vertical-align:middle}
+.osm-chain-mark .ax-icon{width:13px;height:13px;transform:rotate(-35deg)}
+.osm-pin-clip{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;width:18px;height:18px;border:1.5px solid var(--ax-surface);border-radius:50%;background:var(--ax-info,#5aa9ff);color:#0b1220;pointer-events:none}
+.osm-pin-clip .ax-icon{width:11px;height:11px}
+.osm-chain{display:grid;gap:6px;margin:12px 0 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--ax-info,#5aa9ff) 40%,transparent);border-radius:10px;background:color-mix(in srgb,var(--ax-info,#5aa9ff) 7%,transparent)}
+.osm-chain h4{display:flex;align-items:center;gap:6px;margin:0;color:var(--ax-info,#5aa9ff);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.osm-chain h4 .ax-icon{width:14px;height:14px}
+.osm-chain-link{display:grid;grid-template-columns:1fr auto;grid-template-areas:"label icon" "code icon" "route icon";align-items:center;gap:0 8px;width:100%;padding:7px 8px;border:1px solid var(--ax-border-strong,#343a4d);border-radius:8px;background:var(--ax-surface,#161a24);color:var(--ax-text,#e8ebf4);text-align:left;cursor:pointer;transition:border-color .16s ease,background .16s ease}
+.osm-chain-link:hover,.osm-chain-link:focus-visible{border-color:var(--ax-info,#5aa9ff);background:var(--ax-surface-3,#232838)}
+.osm-chain-link>span{grid-area:label;color:var(--ax-text-3,#8a91a6);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.osm-chain-link>b{grid-area:code;font-size:12px}
+.osm-chain-link>small{grid-area:route;color:var(--ax-text-2,#b4bacb);font-size:11px}
+.osm-chain-link>.ax-icon{grid-area:icon;width:14px;height:14px;color:var(--ax-info,#5aa9ff)}
+.osm-chain-route{display:grid;gap:1px;margin:0}
+.osm-chain-route>span{color:var(--ax-text-3,#8a91a6);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.osm-chain-route>b{color:var(--ax-info,#5aa9ff);font-size:12px}
+.osm-chain>small{color:var(--ax-text-3,#8a91a6)}
+
+/* Servicio con relevo: violeta, para distinguirlo del enganche (celeste). */
+.osm-relay-mark{color:#a78bfa}.osm-relay-mark.is-done{color:var(--ax-ok,#3ddc84)}
+.osm-pin-clip.is-relay{background:#a78bfa;right:auto;left:-7px;color:#fff}
+.osm-relay{border-color:color-mix(in srgb,#a78bfa 45%,transparent);background:color-mix(in srgb,#a78bfa 7%,transparent)}
+.osm-relay h4{color:#a78bfa}
+.osm-relay-leg{display:grid;gap:1px;margin:0}
+.osm-relay-leg>span{color:var(--ax-text-3,#8a91a6);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.osm-relay-leg>b{font-size:12px}
+.osm-relay-state>b{color:var(--ax-warn,#f5a623)}.osm-relay-state.is-done>b{color:var(--ax-ok,#3ddc84)}

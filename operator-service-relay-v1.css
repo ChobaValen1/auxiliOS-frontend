@@ -1,0 +1,31 @@
+/* Servicio con relevo · formulario del operador. Mismo lugar y mismo interruptor que «Servicio enganchado». */
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-relay-switch:empty,
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-relay-switch[hidden] { display: none; }
+.osv4-reactive #osv4-relay { display: grid; gap: 10px; padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+.osv4-reactive #osv4-relay[hidden] { display: none; }
+.osv4-reactive .osv4-relay-field { display: grid; gap: 4px; position: relative; min-width: 0; }
+.osv4-reactive .osv4-relay-field > span { color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+.osv4-reactive .osv4-relay-field input, .osv4-reactive .osv4-relay-field select { box-sizing: border-box; width: 100%; min-width: 0; }
+.osv4-reactive .osv4-relay-field select[aria-invalid="true"] { border-color: var(--ax-warn); }
+.osv4-reactive .osv4-relay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 640px) { .osv4-reactive .osv4-relay-grid { grid-template-columns: 1fr; } }
+.osv4-reactive .osv4-relay-status { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osv4-reactive .osv4-relay-status.is-ok { color: var(--ax-ok); font-weight: var(--ax-fw-medium); }
+.osv4-reactive .osv4-relay-status.is-warn { color: var(--ax-warn); }
+.osv4-reactive .osv4-relay-suggestions { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin: 4px 0 0; padding: 4px; list-style: none; max-height: 240px; overflow: auto;
+  border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+.osv4-reactive .osv4-relay-suggestions[hidden] { display: none; }
+.osv4-reactive .osv4-relay-suggestions button { display: grid; gap: 1px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ax-text); text-align: left; cursor: pointer; }
+.osv4-reactive .osv4-relay-suggestions button:hover, .osv4-reactive .osv4-relay-suggestions button:focus-visible { background: var(--ax-surface-3); }
+.osv4-reactive .osv4-relay-suggestions small { color: var(--ax-text-3); }
+.osv4-reactive .osv4-relay-suggestions .is-note { padding: 8px 10px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osv4-reactive .osv4-relay-suggestions .is-error { color: var(--ax-danger); }
+.osv4-reactive .osv4-relay-note { margin: 0; padding: 8px 10px; border-radius: var(--ax-radius); background: color-mix(in srgb, #a78bfa 10%, transparent); color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+.osv4-reactive .osv4-relay-note b { color: #a78bfa; }
+.osv4-reactive .osv4-relay-truck { display: grid; gap: 1px; min-height: var(--ax-h, 36px); align-content: center; padding: 6px 10px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osv4-reactive .osv4-relay-truck b { color: var(--ax-text); font-size: var(--ax-fs-sm); }
+.osv4-reactive .osv4-relay-truck.is-ok { border-style: solid; border-color: color-mix(in srgb, var(--ax-ok) 45%, transparent); }
+.osv4-reactive .osv4-relay-truck.is-ok small { color: var(--ax-ok); }
+.osv4-reactive .osv4-relay-truck.is-warn { border-color: color-mix(in srgb, var(--ax-warn) 55%, transparent); color: var(--ax-warn); }
+.osv4-reactive .osv4-relay-truck.is-info { border-style: dashed; color: var(--ax-text-2); }
+.osv4-reactive .osv4-relay-truck.is-info b { color: var(--ax-text); }

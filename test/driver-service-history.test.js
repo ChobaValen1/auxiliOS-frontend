@@ -86,3 +86,24 @@ test('frontend keeps receipt actions separate, and labels service status indepen
  assert.equal(without.id,null);assert.equal(without.historyRemito,null);assert.match(api.stateHTML(without),/Activado · Movida/);
  const withDoc=api.mapEntry({history_state:'finalizado',service:{service_id:'1'},remito:{remito_id:44}},map,date);assert.equal(withDoc.id,44);assert.equal(withDoc.historyRemito.historyEntry,undefined);assert.match(api.stateHTML(withDoc),/Finalizado/);
 });
+test('history marks relay tramos and explains who closed the remito',()=>{
+ const window={};vm.runInNewContext(fs.readFileSync('driver-service-history-v1.js','utf8'),{window});
+ const api=window.DriverServiceHistory,map=r=>({id:r.remito_id,estado:'pendiente'}),date=v=>v;
+ const first=api.mapEntry({key:'s:1',history_state:'finalizado',service:{service_id:'1',relay_role:'primero',relay_other_driver:'Ana'},remito:null},map,date);
+ const second=api.mapEntry({key:'s:2',history_state:'finalizado',service:{service_id:'2',relay_role:'segundo'},remito:{remito_id:5}},map,date);
+ assert.match(api.stateHTML(first),/Relevo · Tramo 1/);assert.match(api.stateHTML(second),/Relevo · Tramo 2/);
+ assert.doesNotMatch(api.stateHTML({historyState:'finalizado',historyService:{}}),/Relevo/);
+});
+test('remito panel and PDF carry the relay tramos',()=>{
+ const panel=fs.readFileSync('remitos-admin-panel-v1.js','utf8'),pdf=fs.readFileSync('remito-pdf-v2.js','utf8');
+ assert.match(panel,/get_operator_service_relay_v1/);assert.match(panel,/fila\('Tramo 1'/);assert.match(panel,/fila\('Tramo 2'/);assert.match(panel,/P\.relevo=null|P\.relevo\]=loaded/);
+ assert.match(pdf,/get_operator_service_relay_v1/);assert.match(pdf,/Servicio con relevo:/);assert.match(pdf,/relay&&relay\.handed_over/);
+});
+test('liquidaciones: el servicio con relevo del 1º chofer se lista y se rotula', () => {
+ const mig = fs.readFileSync('migrations/20261113170000_liquidacion_relevo_primer_chofer_v1.sql', 'utf8');
+ assert.match(mig, /relay_first/);
+ assert.match(mig, /rl\.from_driver_id=c\.driver_id/);
+ assert.match(mig, /'relay_role',case when s\.relay_first then 'primero' end/);
+ assert.match(mig, /case when s\.relay_first then 0 else a\.toll_cash end/);
+ assert.match(fs.readFileSync('payroll-view.js', 'utf8'), /Servicio con relevo · tramo 1/);
+});

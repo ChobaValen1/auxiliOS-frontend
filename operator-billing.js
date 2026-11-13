@@ -384,6 +384,28 @@
     trigger.setAttribute('aria-expanded', 'true');
   }
 
+  /* Servicios enganchados: si se factura uno sin su compañero, se avisa (no se bloquea). */
+  function chainGapKey() { return S.tab === 'services' ? [...S.selected].sort().join(',') : ''; }
+  function refreshChainGaps() {
+    const key = chainGapKey();
+    if (S.chainGapKey === key) return;
+    S.chainGapKey = key;
+    if (!key || !window.AuxEngancheClip?.selectionGaps) { if (S.chainGaps?.length) { S.chainGaps = []; render(); } else S.chainGaps = []; return; }
+    window.AuxEngancheClip.selectionGaps([...S.selected]).then(gaps => {
+      if (S.chainGapKey !== key) return;
+      const same = JSON.stringify(gaps) === JSON.stringify(S.chainGaps || []);
+      S.chainGaps = gaps;
+      if (!same) render();
+    });
+  }
+  function chainGapMarkup() {
+    const gaps = S.tab === 'services' ? (S.chainGaps || []) : [];
+    if (!gaps.length) return '';
+    const parts = gaps.slice(0, 3).map(g => `<b>${esc(g.label || 'Un servicio')}</b> ${esc(g.missing.map(m => `${m.relation} ${m.label || 'otro servicio'}`).join(' y '))}`);
+    const more = gaps.length > 3 ? ` y ${gaps.length - 3} más` : '';
+    return `<div class="ob-chain-gap" role="note">${ico('paperclip')}<span>Servicio enganchado: ${parts.join('; ')}${more}, que no está en esta selección. Podés facturarlos por separado.<small>Cada uno cobra su movida y sus km según el recorrido enganchado.</small></span></div>`;
+  }
+
   function selectionMarkup() {
     if (!selectedCount()) { S.selectionShown = false; return ''; }
     const companies = selectedCompanies();
@@ -415,6 +437,7 @@
         ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
       </div>
       ${hint}
+      ${chainGapMarkup()}
     </section>`;
   }
 
@@ -464,6 +487,7 @@
             ${excesses.length ? `<div><dt>Excedentes de la Prestadora</dt><dd>${excesses.length}</dd></div>` : ''}
           </dl>
           ${tipoChips ? `<div class="ob-invoice-types" aria-label="Servicios por tipo">${tipoChips}</div>` : ''}
+          ${chainGapMarkup()}
         </section>
        </div>
        <div class="ob-invoice-side">
@@ -894,6 +918,8 @@
     S.tabChanged = false;
     restoreView(screen, view);
     tweenAmounts(screen);
+    document.dispatchEvent(new CustomEvent('auxilios:billing-rendered'));
+    refreshChainGaps();
   }
 
   /* Adicionales v2 trae quién cobra y el estado de facturación de cada excedente, sin

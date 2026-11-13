@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-function api(overrides={}){const window={OperatorServices:{concept:()=>({single_address:false}),normalizedStatus:s=>s,canTransitionState:()=>true,hasSignedRemito:s=>s.remito_status==='firmado',...overrides},OperatorServiceLifecycleV2:{quickActions:s=>s.status==='pending'?[['assign','Asignar'],['assign_outsourced','Asignar']]:s.status==='assigned'?[['arrive','Arribado'],['finalize','Finalizar']]:s.status==='at_origin'?[['finalize','Finalizar']]:[]}};vm.runInNewContext(fs.readFileSync('operator-services-map-v1.js','utf8'),{window,document:{readyState:'loading',addEventListener(){}},Intl,URL,console});return window.OperatorServicesMap._test;}
+function api(overrides={},extra={}){const window={OperatorServices:{concept:()=>({single_address:false}),normalizedStatus:s=>s,canTransitionState:()=>true,hasSignedRemito:s=>s.remito_status==='firmado',...overrides},OperatorServiceLifecycleV2:{quickActions:s=>s.status==='pending'?[['assign','Asignar'],['assign_outsourced','Asignar']]:s.status==='assigned'?[['arrive','Arribado'],['finalize','Finalizar']]:s.status==='at_origin'?[['finalize','Finalizar']]:[]}};Object.assign(window,extra);vm.runInNewContext(fs.readFileSync('operator-services-map-v1.js','utf8'),{window,document:{readyState:'loading',addEventListener(){}},Intl,URL,console});return window.OperatorServicesMap._test;}
 const s={service_id:'a',status:'assigned',origin_lat:-34.6,origin_lng:-58.4,destination_lat:-34.7,destination_lng:-58.5};
 test('missing/invalid coordinates never become (0,0), and real zero coordinates are valid',()=>{const a=api();for(const v of [null,undefined,'',' ',NaN,Infinity,'bad'])assert.equal(a.coordinate(v,-58),null);assert.equal(a.coordinate(-34,181),null);assert.equal(a.coordinate(86,0),null);assert.deepEqual({...a.coordinate(0,0)},{lat:0,lng:0});assert.equal(a.pointsFor({...s,origin_lat:null,destination_lat:null}).any,false);assert.equal(a.pointsFor({...s,origin_lat:null}).any,true);assert.equal(a.pointsFor({...s,origin_lat:null}).route,false);});
 test('single address, activated and identical endpoints remain one point without requesting a route',()=>{const a=api();for(const row of [{...s,single_address:true},{...s,driver_activated:true},{...s,destination_lat:s.origin_lat,destination_lng:s.origin_lng}])assert.equal(a.pointsFor(row).route,false);assert.equal(api({concept:()=>({single_address:true})}).pointsFor(s).destination,null);});
@@ -16,3 +16,63 @@ test('single-stop endpoints are valid and completed driver work is excluded',()=
 test('a changed chain invalidates recommendations and already assigned targets are ineligible',()=>{const f=recommendationFixture(),before=f.a.recommendationKey(f.target);f.two.destination_lat=-34.8;assert.notEqual(f.a.recommendationKey(f.target),before);for(const patch of [{status:'assigned'},{assigned_driver_id:'d1'},{driver_activated:true},{logistics_type:'third_party'}])assert.equal(f.a.canRecommend({...f.target,...patch}),false);});
 
 test('visible chain keeps arrived services even after signed paperwork, without changing recommendation workload',()=>{const f=recommendationFixture();f.two.status='at_origin';f.two.done=true;f.two.remito_status='firmado';f.two.document_status='submitted';f.two.driver_multi_service=false;assert.deepEqual(Array.from(f.a.visibleDriverChain('d1'),x=>x.service_id),['one','two']);assert.equal(f.a.recommendationCandidates(f.target).candidates[0].last.service_id,'one');for(const status of ['completed','cancelled']){f.two.status=status;assert.deepEqual(Array.from(f.a.visibleDriverChain('d1'),x=>x.service_id),['one']);}assert.equal(f.a.visibleDriverChain(null).length,0);assert.equal(f.a.visibleDriverChain('other').length,0);});
+
+function chainFixture(){
+  const A={...s,service_id:'A',service_order_number:'SRV-1',destination_lat:-34.7,destination_lng:-58.5};
+  const B={...s,service_id:'B',service_order_number:'SRV-2',origin_lat:-34.72,origin_lng:-58.52,destination_lat:-34.8,destination_lng:-58.6};
+  const C={...s,service_id:'C',service_order_number:'SRV-3'};
+  const details={A:{service:{service_id:'A'},next:{service_id:'B',label:'SRV-2',origin:'Gonnet, Buenos Aires',destination:'Escalada, Buenos Aires',origin_lat:-34.72,origin_lng:-58.52}},
+    B:{service:{service_id:'B'},previous:{service_id:'A',label:'SRV-1',origin:'La Plata, Buenos Aires',destination:'Gonnet, Buenos Aires'}}};
+  const clip={isChained:id=>id in details,cached:id=>details[id]||null,modeOf:id=>id==='A'?'base_origin_destination':'origin_destination_base',ensureDetails:async()=>false};
+  return{A,B,C,clip,api:api({},{AuxEngancheClip:clip,AuxEngancheServicio:{_label:{base_origin_destination:'Base → Origen → Destino',origin_destination_base:'Origen → Destino → Base'}}})};
+}
+test('servicios enganchados: la unión A → B va del destino de A al origen de B, sólo si los dos están en el mapa',()=>{
+  const {A,B,C,api:a}=chainFixture();
+  const links=a.chainLinks([A,B,C]);
+  assert.equal(links.length,1);
+  assert.equal(JSON.stringify([links[0].a,links[0].b]),JSON.stringify(['A','B']));
+  assert.equal(JSON.stringify(links[0].from),JSON.stringify({lat:-34.7,lng:-58.5}));
+  assert.equal(JSON.stringify(links[0].to),JSON.stringify({lat:-34.72,lng:-58.52}));
+  assert.equal(a.chainLinks([A,C]).length,0,'si B no está en la vista no se dibuja una unión colgada');
+});
+test('servicios enganchados: la lista pone a B justo debajo de A, aunque vengan separados',()=>{
+  const {A,B,C,api:a}=chainFixture();
+  assert.equal(a.chainOrdered([B,C,A]).map(x=>x.service_id).join(),'C,A,B');
+  assert.equal(a.chainOrdered([A,C,B]).map(x=>x.service_id).join(),'A,B,C');
+  assert.equal(a.chainOrdered([C]).map(x=>x.service_id).join(),'C');
+});
+test('servicios enganchados: el panel muestra de dónde viene, con quién sigue y cómo se factura',()=>{
+  const {A,B,C,api:a}=chainFixture();
+  const html=a.chainBlock(A);
+  assert.match(html,/Servicio enganchado/);
+  assert.match(html,/data-osm-chain="B"/);
+  assert.match(html,/Sigue con/);
+  assert.match(html,/Base → Origen → Destino/);
+  assert.match(a.chainBlock(B),/data-osm-chain="A"[\s\S]*Viene de/);
+  assert.equal(a.chainBlock(C),'');
+  assert.equal(a.isChain(A),true);assert.equal(a.isChain(C),false);
+});
+test('servicios enganchados: sin el módulo del clip el mapa sigue igual',()=>{
+  const a=api();const x={...s,service_id:'X'};
+  assert.equal(a.chainBlock(x),'');assert.equal(a.chainLinks([x]).length,0);assert.equal(a.chainOrdered([x]).map(r=>r.service_id).join(),'X');
+});
+
+test('servicio con relevo: bloque en el panel con los dos tramos, el punto de intercambio y el estado de la entrega',()=>{
+  const relay={from_driver_name:'Martín R.',from_truck_label:'12',from_truck_plate:'AB123CD',to_driver_name:'Lucas P.',to_truck_label:'7',to_truck_plate:'AC456DE',exchange_address:'Estación de servicio, Gonnet, Buenos Aires',exchange_lat:-34.87,exchange_lng:-58.02,handed_over:false};
+  const clip={isChained:()=>false,cached:()=>null,modeOf:()=>null,ensureDetails:async()=>false,relayOf:id=>id==='R'?relay:id==='D'?{...relay,handed_over:true,handed_over_at:'2026-11-13T14:42:00Z',handover_source:'operator'}:null};
+  const a=api({},{AuxEngancheClip:clip});
+  const html=a.relayBlock({...s,service_id:'R'});
+  for(const t of ['Servicio con relevo','Tramo 1 · A → B','Martín R. · Móvil 12 · AB123CD','Punto de intercambio','Estación de servicio','Tramo 2 · B → C','Lucas P. · Móvil 7 · AC456DE','Esperando la entrega del vehículo'])assert.ok(html.includes(t),t);
+  const done=a.relayBlock({...s,service_id:'D'});
+  assert.match(done,/Entregado a las /);assert.match(done,/lo marcó Operaciones/);assert.match(done,/is-done/);
+  assert.equal(a.relayBlock({...s,service_id:'X'}),'');
+  assert.equal(a.isRelayS({...s,service_id:'R'}),true);assert.equal(a.isRelayS({...s,service_id:'X'}),false);
+  const map=fs.readFileSync('operator-services-map-v1.js','utf8');
+  assert.match(map,/Punto de intercambio · \$\{code\(s\)\}/);
+  assert.match(map,/\$\{chainBlock\(s\)\}\$\{relayBlock\(s\)\}/);
+  assert.match(map,/\$\{chainMark\(s\)\}\$\{relayMark\(s\)\}/);
+});
+test('servicio con relevo: sin el módulo del ícono el mapa no cambia',()=>{
+  const a=api();const x={...s,service_id:'X'};
+  assert.equal(a.relayBlock(x),'');assert.equal(a.isRelayS(x),false);
+});

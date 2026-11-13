@@ -49,12 +49,17 @@ test('la cobertura depende del radio elegido y la hace el navegador', () => {
   assert.equal(api.cobertura(d, 30).dentro, 2);
 });
 
-test('rendimiento y ratio no dividen por cero', () => {
-  const { api } = cargarModulo();
-  assert.equal(api.realesSobreFacturados({ kmComp: 0, kmReal: 10 }), null);
-  assert.equal(api.realesSobreFacturados({ kmComp: 200, kmReal: 100 }), 50);
-  assert.equal(api.ratio({ kmReal: 0, kmComp: 10 }), null);
-  assert.equal(api.ratio({ kmReal: 100, kmComp: 120 }), 120);
+test('el Resumen ya no muestra km reales de servicios ni el ratio f/r, y el ranking es una torta con leyenda', () => {
+  const html = fs.readFileSync('Index.html', 'utf8'), src = fs.readFileSync('dashboard-resumen-v1.js', 'utf8');
+  assert.doesNotMatch(src, /Km reales de servicios|Ratio f\/r|realesSobreFacturados|claseRatio/);
+  assert.match(src, /Ticket promedio/);
+  assert.match(src, /<th class="rsm-num">Km facturados<\/th>/);
+  assert.match(src, /\/vendor\/d3-shape-3\.2\.1\.min\.js/);
+  assert.match(src, /rsm-pie-legend/);
+  assert.match(src, /estado\.rankSel===nom\?null:nom/);
+  assert.ok(fs.existsSync('vendor/d3-shape-3.2.1.min.js') && fs.existsSync('vendor/LICENSE-d3.txt'));
+  assert.match(fs.readFileSync('sw.js', 'utf8'), /\/vendor\/d3-shape-3\.2\.1\.min\.js/);
+  assert.ok(html.includes('id="rsm-ranking"'));
 });
 
 test('los tipos de vehículo salen de vehicle_class, con Otros para lo que no tiene', () => {
@@ -135,5 +140,43 @@ test('ranking prioritizes amount and groups the tail without changing totals or 
 test('zero revenue does not manufacture percentages',()=>{const {api}=cargarModulo();assert.equal(api.rankingRows({empresas:[{nombre:'Prueba',monto:0,servicios:2}]})[0].share,null);assert.equal(api.rankingRows({empresas:[]}).length,0);});
 test('summary puts evolution before geography, keeps exact-value access and avoids repeated efficiency KPI',()=>{
  const section=index.slice(index.indexOf('id="dashx-sec-facturacion"'),index.indexOf('<!-- SECCIÓN 1b'));
- assert.ok(section.indexOf('id="rsm-evol-card"')<section.indexOf('id="rsm-geography"'));assert.ok(section.includes('id="rsm-evol-data"'));assert.match(section,/<details class="rsm-disclosure" id="rsm-geography">/);assert.doesNotMatch(js,/tile\('Eficiencia de km'/);assert.doesNotMatch(js,/rpc\(RPC_FLOTA/);assert.doesNotMatch(js,/type: 'doughnut'/);
+ assert.ok(section.indexOf('id="rsm-evol-card"')<section.indexOf('id="rsm-geography"'));assert.ok(section.includes('id="rsm-evol-data"'));assert.match(section,/<section class="rsm-card rsm-mapa-card rsm-pinned" id="rsm-geography"/);assert.doesNotMatch(section,/rsm-disclosure/);assert.match(section,/id="rsm-provider-detail"/);assert.ok(section.indexOf('id="rsm-eficiencia"')<section.indexOf('id="rsm-tipos-lista"')&&section.indexOf('id="rsm-tipos-lista"')<section.indexOf('id="rsm-geography"'),'eficiencia y tipo en la misma fila, antes del mapa');assert.match(js,/ServiceRouteMap\.loadSdk/);assert.doesNotMatch(js,/maplibre/);assert.doesNotMatch(js,/tile\('Eficiencia de km'/);assert.doesNotMatch(js,/rpc\(RPC_FLOTA/);assert.doesNotMatch(js,/type: 'doughnut'/);
+});
+test('con exactamente 6 prestadoras se muestran todas (no «Otras 1 prestadoras»)', () => {
+  const { api } = cargarModulo();
+  const rows = api.rankingRows({ empresas: Array.from({ length: 6 }, (_, i) => ({ id: i, nombre: 'P' + i, monto: (i + 1) * 100, servicios: 1 })) });
+  assert.equal(rows.length, 6);
+  assert.ok(rows.every(r => !/^Otras/.test(r.nombre)));
+});
+test('evolución: pestañas Diario, Acumulado (con proyección) y Por prestadora (una consulta por prestadora)', () => {
+  const html = fs.readFileSync('Index.html', 'utf8'), src = fs.readFileSync('dashboard-resumen-v1.js', 'utf8');
+  for (const v of ['diario', 'acum', 'prest']) assert.match(html, new RegExp('data-evol-vista="' + v + '"'));
+  assert.match(html, /id="rsm-evol-alt"/);
+  assert.match(src, /function pintarAcumulado/);
+  assert.match(src, /Al ritmo actual cerraría en/);
+  assert.match(src, /rpc\(RPC_RES, Object\.assign\(\{ p_empresas: \[id\] \}, base\)\)/);
+  assert.match(src, /setFiltro\('empresas', ya \? \[\] : \[id\]\)/);
+  assert.match(src, /Diferencia: /);
+});
+
+test('facturación por tipo: % facturado contra % de servicios y lectura sólo si un tipo rinde más', () => {
+  const { api } = cargarModulo();
+  const d = api.normalizar({}, { por_clase: [
+    { clase: 'light', servicios: 512, km: 1, monto: 24800000 },
+    { clase: 'semi_heavy', servicios: 148, km: 1, monto: 9400000 },
+    { clase: 'heavy', servicios: 64, km: 1, monto: 7100000 },
+    { clase: 'uml', servicios: 0, km: 0, monto: 0 }
+  ] });
+  const t = api.filasTipos(d);
+  assert.equal(t.filas.length, 3, 'sin los tipos sin servicios');
+  assert.equal(t.filas[0].nombre, 'Liviano');
+  assert.equal(Math.round(t.filas[2].pm), 17);
+  assert.equal(Math.round(t.filas[2].ps), 9);
+  assert.equal(Math.round(t.filas[2].porServ), 110938);
+  assert.match(api.lecturaTipos(t), /Los <b>pesados<\/b> son el 9% de los servicios pero dejan el <b>17%<\/b>/);
+  const parejo = api.filasTipos(api.normalizar({}, { por_clase: [
+    { clase: 'light', servicios: 10, monto: 1000 }, { clase: 'heavy', servicios: 10, monto: 1000 }] }));
+  assert.equal(api.lecturaTipos(parejo), '');
+  assert.match(index, /<p>¿Qué tipo deja más por servicio\?<\/p>/);
+  assert.match(css, /\.rsm-tv-row \{ display: grid/);
 });
