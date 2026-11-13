@@ -18,12 +18,13 @@ test('Maps abre la ruta directa al punto de intercambio (y avisa si no tiene ubi
   assert.equal(R._mapsUrl(-34.87, -58.02), 'https://www.google.com/maps/dir/?api=1&destination=-34.87%2C-58.02&travelmode=driving');
   assert.equal(R._mapsUrl(null, -58), '');
   assert.equal(R._mapsUrl('', ''), '');
-  assert.match(R._incomingHtml([{ ...x, exchange_lat: null, exchange_lng: null }]), /no tiene ubicación en el mapa/);
+  assert.doesNotMatch(R._incomingHtml([{ ...x, exchange_lat: null, exchange_lng: null }]), /destination=-34.87/);
 });
 
 test('el 2º chofer ve el servicio antes: punto B, vehículo, quién se lo trae, destino y Maps', () => {
   const html = R._incomingHtml([x]);
-  for (const t of ['Vas a recibir', 'Tramo 2 de 2', 'Esperando la entrega', 'Estación de servicio, Gonnet', 'Fiat Cronos · AA111BB', 'Martín R.', 'Móvil 12', 'Remedios de Escalada', 'Ir al punto de intercambio en Maps', 'target="_blank"']) assert.ok(html.includes(t), t);
+  for (const t of ['Vas a recibir', 'Tramo 2 de 2', 'Esperando la entrega', 'Estación de servicio, Gonnet', 'Martín R.', 'Móvil 12', 'Remedios de Escalada', 'AA111BB', 'Fiat Cronos', 'Retirás en (punto de encuentro)', 'Lo llevás a', 'target="_blank"']) assert.ok(html.includes(t), t);
+  assert.doesNotMatch(html, /drl-maps|Ir al punto de intercambio en Maps/);
   assert.match(html, /Iniciá tu jornada con tu móvil para poder recibir el vehículo/);
   assert.doesNotMatch(R._incomingHtml([{ ...x, to_has_active_jornada: true }]), /Iniciá tu jornada/);
   assert.equal(R._incomingHtml([]), '');
@@ -42,10 +43,8 @@ test('el 1º chofer: va a B con Maps, entrega con doble toque y no crea remito',
 
 test('el 2º chofer, ya con el servicio: de quién lo recibió y Maps al destino', () => {
   const html = R._receivedBox({ ...x, handed_over: true, handed_over_at: '2026-11-13T14:42:00Z' });
-  assert.match(html, /Tramo 2 de 2/);
   assert.match(html, /Recibiste el vehículo de <b>Martín R\.<\/b>/);
-  assert.match(html, /Ir al destino en Maps/);
-  assert.match(html, /destination=-34.72%2C-58.4/);
+  assert.doesNotMatch(html, /drl-maps|Ir al destino en Maps/);
 });
 
 test('el motivo del rechazo se muestra sin el código técnico', () => {
@@ -69,7 +68,7 @@ test('«Vas a recibir» se toca como un servicio normal y abre su detalle en la 
   assert.match(html, /aria-label="Ver servicio SRV-123 con relevo"/);
   assert.match(html, /Ver detalle/);
   const sheet = R._incomingSheet({ ...x, scheduled_for: '2026-11-13T14:30:00Z' });
-  for (const t of ['Esperando que Martín R. entregue el vehículo', 'Retirás en (punto de intercambio)', 'Fiat Cronos · AA111BB', 'Móvil 12', 'Remedios de Escalada', 'Horario del servicio', 'completás el remito con el cliente']) assert.ok(sheet.includes(t), t);
+  for (const t of ['Esperando que Martín R. entregue el vehículo', 'Retirás en (punto de encuentro)', 'Fiat Cronos', 'Móvil 12', 'Remedios de Escalada', 'Horario del servicio', 'completás el remito con el cliente']) assert.ok(sheet.includes(t), t);
   assert.match(src, /openCustomPreview/);
   assert.match(src, /\.drl-card\[data-drl-service\]/);
   assert.match(src, /e\.key !== 'Enter' && e\.key !== ' '/);

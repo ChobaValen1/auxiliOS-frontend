@@ -52,17 +52,37 @@
 .drl-box .drl-note { margin-top: 2px; }
 
 /* Ventana de detalle (1º chofer): chip a la derecha del vehículo, punto de encuentro como dirección y un solo botón principal. */
-#p3-service-preview .p3-sheet-vehicle { position: relative; padding-right: 150px; }
+#p3-service-preview .p3-sheet-vehicle:has(.drl-chip-side) { position: relative; padding-right: 150px; }
 .drl-chip-side { font-size: 11px; position: absolute; right: 0; top: 50%; transform: translateY(-50%); max-width: 140px; white-space: normal; text-align: center; line-height: 1.2; justify-content: center; }
 .drl-meet b, .drl-to b { color: var(--ax-text, #e8eaf2); }
 .drl-to em, .drl-b em { color: var(--ax-text-2, #a3acc2); font-style: normal; font-weight: 400; }
 /* Tarjeta de la lista: chip arriba a la derecha, sin «Llamar» (el 1º chofer sólo lleva el vehículo a B). */
-.p3-driver-task.drl-out .p3-task-vehicle { position: relative; padding-right: 150px; }
+.p3-driver-task.drl-out .p3-task-vehicle, .p3-driver-task.drl-in .p3-task-vehicle { position: relative; padding-right: 150px; }
 .p3-driver-task.drl-out .p3-quick-links a[href^="tel:"] { display: none; }
 .p3-driver-task.drl-out .p3-quick-links { grid-template-columns: 1fr; }
 /* Cliente junto al dominio: blanco, más chico, sin caja. */
 #p3-service-preview .p3-sheet-client.drl-client { padding: 0 2px 12px; border: 0; background: none; }
 #p3-service-preview .p3-sheet-client.drl-client h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ax-text, #e8eaf2); }
-#p3-service-preview .p3-sheet-vehicle:has(.drl-chip-side) { padding-bottom: 6px; }
 #p3-preview-actions .drl-sheet-box { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; border: 0; background: none; }
 #p3-preview-actions .drl-sheet-box:not(:has(.drl-btn)) { margin-top: 6px; }
+
+/* Tarjeta «Vas a recibir» (2º chofer): misma jerarquía que una tarjeta de servicio. */
+.drl-card { gap: 12px; border-color: var(--ax-border-strong, #3a4256); background: var(--ax-surface-2, #191d27); }
+.drl-card > header { flex-wrap: nowrap; }
+.drl-label { font: 600 13px 'DM Mono', monospace; color: var(--ax-text-2, #a3acc2); overflow-wrap: anywhere; }
+.drl-main { position: relative; display: grid; gap: 2px; padding-right: 150px; min-height: 44px; align-content: center; }
+.drl-veh { display: grid; gap: 2px; }
+.drl-veh strong { font: 700 22px/1.2 'DM Mono', monospace; overflow-wrap: anywhere; }
+.drl-veh span { color: var(--ax-text-2, #a3acc2); font-size: 13px; }
+.drl-route { display: grid; gap: 10px; }
+.drl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.drl-row small { display: block; color: var(--ax-text-3, #818ba1); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.drl-row b { display: block; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.drl-pin { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--ax-border-strong, #3a4256); border-radius: 12px; color: var(--ax-accent, #f5a623); }
+.drl-pin .ax-icon { width: 18px; height: 18px; }
+.drl-sub { margin: 0; color: var(--ax-text-2, #a3acc2); font-size: 13px; }
+.drl-sub b { color: var(--ax-text, #e8eaf2); font-weight: 600; }
+.drl-sheet-veh { position: relative; }
+.drl-sheet .p3-sheet-route { display: grid; gap: 10px; }
+.drl-sheet em { color: var(--ax-text-2, #a3acc2); font-style: normal; font-weight: 400; }
+.drl-in-box { padding-top: 10px; border-top: 0; }
