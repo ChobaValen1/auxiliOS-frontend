@@ -518,3 +518,56 @@
 #screen-dashboard .rsm-pie-legend strong { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #screen-dashboard .rsm-pie-legend em { display: block; font-style: normal; color: var(--muted2); font-size: 11px; font-weight: 500; }
 @media (prefers-reduced-motion: reduce) { #screen-dashboard .rsm-pie-slice, #screen-dashboard .rsm-pie-legend li { transition: none; } }
+
+/* ¿Cómo evoluciona la facturación?: Diario · Acumulado · Por prestadora. */
+#screen-dashboard .rsm-evol-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); flex: none; }
+#screen-dashboard .rsm-evol-seg button { border: 0; background: none; color: var(--muted2); font: 600 11.5px inherit; padding: 5px 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+#screen-dashboard .rsm-evol-seg button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--border2, var(--border)) inset; }
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) .rsm-evol,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) > .rsm-chart-key,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) #rsm-evol-reading,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) #rsm-evol-fallback,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) .rsm-data-details,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) .axz-bar,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) .axz-nav,
+#screen-dashboard .rsm-evol-card:not([data-vista="diario"]):is([data-vista]) .axz-tip { display: none !important; }
+#screen-dashboard [data-evol-tend] { justify-self: start; margin-top: 6px; }
+#screen-dashboard .rsm-evol-alt { min-width: 0; }
+#screen-dashboard .rsm-ev-svg { display: block; width: 100%; height: auto; overflow: visible; }
+#screen-dashboard .rsm-ev-grid { stroke: color-mix(in srgb, var(--text) 7%, transparent); }
+#screen-dashboard .rsm-ev-tick { fill: var(--muted); font: 500 10.5px Inter, 'DM Sans', sans-serif; }
+#screen-dashboard .rsm-ev-futuro { fill: color-mix(in srgb, var(--text) 2.5%, transparent); }
+#screen-dashboard .rsm-ev-ant { fill: none; stroke: #8590ab; stroke-width: 1.6; opacity: .85; }
+#screen-dashboard .rsm-ev-act { fill: none; stroke: #ffb347; stroke-width: 2.6; }
+#screen-dashboard .rsm-ev-proy { stroke: #ffb347; stroke-width: 2; stroke-dasharray: 5 5; opacity: .8; }
+#screen-dashboard .rsm-ev-dif { stroke-width: 2; }
+#screen-dashboard .rsm-ev-dif.is-up { stroke: #3ddc97; }
+#screen-dashboard .rsm-ev-dif.is-down { stroke: #ff8a8a; }
+#screen-dashboard .rsm-ev-hoy { fill: #ffb347; stroke: var(--card); stroke-width: 2.5; }
+#screen-dashboard .rsm-ev-lbl { fill: var(--muted2); font: 600 11px Inter, 'DM Sans', sans-serif; }
+#screen-dashboard .rsm-ev-lbl.is-acc { fill: #ffd08a; font-weight: 700; }
+#screen-dashboard .rsm-ev-lectura { margin: 2px 0 10px; font-size: 12px; line-height: 1.6; color: var(--muted2); }
+#screen-dashboard .rsm-ev-lectura b { color: var(--text); }
+#screen-dashboard .rsm-ev-lectura .is-up { color: #3ddc97; font-weight: 600; }
+#screen-dashboard .rsm-ev-lectura .is-down { color: #ff8a8a; font-weight: 600; }
+#screen-dashboard .rsm-ev-lectura .is-acc { color: #ffd08a; }
+#screen-dashboard .rsm-chart-key i.is-proy { background: repeating-linear-gradient(90deg, #ffb347 0 4px, transparent 4px 7px) !important; }
+#screen-dashboard .rsm-ev-grid-prov { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+#screen-dashboard .rsm-evp { display: grid; gap: 2px; text-align: left; padding: 11px 12px 8px; border: 1px solid var(--border); border-radius: 13px; background: color-mix(in srgb, var(--bg) 60%, transparent); color: var(--text); font: inherit; min-width: 0; }
+#screen-dashboard button.rsm-evp { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+#screen-dashboard button.rsm-evp:hover { border-color: color-mix(in srgb, var(--c) 60%, var(--border)); }
+#screen-dashboard .rsm-evp.is-on { border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); background: color-mix(in srgb, var(--c) 7%, var(--bg)); }
+#screen-dashboard .rsm-evp-n { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-dashboard .rsm-evp-n i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+#screen-dashboard .rsm-evp-v { font: 700 17px Inter, 'DM Sans', sans-serif; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+#screen-dashboard .rsm-evp-v em { font-style: normal; font-size: 11px; font-weight: 600; margin-left: 6px; letter-spacing: 0; }
+#screen-dashboard .rsm-evp-v em.is-up { color: #3ddc97; }
+#screen-dashboard .rsm-evp-v em.is-down { color: #ff8a8a; }
+#screen-dashboard .rsm-evp-s { color: var(--muted2); font-size: 10.5px; }
+#screen-dashboard .rsm-evp svg { width: 100%; height: 52px; margin-top: 6px; }
+#screen-dashboard .rsm-evp-ant { fill: none; stroke: #8590ab; stroke-width: 1.2; stroke-dasharray: 3 3; opacity: .7; vector-effect: non-scaling-stroke; }
+#screen-dashboard .rsm-ev-nota { margin: 8px 0 0; font-size: 11px; color: var(--muted2); }
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-evol-seg button { padding: 5px 8px; font-size: 11px; }
+  #screen-dashboard .rsm-ev-grid-prov { grid-template-columns: 1fr 1fr; gap: 8px; }
+}

@@ -50,7 +50,8 @@
     fact: null,
     res: null,
     filtros: null,
-    rankSel: null
+    rankSel: null,
+    evolVista: 'diario'
   };
 
   var mapa = null;
@@ -720,10 +721,10 @@
         labels: w.labels,
         datasets: [{
           label: 'Actual', data: w.act, borderColor: chartColors().accent, backgroundColor: grad,
-          fill: true, borderWidth: 2, tension: 0, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
+          fill: true, borderWidth: 2.2, tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 5
         }, {
           label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: chartColors().previous,
-          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
+          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: .35, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 3
         }]
       },
       options: {
@@ -737,6 +738,12 @@
               if (c.datasetIndex === 0) return ' Actual: ' + pesos(c.parsed.y);
               var prev = L.cs[L.i0 + c.dataIndex - c.chart.data.labels.length];
               return ' Anterior' + (prev ? ' (' + prev.et + ')' : '') + ': ' + pesos(c.parsed.y);
+            },
+            footer: function (it) {
+              var a = it.find(function (x) { return x.datasetIndex === 0; }), b = it.find(function (x) { return x.datasetIndex === 1; });
+              if (!a || !b || !(b.parsed.y > 0) || a.parsed.y == null) return '';
+              var v = (a.parsed.y - b.parsed.y) * 100 / b.parsed.y;
+              return 'Diferencia: ' + (v >= 0 ? '+' : '') + v.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' %';
             } } }
         },
         scales: {
@@ -795,6 +802,146 @@
     });
     var sub = el('rsm-evol-sub');
     if (sub) sub.textContent = hayAnt ? 'Línea punteada: período anterior' : 'Sin facturación en el período anterior para comparar';
+  }
+
+  /* ── evolución: Acumulado (ritmo y proyección) y Por prestadora (minigráficos) ── */
+  var evolProv = { clave: null, datos: null, cargando: null };
+  function escalaLineal(d0, d1, r0, r1) { return function (v) { return d1 === d0 ? r0 : r0 + (v - d0) * (r1 - r0) / (d1 - d0); }; }
+  function pasoLindo(max, n) {
+    var bruto = (max || 1) / (n || 4), p = Math.pow(10, Math.floor(Math.log10(bruto))), f = bruto / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function acumular(a) { var s = 0; return a.map(function (v) { return s += num(v); }); }
+  /* Días ya transcurridos del período (con datos). Si el período terminó, son todos. */
+  function diasTranscurridos(d, largo) {
+    if (!d.desde || !largo) return largo;
+    var ini = new Date(String(d.desde).slice(0, 10) + 'T12:00:00'), hoy = new Date();
+    var n = Math.floor((Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) - Date.UTC(ini.getFullYear(), ini.getMonth(), ini.getDate())) / 86400000) + 1;
+    return Math.max(1, Math.min(largo, n));
+  }
+  function svgEjes(W, H, m, max, ticksX, sx) {
+    var paso = pasoLindo(max, 4), tope = Math.ceil(max / paso) * paso || paso, sy = escalaLineal(0, tope, H - m.b, m.t), out = '';
+    for (var v = 0; v <= tope + 1e-6; v += paso) {
+      out += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(v) + '" y2="' + sy(v) + '" class="rsm-ev-grid"/>' +
+        '<text x="' + (m.l - 8) + '" y="' + (sy(v) + 4) + '" text-anchor="end" class="rsm-ev-tick">' + esc(v ? pesosCorto(v).replace('$', '$ ') : '0') + '</text>';
+    }
+    ticksX.forEach(function (t) { out += '<text x="' + sx(t.i) + '" y="' + (H - m.b + 17) + '" text-anchor="middle" class="rsm-ev-tick">' + esc(t.et) + '</text>'; });
+    return { html: out, sy: sy };
+  }
+  function ticksDias(d, n, cuantos) {
+    var et = etiquetasDias(d, n), out = [], k = Math.max(1, Math.ceil((n - 1) / Math.max(1, cuantos - 1)));
+    for (var i = 0; i < n; i += k) out.push({ i: i, et: et[i] });
+    if (out[out.length - 1].i !== n - 1) out.push({ i: n - 1, et: et[n - 1] });
+    return out;
+  }
+  function pintarAcumulado(d) {
+    var box = el('rsm-evol-alt'); if (!box) return;
+    var d3 = global.d3;
+    if (!(d3 && d3.line)) { box.innerHTML = '<div class="rsm-vacio">Cargando gráfico…</div>'; cargarD3().then(function () { if (estado.evolVista === 'acum' && estado.res === d) pintarAcumulado(d); }).catch(function () { box.innerHTML = '<div class="rsm-vacio">No se pudo cargar el gráfico.</div>'; }); return; }
+    var act = d.porDia.actual, ant = d.porDia.anterior, n = Math.max(act.length, ant.length);
+    if (!d.hayDatos || !n) { box.innerHTML = '<div class="rsm-vacio">Sin facturación en el período.</div>'; return; }
+    var hechos = diasTranscurridos(d, act.length || n), ca = acumular(act.slice(0, hechos)), cp = acumular(ant.slice(0, n));
+    var hoyV = ca[hechos - 1] || 0, antV = cp[Math.min(hechos, cp.length) - 1] || 0, finAnt = cp[cp.length - 1] || 0;
+    var proyecta = hechos < n && hechos >= 3, proy = proyecta ? hoyV / hechos * n : null;
+    var dif = antV > 0 ? (hoyV - antV) * 100 / antV : null;
+    var W = Math.max(280, box.clientWidth || 600), angosto = W < 520, H = angosto ? 230 : 280;
+    var m = { t: 18, r: angosto ? 12 : 96, b: 26, l: angosto ? 44 : 56 };
+    var sx = escalaLineal(0, Math.max(1, n - 1), m.l, W - m.r);
+    var ejes = svgEjes(W, H, m, Math.max(proy || 0, finAnt, hoyV) * 1.06, ticksDias(d, n, angosto ? 3 : 7), sx), sy = ejes.sy;
+    var curva = d3.curveMonotoneX, linea = d3.line().x(function (v, i) { return sx(i); }).y(sy).curve(curva);
+    var area = d3.area().x(function (v, i) { return sx(i); }).y0(H - m.b).y1(sy).curve(curva);
+    var xi = sx(hechos - 1), yi = sy(hoyV);
+    var svg = '<svg class="rsm-ev-svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Facturación acumulada del período contra el período anterior">' +
+      '<defs><linearGradient id="rsm-ev-ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb347" stop-opacity=".32"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></linearGradient></defs>' +
+      (hechos < n ? '<rect x="' + xi + '" y="' + m.t + '" width="' + (W - m.r - xi) + '" height="' + (H - m.b - m.t) + '" class="rsm-ev-futuro"/>' : '') + ejes.html +
+      (cp.length ? '<path d="' + linea(cp) + '" class="rsm-ev-ant" stroke-dasharray="4 4"/>' : '') +
+      '<path d="' + area(ca) + '" fill="url(#rsm-ev-ga)"/><path d="' + linea(ca) + '" class="rsm-ev-act"/>' +
+      (proyecta ? '<line x1="' + xi + '" y1="' + yi + '" x2="' + sx(n - 1) + '" y2="' + sy(proy) + '" class="rsm-ev-proy"/>' : '') +
+      (antV > 0 ? '<line x1="' + xi + '" x2="' + xi + '" y1="' + yi + '" y2="' + sy(antV) + '" class="rsm-ev-dif ' + (hoyV >= antV ? 'is-up' : 'is-down') + '"/>' : '') +
+      '<circle cx="' + xi + '" cy="' + yi + '" r="5.5" class="rsm-ev-hoy"/>' +
+      '<text x="' + Math.min(xi, W - m.r - 40) + '" y="' + (yi - 12) + '" text-anchor="middle" class="rsm-ev-lbl is-acc">' + esc((hechos < n ? 'Hoy · ' : '') + pesosCorto(hoyV).replace('$', '$ ')) + '</text>' +
+      (!angosto && proyecta ? '<text x="' + (W - m.r + 8) + '" y="' + (sy(proy) + 4) + '" class="rsm-ev-lbl is-acc">≈ ' + esc(pesosCorto(proy).replace('$', '$ ')) + '</text>' : '') +
+      (!angosto && finAnt > 0 ? '<text x="' + (W - m.r + 8) + '" y="' + (sy(finAnt) + 4) + '" class="rsm-ev-lbl">Ant. ' + esc(pesosCorto(finAnt).replace('$', '$ ')) + '</text>' : '') +
+      '</svg>';
+    var lectura = '<p class="rsm-ev-lectura"><b>' + esc(pesos(hoyV)) + '</b> ' + (hechos < n ? 'facturado al día ' + hechos : 'facturado en el período') +
+      (dif == null ? '' : ' · <span class="' + (dif >= 0 ? 'is-up' : 'is-down') + '">' + (dif >= 0 ? '▲ +' : '▼ ') + esc(dif.toLocaleString('es-AR', { maximumFractionDigits: 1 })) + ' %</span> vs. el período anterior al mismo día') +
+      (proyecta ? '<br>Al ritmo actual cerraría en <b class="is-acc">' + esc(pesosCorto(proy).replace('$', '$ ')) + '</b>' + (finAnt > 0 ? ' · el anterior cerró en ' + esc(pesosCorto(finAnt).replace('$', '$ ')) : '') : '') + '</p>';
+    box.innerHTML = lectura + svg + '<div class="rsm-chart-key"><span><i></i>Actual</span>' + (proyecta ? '<span><i class="is-proy"></i>Proyección</span>' : '') + '<span><i class="is-previous"></i>Anterior · igual duración</span></div>';
+  }
+
+  /* Por prestadora: la misma consulta del Resumen, una vez por cada una de las 5 principales; «Otras» es el resto. */
+  function pintarPrestadorasEvol(d) {
+    var box = el('rsm-evol-alt'); if (!box) return;
+    var d3 = global.d3;
+    if (!(d3 && d3.line)) { box.innerHTML = '<div class="rsm-vacio">Cargando gráfico…</div>'; cargarD3().then(function () { if (estado.evolVista === 'prest' && estado.res === d) pintarPrestadorasEvol(d); }).catch(function () {}); return; }
+    var rows = rankingRows(d).filter(function (r) { return r.monto > 0; });
+    if (!d.hayDatos || !rows.length) { box.innerHTML = '<div class="rsm-vacio">Sin facturación para comparar prestadoras.</div>'; return; }
+    var f = estado.filtros || {}, ids = rows.filter(function (r) { return r.id != null; }).map(function (r) { return String(r.id); });
+    var clave = JSON.stringify([f.desde, f.hasta, f.bases, ids]);
+    if (evolProv.clave !== clave) {
+      evolProv.clave = clave; evolProv.datos = null;
+      var base = { p_desde: f.desde || null, p_hasta: f.hasta || null, p_bases: paramArray(f.bases) };
+      evolProv.cargando = Promise.all(ids.map(function (id) {
+        return rpc(RPC_RES, Object.assign({ p_empresas: [id] }, base)).then(function (r) {
+          return { id: id, actual: lista(r && r.por_dia && r.por_dia.actual).map(num), anterior: lista(r && r.por_dia && r.por_dia.anterior).map(num) };
+        });
+      })).then(function (res) { if (evolProv.clave === clave) { evolProv.datos = res; if (estado.evolVista === 'prest' && estado.res) pintarPrestadorasEvol(estado.res); } })
+        .catch(function (e) { if (global.console) console.warn('[resumen] evolución por prestadora', e); if (evolProv.clave === clave) { evolProv.clave = null; box.innerHTML = '<div class="rsm-vacio">No se pudo cargar la evolución por prestadora. Volvé a abrir esta vista para reintentar.</div>'; } });
+    }
+    if (!evolProv.datos) { box.innerHTML = '<div class="rsm-vacio">Cargando la evolución de cada prestadora…</div>'; return; }
+    var porId = {}; evolProv.datos.forEach(function (s) { porId[s.id] = s; });
+    var n = Math.max(d.porDia.actual.length, d.porDia.anterior.length), hechos = diasTranscurridos(d, d.porDia.actual.length || n);
+    var series = rows.map(function (r) {
+      if (r.id != null) { var s = porId[String(r.id)] || { actual: [], anterior: [] }; return { r: r, actual: s.actual, anterior: s.anterior }; }
+      var resta = function (tot, k) { return tot.map(function (v, i) { return Math.max(0, num(v) - evolProv.datos.reduce(function (a, s) { return a + num(s[k][i]); }, 0)); }); };
+      return { r: r, actual: resta(d.porDia.actual, 'actual'), anterior: resta(d.porDia.anterior, 'anterior') };
+    });
+    var colores = coloresPrestadoras(d), color = function (r) { return r.id == null ? COLOR_OTROS : (colores[String(r.id)] || COLOR_OTROS); };
+    var Wm = 240, Hm = 58;
+    box.innerHTML = '<div class="rsm-ev-grid-prov">' + series.map(function (s, k) {
+      var a = s.actual.slice(0, hechos).reduce(function (x, v) { return x + num(v); }, 0), b = s.anterior.slice(0, hechos).reduce(function (x, v) { return x + num(v); }, 0);
+      var dv = b > 0 ? (a - b) * 100 / b : null, c = color(s.r), max = Math.max.apply(null, [1].concat(s.actual, s.anterior).map(num));
+      var sx = escalaLineal(0, Math.max(1, n - 1), 2, Wm - 2), sy = escalaLineal(0, max * 1.1, Hm - 2, 4);
+      var ln = d3.line().x(function (v, i) { return sx(i); }).y(sy).curve(d3.curveMonotoneX), ar = d3.area().x(function (v, i) { return sx(i); }).y0(Hm).y1(sy).curve(d3.curveMonotoneX);
+      var cur = s.actual.slice(0, hechos), gid = 'rsm-evp-g' + k;
+      var on = estado.filtros && lista(estado.filtros.empresas).map(String).indexOf(String(s.r.id)) >= 0;
+      return '<' + (s.r.id != null ? 'button type="button" data-evol-prov="' + esc(s.r.id) + '"' : 'div') + ' class="rsm-evp' + (on ? ' is-on' : '') + '" style="--c:' + c + '">' +
+        '<span class="rsm-evp-n"><i></i>' + esc(s.r.nombre) + '</span>' +
+        '<span class="rsm-evp-v">' + esc(pesosCorto(a).replace('$', '$ ')) + (dv == null ? '' : '<em class="' + (dv >= 0 ? 'is-up' : 'is-down') + '">' + (dv >= 0 ? '▲ +' : '▼ ') + esc(dv.toLocaleString('es-AR', { maximumFractionDigits: 1 })) + ' %</em>') + '</span>' +
+        '<span class="rsm-evp-s">vs. ' + esc(pesosCorto(b).replace('$', '$ ')) + ' en el período anterior</span>' +
+        '<svg viewBox="0 0 ' + Wm + ' ' + Hm + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c + '" stop-opacity=".35"/><stop offset="1" stop-color="' + c + '" stop-opacity="0"/></linearGradient></defs>' +
+          (s.anterior.length ? '<path d="' + ln(s.anterior.slice(0, n)) + '" class="rsm-evp-ant"/>' : '') +
+          (cur.length > 1 ? '<path d="' + ar(cur) + '" fill="url(#' + gid + ')"/><path d="' + ln(cur) + '" fill="none" stroke="' + c + '" stroke-width="2" vector-effect="non-scaling-stroke"/>' : '') + '</svg>' +
+        '</' + (s.r.id != null ? 'button' : 'div') + '>';
+    }).join('') + '</div><p class="rsm-ev-nota">Tocá una prestadora para filtrar el Resumen por ella. Línea punteada: período anterior.</p>';
+  }
+  function aplicarVistaEvol() {
+    var card = el('rsm-evol-card'), alt = el('rsm-evol-alt'), v = estado.evolVista || 'diario';
+    if (!card || !alt) return;
+    card.dataset.vista = v;
+    card.querySelectorAll('[data-evol-vista]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-evol-vista') === v)); });
+    alt.hidden = v === 'diario';
+    if (v === 'diario') { if (chartEvol) chartEvol.resize(); return; }
+    if (!estado.res) return;
+    if (v === 'acum') pintarAcumulado(estado.res); else pintarPrestadorasEvol(estado.res);
+  }
+  function montarVistasEvol() {
+    var card = el('rsm-evol-card');
+    if (!card || card.dataset.vistasListas === '1') return;
+    card.dataset.vistasListas = '1';
+    card.addEventListener('click', function (ev) {
+      var b = ev.target.closest && ev.target.closest('[data-evol-vista]');
+      if (b) { estado.evolVista = b.getAttribute('data-evol-vista'); aplicarVistaEvol(); return; }
+      var p = ev.target.closest && ev.target.closest('[data-evol-prov]');
+      if (p && global.AuxDash && typeof global.AuxDash.setFiltro === 'function') {
+        var id = p.getAttribute('data-evol-prov'), ya = estado.filtros && lista(estado.filtros.empresas).map(String).indexOf(id) >= 0;
+        global.AuxDash.setFiltro('empresas', ya ? [] : [id]);
+      }
+    });
+    if (typeof global.ResizeObserver === 'function') {
+      var ancho = 0, alt = el('rsm-evol-alt');
+      if (alt) new global.ResizeObserver(function () { var w = alt.clientWidth; if (Math.abs(w - ancho) > 30 && estado.evolVista === 'acum' && estado.res) { ancho = w; pintarAcumulado(estado.res); } else ancho = w; }).observe(alt);
+    }
   }
 
   /* ── eficiencia operativa ─────────────────────────────────────────────── */
@@ -940,6 +1087,7 @@
     pintarMapa(d);
     pintarTipos(d);
     pintarEvolucion(d);
+    aplicarVistaEvol();
     pintarEficiencia(d);
     pintarTabla(d);
   }
@@ -998,6 +1146,7 @@
   function montar() {
     montarFiltros();
     montarControlesMapa();
+    montarVistasEvol();
     var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail)detail.scrollIntoView({block:'start',behavior:global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
 
     engancharTabla();

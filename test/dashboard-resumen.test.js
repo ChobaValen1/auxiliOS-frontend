@@ -148,3 +148,13 @@ test('con exactamente 6 prestadoras se muestran todas (no «Otras 1 prestadoras�
   assert.equal(rows.length, 6);
   assert.ok(rows.every(r => !/^Otras/.test(r.nombre)));
 });
+test('evolución: pestañas Diario, Acumulado (con proyección) y Por prestadora (una consulta por prestadora)', () => {
+  const html = fs.readFileSync('Index.html', 'utf8'), src = fs.readFileSync('dashboard-resumen-v1.js', 'utf8');
+  for (const v of ['diario', 'acum', 'prest']) assert.match(html, new RegExp('data-evol-vista="' + v + '"'));
+  assert.match(html, /id="rsm-evol-alt"/);
+  assert.match(src, /function pintarAcumulado/);
+  assert.match(src, /Al ritmo actual cerraría en/);
+  assert.match(src, /rpc\(RPC_RES, Object\.assign\(\{ p_empresas: \[id\] \}, base\)\)/);
+  assert.match(src, /setFiltro\('empresas', ya \? \[\] : \[id\]\)/);
+  assert.match(src, /Diferencia: /);
+});
