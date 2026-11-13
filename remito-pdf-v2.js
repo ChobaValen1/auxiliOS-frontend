@@ -117,7 +117,8 @@ async function build(d,opts={}){
   const unaDireccion=d.origen&&d.destino&&clean(d.origen)===clean(d.destino);
   const tramo=(k,v)=>{font(7.5,'normal',MUTED);doc.text(k,M,y);font(9.5,'normal');const t=lineas(v,CW-22);doc.text(t,M+22,y);y+=t.length*4.2+1.6};
   tramo(unaDireccion?'Dirección':'Origen',d.origen);if(!unaDireccion)tramo('Destino',d.destino);
-  if(relay&&relay.handed_over){
+  /* El remito lo firma el 1º chofer antes de entregar: el relevo se muestra aunque todavía no se haya entregado. */
+  if(relay){
     const t1=clean(`Servicio con relevo: ${relay.from_driver_name||'1º chofer'} (origen → ${relay.exchange_address||'punto de intercambio'}) y ${relay.to_driver_name||'2º chofer'} (intercambio → destino).`);
     font(8,'normal',MUTED);const ll=lineas(t1,CW);doc.text(ll,M,y+1);y+=ll.length*3.8+2;
   }

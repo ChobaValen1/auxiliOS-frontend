@@ -17,7 +17,7 @@ const chainTitle=s=>{const d=chainOf(s);const parts=[];if(d?.previous)parts.push
 const relayOf=s=>CH()?.relayOf?.(idOf(s))||null;
 const isRelayS=s=>Boolean(relayOf(s));
 const relayTruck=(label,plate)=>[label&&`Móvil ${label}`,plate].filter(Boolean).join(' · ');
-const relayTitle=s=>{const r=relayOf(s);if(!r)return'';return`Servicio con relevo: ${r.from_driver_name||'1º chofer'} → ${r.to_driver_name||'2º chofer'} · ${r.handed_over?'vehículo entregado':'esperando la entrega'}`;};
+const relayTitle=s=>{const r=relayOf(s);if(!r)return'';return`Servicio con relevo: ${r.from_driver_name||'1º chofer'} → ${r.to_driver_name||'2º chofer'} · ${r.delivered?'entregado en destino':r.handed_over?'en el 2º tramo':'esperando la entrega'}`;};
 const relayMark=s=>isRelayS(s)?`<span class="osm-chain-mark osm-relay-mark${relayOf(s).handed_over?' is-done':''}" title="${esc(relayTitle(s))}">${icon('repeat')}</span>`:'';
 const relayExchange=s=>{const r=relayOf(s);return r?coordinate(r.exchange_lat,r.exchange_lng):null;};
 function relayBlock(s){
@@ -25,7 +25,10 @@ function relayBlock(s){
   const t1=[r.from_driver_name||'1º chofer',relayTruck(r.from_truck_label,r.from_truck_plate)].filter(Boolean).join(' · ');
   const t2=[r.to_driver_name||'2º chofer',r.to_truck_label?relayTruck(r.to_truck_label,r.to_truck_plate):(r.handed_over?'':'sin jornada iniciada')].filter(Boolean).join(' · ');
   const when=r.handed_over_at?new Date(r.handed_over_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}):'';
-  const state=r.handed_over?`Entregado${when?' a las '+when:''}${r.handover_source==='operator'?' (lo marcó Operaciones)':''}`:'Esperando la entrega del vehículo';
+  const whenD=r.delivered_at?new Date(r.delivered_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}):'';
+  const state=r.delivered?`Entregado en destino${whenD?' a las '+whenD:''}${r.delivery_source==='operator'?' (lo marcó Operaciones)':''}`
+    :r.handed_over?`Entregado a las ${when||'—'} en el punto de encuentro${r.handover_source==='operator'?' (lo marcó Operaciones)':''} · falta la entrega en destino`
+    :r.has_remito?'Remito hecho · esperando la entrega del vehículo':'Esperando la entrega del vehículo · el remito lo hace el 1º chofer';
   return`<section class="osm-chain osm-relay" aria-label="Servicio con relevo"><h4>${icon('repeat')}Servicio con relevo</h4><p class="osm-relay-leg"><span>Tramo 1 · A → B</span><b>${esc(t1)}</b></p><p class="osm-relay-leg"><span>Punto de intercambio</span><b>${esc(chainPlace(r.exchange_address))}</b></p><p class="osm-relay-leg"><span>Tramo 2 · B → C</span><b>${esc(t2)}</b></p><p class="osm-chain-route osm-relay-state${r.handed_over?' is-done':''}"><span>Estado</span><b>${esc(state)}</b></p></section>`;
 }
 const chainMark=s=>isChain(s)?`<span class="osm-chain-mark" title="${esc(chainTitle(s))}">${icon('paperclip')}</span>`:'';

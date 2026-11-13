@@ -76,8 +76,8 @@ async function cargarRelevo(serviceId){
 }
 function relevoFilas(rel){
   if(!rel)return '';
-  const hecho=rel.handed_over;
-  return fila('Relevo',hecho?'<b>Servicio con relevo</b>':'<span class="rmp-empty">Relevo cargado, todavía sin entregar</span>')+
+  const estado=rel.delivered?'<b>Servicio con relevo</b> · entregado en destino':rel.handed_over?'<b>Servicio con relevo</b> · en el 2º tramo, falta la entrega en destino':'<b>Servicio con relevo</b> · <span class="rmp-empty">todavía sin entregar en el punto de encuentro</span>';
+  return fila('Relevo',estado)+
     fila('Tramo 1',`${esc(rel.from_driver_name||'—')} · móvil ${esc(rel.from_truck_label||'—')}<br><small>Origen → ${esc(rel.exchange_address||'—')}</small>`)+
     fila('Tramo 2',`${esc(rel.to_driver_name||'—')} · móvil ${esc(rel.to_truck_label||'—')}<br><small>${esc(rel.exchange_address||'—')} → destino</small>`);
 }

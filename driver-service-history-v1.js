@@ -36,7 +36,7 @@ function relayFields(s){
   return `<div><dt>Servicio con relevo</dt><dd>${first?'Hiciste el tramo 1 (origen → intercambio)':'Hiciste el tramo 2 (intercambio → destino)'}</dd></div>`
     +(s.relay_other_driver?`<div><dt>${first?'Lo recibió':'Lo entregó'}</dt><dd>${esc(s.relay_other_driver)}</dd></div>`:'')
     +(s.relay_exchange_address?`<div><dt>Punto de intercambio</dt><dd>${esc(s.relay_exchange_address)}</dd></div>`:'')
-    +(first?`<div><dt>Remito</dt><dd>Lo cerró ${esc(s.relay_other_driver||'el otro chofer')}</dd></div>`:'');
+    +`<div><dt>Remito</dt><dd>${first?'Lo hiciste vos con el cliente':'Lo hizo '+esc(s.relay_other_driver||'el otro chofer')+' con el cliente'}</dd></div>`;
 }
 let dialog,opener;
 function close(){dialog?.close();if(opener?.isConnected)opener.focus({preventScroll:true});}
@@ -54,7 +54,7 @@ function open(row){
   dialog.innerHTML=`<header><div><small>Historial de servicios</small><h2 id="dsh-title">${esc(row.srvOrden||row.srvNumero||row.nro||'Servicio')}</h2>${stateHTML(row)}</div><button type="button" data-dsh-close aria-label="Cerrar">×</button></header>
     <div class="dsh-body"><dl>${field('Fecha de cierre / registro',at(row.historyAt))}${field('Móvil',s.truck_label)}${field('Cliente',row.cliente)}${field('Vehículo',[row.patente,row.marca].filter(Boolean).join(' · '))}${field('Servicio',row.tipoReal)}${field('Origen',row.origen)}${field('Destino',row.destino)}${field('Motivo',reason)}${relayFields(s)}</dl>
     ${window.AuxiliosHistoryTolls?.render(row.historyTolls,{heading:true})||''}
-    <p class="dsh-document">${row.historyRemito?'Remito '+esc(row.nro||'registrado'):s.relay_role==='primero'?'Sin remito propio: lo cierra el chofer que recibe.':'Servicio registrado sin remito.'}</p></div>
+    <p class="dsh-document">${row.historyRemito?'Remito '+esc(row.nro||'registrado'):s.relay_role?'Sin remito propio: lo hizo el otro chofer del relevo.':'Servicio registrado sin remito.'}</p></div>
     <footer>${row.historyRemito?'<button type="button" data-dsh-remito>Ver remito</button>':''}<button type="button" data-dsh-close>Cerrar</button></footer>`;
   dialog.querySelector('[data-dsh-remito]')?.addEventListener('click',()=>{
     close();window.verRemitoModal({...row.historyRemito,historyEntry:false});

@@ -190,32 +190,36 @@
     const t1 = [r.from_driver_name || 'Primer chofer', truckTxt(r.from_truck_label, r.from_truck_plate)].filter(Boolean).join(' · ');
     const jornada = r.to_truck_label ? truckTxt(r.to_truck_label, r.to_truck_plate) : '';
     const t2 = [r.to_driver_name || 'Segundo chofer', jornada || (r.handed_over ? '' : 'sin jornada iniciada')].filter(Boolean).join(' · ');
-    const state = r.handed_over ? `Entregado${r.handed_over_at ? ` a las ${hhmm(r.handed_over_at)}` : ''}${r.handover_source === 'operator' ? ' (lo marcó Operaciones)' : ''}` : 'Esperando la entrega del vehículo';
+    const state = r.delivered ? `Entregado en destino${r.delivered_at ? ` a las ${hhmm(r.delivered_at)}` : ''}${r.delivery_source === 'operator' ? ' (lo marcó Operaciones)' : ''}`
+      : r.handed_over ? `Entregado en el punto de encuentro${r.handed_over_at ? ` a las ${hhmm(r.handed_over_at)}` : ''}${r.handover_source === 'operator' ? ' (lo marcó Operaciones)' : ''} · falta la entrega en destino`
+      : r.has_remito ? 'Remito hecho · esperando la entrega del vehículo' : 'Esperando la entrega del vehículo · el remito lo hace el 1º chofer';
     return `<div class="os-chain-pop-head os-relay-pop-head">${relayIcon}<b>Servicio con relevo</b></div>
       <p><span>Tramo 1 · A → B</span><b>${esc(t1)}</b></p>
       <p><span>Punto de intercambio</span><b>${esc(place(r.exchange_address))}</b></p>
       <p><span>Tramo 2 · B → C</span><b>${esc(t2)}</b></p>
-      <p class="os-chain-pop-route os-relay-pop-state${r.handed_over ? ' is-done' : ''}"><span>Estado</span><b>${esc(state)}</b></p>
+      <p class="os-chain-pop-route os-relay-pop-state${r.delivered ? ' is-done' : ''}"><span>Estado</span><b>${esc(state)}</b></p>
       ${!r.handed_over && canHandover() ? `<button type="button" class="os-relay-handover" data-relay-handover="${esc(r.service_id)}">Marcar entrega del vehículo</button>` : ''}
-      <small class="os-chain-pop-note">Un solo servicio y un solo remito: lo cierra el 2º chofer. Los dos cuentan el servicio completo.</small>`;
+      ${r.handed_over && !r.delivered && canHandover() ? `<button type="button" class="os-relay-handover" data-relay-delivered="${esc(r.service_id)}">Marcar entrega en destino</button>` : ''}
+      <small class="os-chain-pop-note">Un solo servicio y un solo remito: lo hace el 1º chofer con el cliente. Los dos cuentan el servicio completo.</small>`;
   }
   const canHandover = () => ['administracion', 'operador'].includes(typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO?.roles?.name : '');
   /* Operaciones puede marcar la entrega si el chofer no pudo (mismo efecto que el botón del chofer). Doble toque para confirmar. */
   async function markHandover(btn) {
-    const id = btn.dataset.relayHandover, client = db();
+    const dest = Boolean(btn.dataset.relayDelivered), id = btn.dataset.relayHandover || btn.dataset.relayDelivered, client = db();
+    const idle = dest ? 'Marcar entrega en destino' : 'Marcar entrega del vehículo';
     if (!client || btn.disabled) return;
     if (btn.dataset.sure !== '1') { btn.dataset.sure = '1'; btn.textContent = 'Tocá de nuevo para confirmar la entrega'; return; }
-    btn.disabled = true; btn.textContent = 'Entregando…';
+    btn.disabled = true; btn.textContent = 'Marcando…';
     try {
-      const { error } = await client.rpc('mark_operator_service_relay_handover_v1', { p_service_id: id });
+      const { error } = await client.rpc(dest ? 'mark_operator_service_relay_delivered_v1' : 'mark_operator_service_relay_handover_v1', { p_service_id: id });
       if (error) throw error;
       relays.delete(id); await fetchRelays([id]);
       if (pop && !pop.hidden && anchor?.dataset.serviceId === id) { pop.innerHTML = relayBody(relayOf(id)); place_(pop); }
-      if (typeof window.toast === 'function') window.toast('Vehículo entregado: el servicio pasó al segundo chofer', 'success');
+      if (typeof window.toast === 'function') window.toast(dest ? 'Listo: el vehículo quedó entregado en destino' : 'Vehículo entregado: el servicio pasó al segundo chofer', 'success');
       try { await window.OperatorServices?.loadServices?.(); } catch (_) {}
       decorate();
     } catch (e) {
-      btn.disabled = false; btn.dataset.sure = ''; btn.textContent = 'Marcar entrega del vehículo';
+      btn.disabled = false; btn.dataset.sure = ''; btn.textContent = idle;
       const msg = String(e?.message || 'No se pudo marcar la entrega').replace(/^[A-Z_]{4,}:\s*/, '');
       if (typeof window.toast === 'function') window.toast(msg, 'error'); else console.error(msg);
     }
@@ -225,7 +229,7 @@
     if (pop) return pop;
     pop = document.createElement('div');
     pop.id = 'os-chain-pop'; pop.className = 'os-chain-pop'; pop.setAttribute('role', 'tooltip'); pop.hidden = true;
-    pop.addEventListener('click', e => { const b = e.target.closest?.('[data-relay-handover]'); if (b) { e.preventDefault(); e.stopPropagation(); markHandover(b); } });
+    pop.addEventListener('click', e => { const b = e.target.closest?.('[data-relay-handover],[data-relay-delivered]'); if (b) { e.preventDefault(); e.stopPropagation(); markHandover(b); } });
     pop.addEventListener('mouseenter', () => clearTimeout(hideTimer));
     pop.addEventListener('mouseleave', () => { if (!pinned) schedule(); });
     document.body.appendChild(pop);
