@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v669-flota-v608-solo-v625';
+const CACHE_NAME='auxilios-v670-flota-v608-solo-v625';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
@@ -10,7 +10,7 @@ const PRECACHE_ASSETS=[
   '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css',
   '/runtime-config.js','/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/ui/tooltip-v1.js','/ui/tooltip-v1.css','/ui/count-v1.js','/ui/scroll-fab-v1.js','/ui/scroll-fab-v1.css','/ui/sort-flip-v1.js','/solo.html','/solo/solo-ui.js','/solo/solo.js','/solo/solo-ops.js','/solo/solo-pwa.js','/solo/solo-facturacion.js','/solo/solo-numeros.js','/solo/solo-offline.js','/solo/solo-config.js','/solo/solo.css','/solo-manifest.json','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
-  '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/d3-shape-3.2.1.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',
+  '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/d3-shape-3.2.1.min.js','/dashboard-compact-v1.js','/dashboard-compact-v1.css','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',
   '/ui/service-improvements-v1.js','/ui/service-improvements-v1.css','/ui/export-picker-v1.js','/ui/export-picker-v1.css','/ui/drag-sort-v1.js','/ui/drag-sort-v1.css','/ui/theme-v1.js','/ui/theme-light-v1.css',
   '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/fuel-tickets-v1.js','/fuel-tickets-v1.css','/outsourced-providers-v1.js','/outsourced-providers-v1.css','/outsourced-rates-v1.js','/outsourced-service-cost-v1.js','/operator-service-chain-v1.js','/operator-service-relay-v1.js','/operator-service-relay-v1.css','/driver-relay-v1.js','/driver-relay-v1.css','/operator-service-chain-badge-v1.js','/operator-service-chain-badge-v1.css','/operator-service-chain-v1.css','/outsourced-service-cost-v1.css','/outsourced-settlements-v1.js','/outsourced-settlements-v1.css','/payroll-matrix.js', '/payroll-view.js', '/payroll-export-v1.js',
   '/empresas-v2.js','/empresas-v2.css',

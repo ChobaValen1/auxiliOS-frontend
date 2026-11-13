@@ -255,11 +255,12 @@
       (puntos ? ' pts' : '%') + '</span>';
   }
 
+  /* KPI compacto: etiqueta arriba, valor y variación en la misma línea; la aclaración queda como tooltip. */
   function tile(label, valor, deltaHtml, pie, destacado) {
-    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + '">' +
+    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + '" title="' + esc(String(pie || '').replace(/<[^>]+>/g, '')) + '">' +
       '<div class="rsm-kpi-label">' + esc(label) + '</div>' +
-      '<div class="rsm-kpi-value">' + valor + '</div>' +
-      (deltaHtml ? '<div class="rsm-kpi-delta">' + deltaHtml + '</div>' : '') +
+      '<div class="rsm-kpi-row"><div class="rsm-kpi-value">' + valor + '</div>' +
+      (deltaHtml ? '<div class="rsm-kpi-delta">' + deltaHtml + '</div>' : '') + '</div>' +
       '<div class="rsm-kpi-foot">' + pie + '</div>' +
       '</div>';
   }
@@ -274,10 +275,11 @@
     n.innerHTML =
       tile('Total facturado',has?pesos(t.facturado):GUION,has?neutralDelta(t.facturado,a.facturado,r):'','Servicios finalizados del período',true)+
       tile('Servicios',has?miles(t.servicios):GUION,has?neutralDelta(t.servicios,a.servicios,r):'','Finalizados en el período')+
-      tile('Ticket promedio',has&&t.servicios>0?pesos(t.facturado/t.servicios):GUION,has&&t.servicios>0&&a.servicios>0?neutralDelta(t.facturado/t.servicios,a.facturado/a.servicios,r):'','Facturado por servicio');
+      tile('Ticket promedio',has&&t.servicios>0?pesos(t.facturado/t.servicios):GUION,has&&t.servicios>0&&a.servicios>0?neutralDelta(t.facturado/t.servicios,a.facturado/a.servicios,r):'','Facturado por servicio')+
+      tile('Peajes',has?pesos(t.peajes):GUION,has?neutralDelta(t.peajes,a.peajes,r):'','Peajes de los servicios del período');
     var secondary=el('rsm-secondary');
-    if(secondary) secondary.innerHTML='<dl><div><dt>Peajes</dt><dd>'+(has?pesos(t.peajes):GUION)+'</dd></div><div><dt>Km facturados</dt><dd>'+(has?miles(t.km)+' km':GUION)+'</dd></div></dl>';
-    var context=el('rsm-period-context');if(context)context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
+    if(secondary) secondary.innerHTML='';
+    var context=el('rsm-period-context');if(context)n.title=context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
     var quality=el('rsm-data-context');if(quality)quality.textContent=has?'':'No hay servicios finalizados para los filtros seleccionados.';
   }
 

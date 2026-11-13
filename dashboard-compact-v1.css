@@ -1,0 +1,51 @@
+/* AuxiliOS · Panel compacto (opción 1): pestañas + período + «Filtros» en una sola barra, chips de filtros activos. */
+#screen-dashboard .dashx-head.is-compact { align-items: center; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 10px; }
+#screen-dashboard .dashx-head.is-compact .dashx-head-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+#screen-dashboard .dashx-head.is-compact .dashx-barra-secciones { margin: 0; flex: 0 1 auto; min-width: 0; }
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar { position: relative; margin: 0 0 0 auto; flex-wrap: nowrap; gap: 8px; }
+/* El rango vuelve al botón de período: la línea suelta de abajo ya no está. */
+#screen-dashboard .dashx-head.is-compact .dashx-per-txt small { display: inline !important; }
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar-filtros { display: none; }
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar.is-filters-open .dashx-toolbar-filtros:not([hidden]) {
+  display: flex; position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  flex-direction: column; align-items: stretch; gap: 10px; width: 300px; padding: 14px;
+  border: 1px solid var(--border2, var(--border)); border-radius: 12px; background: var(--card);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar-filtros .rsm-select,
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar-filtros select { width: 100%; max-width: none; }
+#screen-dashboard .dashx-head.is-compact .dashx-toolbar-filtros .rsm-rango { display: none; }
+#screen-dashboard .dashx-filtros-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 1px solid var(--border2, var(--border)); border-radius: 9px; background: var(--bg); color: var(--text); font: 600 12px inherit; cursor: pointer; white-space: nowrap; }
+#screen-dashboard .dashx-filtros-btn:hover, #screen-dashboard .dashx-filtros-btn[aria-expanded="true"] { border-color: var(--amber); }
+#screen-dashboard .dashx-filtros-btn .ax-icon { width: 15px; height: 15px; color: var(--muted2); }
+#screen-dashboard .dashx-filtros-n { min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--amber); color: #1a1203; font-size: 10px; text-align: center; }
+#screen-dashboard .dashx-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 10px; }
+#screen-dashboard .dashx-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--text); font: 500 11.5px inherit; cursor: pointer; }
+#screen-dashboard .dashx-chip b { font-weight: 600; }
+#screen-dashboard .dashx-chip span { color: var(--muted2); }
+#screen-dashboard .dashx-chip:hover span { color: var(--text); }
+#screen-dashboard .dashx-chip-clear { border: 0; background: none; color: var(--muted2); font: 500 11.5px inherit; cursor: pointer; text-decoration: underline; }
+
+/* Resumen: 4 KPIs compactos en una fila; sin la línea de período ni la franja secundaria. */
+#screen-dashboard #dashx-sec-facturacion .rsm-period-context, #screen-dashboard #dashx-sec-facturacion .rsm-secondary:empty { display: none; }
+#screen-dashboard #dashx-sec-facturacion .rsm { gap: 12px; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi { padding: 11px 14px; gap: 2px; border-radius: 12px; grid-column: auto !important; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi.is-main { padding-top: 9px; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi-label { font-size: 11.5px; font-weight: 500; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi-value, #screen-dashboard #dashx-sec-facturacion .rsm-kpi.is-main .rsm-kpi-value { font-size: clamp(18px, 1.6vw, 22px); white-space: nowrap; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi-delta { display: inline-flex; }
+#screen-dashboard #dashx-sec-facturacion .rsm-kpi-foot { display: none; }
+
+@media (max-width: 900px) {
+  #screen-dashboard .dashx-head.is-compact .dashx-barra-secciones { flex: 1 1 100%; }
+  #screen-dashboard .dashx-head.is-compact .dashx-toolbar { margin-left: 0; flex: 1 1 100%; }
+  #screen-dashboard .dashx-head.is-compact .dashx-periodos { flex: 1 1 auto; min-width: 0; }
+  #screen-dashboard #dashx-sec-facturacion .rsm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+}
+@media (max-width: 600px) {
+  #screen-dashboard .dashx-head.is-compact .dashx-toolbar.is-filters-open .dashx-toolbar-filtros:not([hidden]) {
+    position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; border-radius: 16px; z-index: 1200;
+  }
+}
