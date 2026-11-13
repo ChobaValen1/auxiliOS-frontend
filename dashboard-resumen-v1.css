@@ -477,3 +477,19 @@
  #screen-dashboard .rsm-mapa-leyenda{display:grid;max-width:calc(100% - 24px);max-height:125px;overflow:auto}
 }
 #screen-dashboard:has(#dashx-sec-facturacion:not([hidden])) #dashx-fact-sub{display:none}
+
+/* Resumen: eficiencia operativa a la mitad, con «Facturación por tipo» al lado; mapa (Google Maps) y detalle por prestadora siempre a la vista. */
+#screen-dashboard .rsm-fila-efic { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+#screen-dashboard .rsm-fila-efic > .rsm-card { min-width: 0; }
+#screen-dashboard .rsm-mapa-card .rsm-mapa-lienzo { height: 440px; }
+#screen-dashboard .rsm-mapa .gm-style { font-family: inherit; }
+#screen-dashboard .rsm-mapa-popup { color: #15202b; font-size: 12px; font-weight: 600; padding: 2px 4px; }
+#screen-dashboard .rsm-sede-label { text-shadow: 0 0 3px #0c0e12, 0 0 3px #0c0e12, 0 0 6px #0c0e12; margin-top: 30px; }
+#screen-dashboard .rsm-pinned > .rsm-card-head { padding: 16px 18px 6px; }
+#screen-dashboard .rsm-card-tabla.rsm-pinned { padding: 0 0 6px; overflow: hidden; }
+@media (max-width: 900px) {
+  #screen-dashboard .rsm-fila-efic { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-mapa-card .rsm-mapa-lienzo { height: 340px; }
+}

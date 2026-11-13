@@ -24,10 +24,8 @@
   var ID_MAPA  = 'dashx-fact-mapa';
   var ID_TABLA = 'dashx-fact-empresas';
 
-  var LIB_JS  = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js';
-  var LIB_CSS = 'https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css';
-  var ESTILO  = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-  var VISTA_INICIAL = { center: [-58.4, -34.7], zoom: 8 };
+  /* Mapa de Google Maps (mismo SDK y clave de navegador que el mapa de Operaciones). */
+  var VISTA_INICIAL = { center: { lat: -34.7, lng: -58.4 }, zoom: 8 };
 
   var GUION = '—';
   var MAX_PRESTADORAS = 7;
@@ -57,6 +55,8 @@
   var mapa = null;
   var observador = null;
   var cargandoLib = null;
+  var sedesMarcas = [];
+  var infoMapa = null;
   var chartEvol = null;
   var zoomEvol = null;
   /* Zoom de la evolución (dashboard-zoom-v1.js): serie diaria larga, días
@@ -316,22 +316,14 @@
   /* ── mapa ─────────────────────────────────────────────────────────────── */
 
   function cargarLibreria() {
-    if (global.maplibregl) return Promise.resolve();
+    if (global.google && global.google.maps && global.google.maps.Map && global.ServiceRouteMap) return Promise.resolve(global.google.maps);
     if (cargandoLib) return cargandoLib;
-    cargandoLib = new Promise(function (resolve, reject) {
-      if (!document.getElementById('maplibre-css')) {
-        var css = document.createElement('link');
-        css.id = 'maplibre-css'; css.rel = 'stylesheet'; css.href = LIB_CSS;
-        document.head.appendChild(css);
-      }
-      var s = document.createElement('script');
-      s.src = LIB_JS; s.async = true;
-      s.addEventListener('load', function () {
-        global.maplibregl ? resolve() : reject(new Error('maplibre no quedó disponible'));
-      }, { once: true });
-      s.addEventListener('error', function () { reject(new Error('No se pudo cargar el mapa')); }, { once: true });
-      document.body.appendChild(s);
-    }).catch(function (e) { cargandoLib = null; throw e; });
+    var modulo = global.ServiceRouteMap ? Promise.resolve()
+      : (typeof global.loadAuxiliosModule === 'function'
+          ? global.loadAuxiliosModule('service-route-map-js', '/service-route-map.js')
+          : Promise.reject(new Error('No se pudo cargar el mapa')));
+    cargandoLib = modulo.then(function () { return global.ServiceRouteMap.loadSdk(); })
+      .catch(function (e) { cargandoLib = null; throw e; });
     return cargandoLib;
   }
 
@@ -359,13 +351,13 @@
       var color = colores[String(p[2])] || COLOR_OTROS;
       var km = p[4] == null ? null : num(p[4]);
       puntos.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] },
-        properties: { color: color, km: km, dentro: km != null && km <= estado.radio ? 1 : 0 } });
+        properties: { kind: 'punto', color: color, km: km, dentro: km != null && km <= estado.radio ? 1 : 0 } });
       var b = basePorId[String(p[3])];
-      if (b) lineas.push({ type: 'Feature', properties: { color: color },
+      if (b) lineas.push({ type: 'Feature', properties: { kind: 'linea', color: color },
         geometry: { type: 'LineString', coordinates: [[num(b.lng), num(b.lat)], [lng, lat]] } });
     });
     var radios = d.bases.map(function (b) {
-      return { type: 'Feature', properties: {},
+      return { type: 'Feature', properties: { kind: 'radio' },
         geometry: { type: 'Polygon', coordinates: [circulo(num(b.lng), num(b.lat), estado.radio)] } };
     });
     var sedes = d.bases.map(function (b) {
@@ -423,35 +415,60 @@
     if (rv) rv.textContent = estado.radio + ' km';
   }
 
+  /* Capas de datos de Google: puntos, líneas y radios salen del mismo GeoJSON; el estilo decide qué se ve. */
+  function estiloCapa(f) {
+    var maps = global.google.maps, k = f.getProperty('kind');
+    if (k === 'radio') {
+      return { visible: !!estado.circulos, clickable: false, fillColor: '#e8eaf2', fillOpacity: 0.07,
+               strokeColor: '#e8eaf2', strokeOpacity: 0.55, strokeWeight: 1.2, zIndex: 1 };
+    }
+    if (k === 'linea') {
+      return { visible: !!estado.lineas, clickable: false, strokeColor: f.getProperty('color'), strokeOpacity: 0.6, strokeWeight: 1.4, zIndex: 2 };
+    }
+    var dentro = f.getProperty('dentro') === 1;
+    return { clickable: true, zIndex: 3,
+      icon: { path: maps.SymbolPath.CIRCLE, scale: 5.5, fillColor: f.getProperty('color'), fillOpacity: dentro ? 0.95 : 0.65,
+              strokeColor: '#0c0e12', strokeWeight: 1.5 } };
+  }
+
   function aplicarVisibilidadCapas() {
-    if (!mapa || !mapa.getLayer('rsm-radios-fill')) return;
-    var vc = estado.circulos ? 'visible' : 'none';
-    mapa.setLayoutProperty('rsm-radios-fill', 'visibility', vc);
-    mapa.setLayoutProperty('rsm-radios-line', 'visibility', vc);
-    mapa.setLayoutProperty('rsm-lineas', 'visibility', estado.lineas ? 'visible' : 'none');
+    if (!mapa) return;
+    mapa.data.setStyle(estiloCapa);
+  }
+
+  function pintarSedes(d) {
+    var maps = global.google.maps;
+    sedesMarcas.forEach(function (m) { m.setMap(null); });
+    sedesMarcas = d.bases.map(function (b) {
+      return new maps.Marker({
+        map: mapa, position: { lat: num(b.lat), lng: num(b.lng) }, zIndex: 10, title: String(b.nombre || 'Base'),
+        icon: { path: maps.SymbolPath.CIRCLE, scale: 8, fillColor: COLOR_BASE, fillOpacity: 1, strokeColor: '#0c0e12', strokeWeight: 3 },
+        label: { text: String(b.nombre || 'Base'), color: '#e8eaf2', fontSize: '11px', fontWeight: '600', className: 'rsm-sede-label' }
+      });
+    });
   }
 
   function actualizarFuentes(d) {
     if (!mapa) return;
     var g = datosMapa(d);
-    ['puntos', 'lineas', 'radios', 'sedes'].forEach(function (k) {
-      var s = mapa.getSource('rsm-' + k);
-      if (s) s.setData(g[k]);
-    });
+    mapa.data.forEach(function (f) { mapa.data.remove(f); });
+    ['radios', 'lineas', 'puntos'].forEach(function (k) { mapa.data.addGeoJson(g[k]); });
+    pintarSedes(d);
+    aplicarVisibilidadCapas();
   }
 
   function encuadrar(d) {
     if (!mapa) return;
-    var coords = d.puntos.map(function (p) { return [num(p[0]), num(p[1])]; })
-      .concat(d.bases.map(function (b) { return [num(b.lng), num(b.lat)]; }));
-    if (!coords.length) return;
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    coords.forEach(function (c) {
-      minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]);
-      minY = Math.min(minY, c[1]); maxY = Math.max(maxY, c[1]);
-    });
-    if (minX === maxX && minY === maxY) { mapa.jumpTo({ center: [minX, minY], zoom: 10 }); return; }
-    mapa.fitBounds([[minX, minY], [maxX, maxY]], { padding: 40, duration: 0, maxZoom: 11 });
+    var maps = global.google.maps, c = el(ID_MAPA);
+    if (c && (!c.clientWidth || !c.clientHeight)) return;      /* pestaña oculta: se reencuadra al mostrarse */
+    var pts = d.puntos.map(function (p) { return { lat: num(p[1]), lng: num(p[0]) }; })
+      .concat(d.bases.map(function (b) { return { lat: num(b.lat), lng: num(b.lng) }; }));
+    if (!pts.length) return;
+    var bounds = new maps.LatLngBounds();
+    pts.forEach(function (p) { bounds.extend(p); });
+    if (bounds.getNorthEast().equals(bounds.getSouthWest())) { mapa.setCenter(pts[0]); mapa.setZoom(11); return; }
+    mapa.fitBounds(bounds, 48);
+    maps.event.addListenerOnce(mapa, 'idle', function () { if (mapa && mapa.getZoom() > 12) mapa.setZoom(12); });
   }
 
   function mensajeMapa(texto, esError) {
@@ -463,7 +480,12 @@
 
   function destruirMapa() {
     if (observador) { observador.disconnect(); observador = null; }
-    if (mapa) { mapa.remove(); mapa = null; }
+    sedesMarcas.forEach(function (m) { m.setMap(null); });
+    sedesMarcas = [];
+    if (infoMapa) { infoMapa.close(); infoMapa = null; }
+    mapa = null;                                                /* Google no tiene remove(): se descarta el contenedor */
+    var c = el(ID_MAPA);
+    if (c) c.innerHTML = '';
   }
 
   function pintarMapa(d) {
@@ -476,80 +498,43 @@
         : 'Todavía no hay servicios en este período. Acá va a verse dónde trabaja cada prestadora.');
       return;
     }
-    return cargarLibreria().then(function () {
-      if (!el(ID_MAPA)||estado.res!==d) return;
-      if (mapa && mapa.getSource('rsm-puntos')) {
-        actualizarFuentes(d);
-        encuadrar(d);
-        return;
-      }
+    return cargarLibreria().then(function (maps) {
+      if (!el(ID_MAPA) || estado.res !== d) return;
+      if (mapa) { actualizarFuentes(d); encuadrar(d); return; }
       destruirMapa();
-      c.innerHTML = '';
-      var g = datosMapa(d);
-      mapa = new global.maplibregl.Map({
-        container: c, style: ESTILO,
-        center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom,
-        attributionControl: { compact: true },
-        dragRotate: false, pitchWithRotate: false
+      mapa = new maps.Map(c, {
+        center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom, mapTypeId: 'roadmap',
+        styles: global.ServiceRouteMap.mapStyle(), gestureHandling: 'cooperative',
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false,
+        zoomControlOptions: { position: maps.ControlPosition.RIGHT_TOP }
       });
-      mapa.addControl(new global.maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+      var propio = mapa;
+      actualizarFuentes(d);
+      tooltipMapa();
+      /* En la pestaña oculta el contenedor mide 0: al mostrarse se redibuja y se reencuadra. */
       if (typeof global.ResizeObserver === 'function') {
-        observador = new global.ResizeObserver(function () { if (mapa) mapa.resize(); });
+        observador = new global.ResizeObserver(function () {
+          if (mapa !== propio || !c.clientWidth) return;
+          maps.event.trigger(propio, 'resize');
+          if (estado.res) encuadrar(estado.res);
+        });
         observador.observe(c);
       }
-      var ownMap=mapa;
-      mapa.on('load', function () {
-        if(mapa!==ownMap||!estado.res)return;
-        d=estado.res;g=datosMapa(d);
-        mapa.addSource('rsm-radios', { type: 'geojson', data: g.radios });
-        mapa.addSource('rsm-lineas', { type: 'geojson', data: g.lineas });
-        mapa.addSource('rsm-puntos', { type: 'geojson', data: g.puntos });
-        mapa.addSource('rsm-sedes', { type: 'geojson', data: g.sedes });
-        mapa.addLayer({ id: 'rsm-radios-fill', type: 'fill', source: 'rsm-radios',
-          paint: { 'fill-color': '#e8eaf2', 'fill-opacity': 0.06 } });
-        mapa.addLayer({ id: 'rsm-radios-line', type: 'line', source: 'rsm-radios',
-          paint: { 'line-color': '#e8eaf2', 'line-opacity': 0.45, 'line-width': 1.2, 'line-dasharray': [3, 3] } });
-        mapa.addLayer({ id: 'rsm-lineas', type: 'line', source: 'rsm-lineas',
-          paint: { 'line-color': ['get', 'color'], 'line-opacity': 0.55, 'line-width': 1.2 } });
-        mapa.addLayer({ id: 'rsm-puntos', type: 'circle', source: 'rsm-puntos',
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 4, 12, 7],
-            'circle-color': ['get', 'color'],
-            'circle-stroke-color': '#0c0e12', 'circle-stroke-width': 1.5,
-            'circle-opacity': ['case', ['==', ['get', 'dentro'], 1], 0.95, 0.7]
-          } });
-        mapa.addLayer({ id: 'rsm-sedes', type: 'circle', source: 'rsm-sedes',
-          paint: { 'circle-radius': 7, 'circle-color': COLOR_BASE,
-                   'circle-stroke-color': '#0c0e12', 'circle-stroke-width': 3 } });
-        mapa.addLayer({ id: 'rsm-sedes-nombre', type: 'symbol', source: 'rsm-sedes', minzoom: 7,
-          layout: { 'text-field': ['get', 'nombre'], 'text-size': 11, 'text-offset': [0, 1.3],
-                    'text-anchor': 'top', 'text-optional': true },
-          paint: { 'text-color': '#e8eaf2', 'text-halo-color': '#0c0e12', 'text-halo-width': 2 } });
-        aplicarVisibilidadCapas();
-        tooltipMapa();
-        encuadrar(d);
-      });
+      encuadrar(d);
     }).catch(function (e) { mensajeMapa(e.message || 'No se pudo cargar el mapa', true); });
   }
 
   function tooltipMapa() {
-    var popup = new global.maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'dashx-mapa-popup' });
-    mapa.on('mouseenter', 'rsm-puntos', function (e) {
-      var f = e.features && e.features[0];
-      if (!f) return;
-      mapa.getCanvas().style.cursor = 'pointer';
-      var km = f.properties.km;
-      popup.setLngLat(f.geometry.coordinates)
-        .setText(km == null || km === 'null' ? 'Servicio' : miles(km, 1) + ' km a la base más cercana').addTo(mapa);
+    var maps = global.google.maps;
+    infoMapa = new maps.InfoWindow({ disableAutoPan: true });
+    mapa.data.addListener('mouseover', function (e) {
+      var km = e.feature.getProperty('km');
+      if (e.feature.getProperty('kind') !== 'punto') return;
+      infoMapa.setContent('<div class="rsm-mapa-popup">' + (km == null ? 'Servicio' : miles(km, 1) + ' km a la base más cercana') + '</div>');
+      infoMapa.setPosition(e.latLng);
+      infoMapa.open(mapa);
     });
-    mapa.on('mouseleave', 'rsm-puntos', function () { mapa.getCanvas().style.cursor = ''; popup.remove(); });
-    mapa.on('mouseenter', 'rsm-sedes', function (e) {
-      var f = e.features && e.features[0];
-      if (!f) return;
-      mapa.getCanvas().style.cursor = 'pointer';
-      popup.setLngLat(f.geometry.coordinates).setText(f.properties.nombre).addTo(mapa);
-    });
-    mapa.on('mouseleave', 'rsm-sedes', function () { mapa.getCanvas().style.cursor = ''; popup.remove(); });
+    mapa.data.addListener('mouseout', function () { if (infoMapa) infoMapa.close(); });
   }
 
   function montarControlesMapa() {
@@ -915,7 +900,7 @@
   function pintar(d) {
     pintarKpis(d);
     pintarRanking(d);
-    if(el('rsm-geography')?.open) pintarMapa(d);
+    pintarMapa(d);
     pintarTipos(d);
     pintarEvolucion(d);
     pintarEficiencia(d);
@@ -976,8 +961,7 @@
   function montar() {
     montarFiltros();
     montarControlesMapa();
-    var geo=el('rsm-geography');if(geo&&!geo.dataset.bound){geo.dataset.bound='1';geo.addEventListener('toggle',function(){if(geo.open&&estado.res){pintarMapa(estado.res);if(mapa)mapa.resize();}});}
-    var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail){detail.open=true;detail.querySelector('summary')?.focus();detail.scrollIntoView({block:'start',behavior:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}});}
+    var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail)detail.scrollIntoView({block:'start',behavior:global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});}
 
     engancharTabla();
     pintarKpis(normalizar(null, null));
