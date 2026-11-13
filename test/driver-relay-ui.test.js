@@ -110,3 +110,13 @@ test('aviso al 2º chofer cuando le entregan el vehículo: detecta lo que pasó 
   assert.match(src, /S\.incoming\.length\) void refresh\(\{ force: true \}\), 15000|S\.incoming\.length\) void refresh\(\{ force: true \}\); \}, 15000/);
   assert.match(src, /recargarServiciosChofer/);
 });
+
+test('tarjetas del chofer: mismo orden visual en todos los servicios (patente, cliente chico, sin teléfono ni Llamar)', () => {
+  const js = fs.readFileSync('operator-service-bridge.js', 'utf8'), css = fs.readFileSync('operator-service-bridge.css', 'utf8');
+  const body = js.slice(js.indexOf('function previewBody(s){'), js.indexOf('function slidePreview'));
+  assert.ok(body.indexOf('p3-sheet-vehicle') < body.indexOf('p3-sheet-client'), 'primero patente y vehículo, después el cliente');
+  assert.doesNotMatch(body, /tel:|customer_phone|Llamar|CLIENTE/);
+  const quick = js.slice(js.indexOf('function driverQuickLinks'), js.indexOf('function driverQuickLinks') + 700);
+  assert.doesNotMatch(quick, /tel:|Llamar|customer_phone/);
+  assert.match(css, /\.p3-sheet-client\{padding:0 2px 14px;border:0;background:none\}/);
+});

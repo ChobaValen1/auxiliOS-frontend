@@ -63,9 +63,9 @@ function tollSummary(s,{compact=false}={}){
   return`<div class="p3-summary-block p3-toll-summary ${compact?'compact':''}"><div class="p3-summary-title">Peajes</div>${rows}</div>`;
 }
 function customerSummary(s){
-  const name=String(s.customer_name||'').trim(),phone=String(s.customer_phone||'').trim();
-  if(!name&&!phone)return'';
-  return`<div class="p3-fact-row p3-customer-fact"><span>Socio</span><strong>${esc(name||'Sin nombre')}${phone?` <em>${esc(phone)}</em>`:''}</strong></div>`;
+  const name=String(s.customer_name||'').trim();
+  if(!name)return'';
+  return`<div class="p3-fact-row p3-customer-fact"><span>Socio</span><strong>${esc(name)}</strong></div>`;
 }
 function draftState(s){return s.remito_status==='pendiente'?`<div class="p3-draft-state">${ico('check','ax-icon-sm')}Borrador guardado</div>`:''}
 function serviceFacts(s,{compact=false}={}){
@@ -179,10 +179,8 @@ function confirmEarlyStart(id){const s=findService(id);if(!s)return;const body=d
 function startEarly(id){if(!P3.earlyStart)P3.earlyStart=new Set();P3.earlyStart.add(String(id));try{const k='auxilios.earlyStart';const prev=JSON.parse(sessionStorage.getItem(k)||'[]');sessionStorage.setItem(k,JSON.stringify([...new Set([...prev,String(id)])]))}catch(_){}render();openPreview(id)}
 function driverQuickLinks(s){
   const address=String((s.status==='at_origin'?s.destination||s.origin:s.origin)||'').trim();
-  const phone=String(s.customer_phone||'').trim(),dial=phone.replace(/[\s().-]/g,'');
   const map=address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${esc(encodeURIComponent(address))}&travelmode=driving" target="_blank" rel="noopener noreferrer" aria-label="${s.status==='at_origin'?'Navegar al destino':'Navegar al origen'}">${ico('map-pin')}Navegar</a>`:'';
-  const call=/^\+?\d{6,15}$/.test(dial)?`<a href="tel:${esc(dial)}" aria-label="Llamar al cliente">${ico('phone')}Llamar</a>`:'';
-  return map||call?`<div class="p3-quick-links">${map}${call}</div>`:'';
+  return map?`<div class="p3-quick-links">${map}</div>`:'';
 }
 function driverCardLabel(s){if(s.remito_action==='edit'||s.can_edit_remito)return'Ver servicio';if(s.remito_action==='complete'||s.can_complete_remito)return s.status==='at_origin'?'Completar remito':'Llegué al origen';return'Ver servicio';}
 function driverCardAction(id,button){const s=findService(id);if(!s||!isDriver())return;const q=queueState(s);if(q&&!q.started||isProgrammed(s)||s.remito_action==='edit'||s.can_edit_remito)return openPreview(id);if(s.remito_action==='complete'||s.can_complete_remito){if(s.status==='at_origin')return window.abrirRemitoServicio(id);return markArrived(id,button);}return openPreview(id);}
@@ -303,10 +301,8 @@ function previewTripMetrics(s){
  return`<div class="p3-sheet-metrics"><div><span>Kilómetros del recorrido</span><strong>${esc(s.route_distance_status||s.draft_route_status||originDestinationKm(s.origin_destination_distance_meters))}</strong></div><div><span>Tiempo aproximado</span><strong>${esc(s.route_time_status||s.draft_route_status||duration)}</strong></div><div class="p3-sheet-toll-format"><span>Peajes:</span><strong>${esc(tollCoverageLabel(s.toll_coverage_mode))}</strong></div><div class="p3-sheet-excess"><span>Excedentes</span><div>${excess}</div></div></div>`;
 }
 function previewBody(s){
- const phone=String(s.customer_phone||'').trim(),dial=phone.replace(/[\s().-]/g,'');
- const call=/^\+?\d{6,15}$/.test(dial)?`<a class="p3-client-call" href="tel:${esc(dial)}">${ico('phone')}Llamar</a>`:'';
  const route=(label,address)=>`<div class="p3-sheet-place"><span><small>${label}</small><b>${esc(address||'Dirección sin informar')}</b></span>${address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${esc(encodeURIComponent(address))}&travelmode=driving" target="_blank" rel="noopener noreferrer" aria-label="Navegar a ${label.toLowerCase()}">${ico('map-pin')}</a>`:''}</div>`;
- return`<div class="p3-sheet-client"><small>CLIENTE</small><div><h3>${esc(s.customer_name||'Nombre sin informar')}</h3>${call}</div>${phone?`<p>${esc(phone)}</p>`:'<p>Teléfono sin informar</p>'}${s.customer_document?`<p>DNI/CUIT ${esc(s.customer_document)}</p>`:''}</div><div class="p3-sheet-vehicle"><strong>${esc(s.vehicle_plate||'Sin patente')}</strong><span>${esc(s.vehicle_make_model||'Vehículo sin informar')}</span></div><div class="p3-sheet-route">${route(s.single_address?'Dirección':'Origen',s.origin)}${s.single_address?'':route('Destino',s.destination)}</div><div class="p3-sheet-commercial">${previewTripMetrics(s)}${draftState(s)}</div>`;
+ return`<div class="p3-sheet-vehicle"><strong>${esc(s.vehicle_plate||'Sin patente')}</strong><span>${esc(s.vehicle_make_model||'Vehículo sin informar')}</span></div><div class="p3-sheet-client"><h3>${esc(s.customer_name||'Nombre sin informar')}</h3></div><div class="p3-sheet-route">${route(s.single_address?'Dirección':'Origen',s.origin)}${s.single_address?'':route('Destino',s.destination)}</div><div class="p3-sheet-commercial">${previewTripMetrics(s)}${draftState(s)}</div>`;
 }
 /* Pasar de la ficha a "Marcar como activado" (y volver) deslizando, no de golpe:
    el chofer ve que entró a otro paso y que "Volver" lo trae de nuevo a la ficha. */
