@@ -30,21 +30,34 @@ test('el 2º chofer ve el servicio antes: punto B, vehículo, quién se lo trae,
   assert.equal(R._incomingHtml([]), '');
 });
 
-test('el 1º chofer: va a B con Maps, entrega con doble toque y no crea remito', () => {
-  const idle = R._outgoingBox(x, '', '');
+test('el 1º chofer: primero el remito; con el remito hecho entrega en B con doble toque', () => {
+  const sinRemito = R._outgoingBox(x, '', '');
+  assert.doesNotMatch(sinRemito, /data-drl-handover/, 'sin remito no aparece el botón de entrega');
+  assert.match(sinRemito, /Primero hacé el remito con el cliente<\/b> y cobrá como siempre/);
+  const y = { ...x, has_remito: true };
+  const idle = R._outgoingBox(y, '', '');
   assert.doesNotMatch(idle, /Ir al punto de intercambio en Maps|drl-maps/);
-  assert.match(idle, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo en B/);
-  assert.match(idle, /No hace falta crear remito/);
-  const sure = R._outgoingBox(x, 's1', '');
+  assert.match(idle, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo a Lucas P\./);
+  assert.match(idle, /Remito hecho\. Llevá el vehículo al punto de encuentro/);
+  const sure = R._outgoingBox(y, 's1', '');
   assert.match(sure, /Tocá de nuevo para confirmar la entrega/);
-  assert.match(sure, /pasa a Lucas P\. y no vas a poder crear el remito/);
-  assert.match(R._outgoingBox(x, '', 's1'), /disabled aria-busy="true"/);
+  assert.match(sure, /pasa a Lucas P\. para que lo lleve al destino/);
+  assert.match(R._outgoingBox(y, '', 's1'), /disabled aria-busy="true"/);
 });
 
-test('el 2º chofer, ya con el servicio: de quién lo recibió y Maps al destino', () => {
-  const html = R._receivedBox({ ...x, handed_over: true, handed_over_at: '2026-11-13T14:42:00Z' });
+test('el 2º chofer, ya con el servicio: de quién lo recibió, sin remito y «Entregué el vehículo en destino»', () => {
+  const r = { ...x, handed_over: true, handed_over_at: '2026-11-13T14:42:00Z', has_remito: true };
+  const html = R._receivedBox(r, '', '');
   assert.match(html, /Recibiste el vehículo de <b>Martín R\.<\/b>/);
   assert.doesNotMatch(html, /drl-maps|Ir al destino en Maps/);
+  assert.match(html, /data-drl-delivered="s1"[^>]*>\s*Entregué el vehículo en destino/);
+  assert.match(html, /No hacés remito: lo hizo Martín R\. con el cliente/);
+  assert.match(R._receivedBox(r, 'd:s1', ''), /Tocá de nuevo para confirmar/);
+  assert.match(R._receivedBox(r, '', 'd:s1'), /disabled aria-busy="true"/);
+  const done = R._receivedBox({ ...r, delivered: true, delivered_at: '2026-11-13T16:10:00Z' }, '', '');
+  assert.doesNotMatch(done, /data-drl-delivered/);
+  assert.match(done, /Entregado en destino/);
+  assert.match(src, /mark_operator_service_relay_delivered_v1/);
 });
 
 test('el motivo del rechazo se muestra sin el código técnico', () => {
@@ -68,7 +81,7 @@ test('«Vas a recibir» se toca como un servicio normal y abre su detalle en la 
   assert.match(html, /aria-label="Ver servicio SRV-123 con relevo"/);
   assert.match(html, /Ver detalle/);
   const sheet = R._incomingSheet({ ...x, scheduled_for: '2026-11-13T14:30:00Z' });
-  for (const t of ['Esperando que Martín R. entregue el vehículo', 'Retirás en (punto de encuentro)', 'Fiat Cronos', 'Móvil 12', 'Remedios de Escalada', 'Horario del servicio', 'completás el remito con el cliente']) assert.ok(sheet.includes(t), t);
+  for (const t of ['Esperando que Martín R. entregue el vehículo', 'Retirás en (punto de encuentro)', 'Fiat Cronos', 'Móvil 12', 'Remedios de Escalada', 'Horario del servicio', 'No hacés remito', 'Entregué el vehículo en destino']) assert.ok(sheet.includes(t), t);
   assert.match(src, /openCustomPreview/);
   assert.match(src, /\.drl-card\[data-drl-service\]/);
   assert.match(src, /e\.key !== 'Enter' && e\.key !== ' '/);
@@ -78,26 +91,28 @@ test('«Vas a recibir» se toca como un servicio normal y abre su detalle en la 
   assert.match(fs.readFileSync('driver-relay-v1.css', 'utf8'), /\.drl-card\.is-actionable/);
 });
 
-test('en la ventana de un servicio normal: el 1º chofer sin remito, el 2º sin «Llegué al origen»', () => {
+test('en la ventana de un servicio normal: el 1º chofer hace el remito, el 2º sin remito ni «Llegué al origen»', () => {
   for (const frag of ['abrirRemitoServicio', '.p3-other-actions', '.p3-arrive-btn', 'Tocalo al llegar', "[onclick*=\"abrirRemitoServicio\"]"]) assert.ok(src.includes(frag), frag);
   assert.match(src, /window\.cerrarPreviewServicio\?\.\(\)/, 'al entregar se cierra la ventana');
 });
 
-test('detalle del 1º chofer: un solo botón principal (aparece al llegar) y sin botón azul de Maps', () => {
-  const before = R._sheetBox(x, '', '', false), after = R._sheetBox(x, '', '', true);
+test('detalle del 1º chofer: el botón de entrega aparece con el remito hecho y sin botón azul de Maps', () => {
+  const before = R._sheetBox(x, '', ''), after = R._sheetBox({ ...x, has_remito: true }, '', '');
   assert.doesNotMatch(before, /data-drl-handover/);
-  assert.match(after, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo en B/);
+  assert.match(before, /Primero hacé el remito/);
+  assert.match(after, /data-drl-handover="s1"[^>]*>\s*Entregué el vehículo a Lucas P\./);
   assert.doesNotMatch(before + after, /drl-maps/);
-  assert.match(after, /No hace falta crear remito/);
-  assert.match(R._sheetBox(x, 's1', '', true), /Tocá de nuevo para confirmar la entrega/);
+  assert.match(R._sheetBox({ ...x, has_remito: true }, 's1', ''), /Tocá de nuevo para confirmar la entrega/);
 });
 
-test('pantalla de remito del 2º chofer: banner de relevo con quién le entregó el vehículo', () => {
-  const html = R._remitoBanner({ ...x, handed_over_at: '2026-11-13T14:42:00Z' });
-  assert.match(html, /Con relevo · Tramo 2 de 2/);
-  assert.match(html, /Recibiste el vehículo de <b>Martín R\.<\/b> \(Móvil 12 · AB123CD\) en Estación de servicio, Gonnet/);
-  assert.match(html, /un solo servicio y un solo remito/);
+test('pantalla de remito del 1º chofer: banner de relevo con a quién y dónde entrega el vehículo', () => {
+  const html = R._remitoBanner(x);
+  assert.match(html, /Con relevo · Tramo 1 de 2/);
+  assert.match(html, /Hacé el remito con el cliente y cobrá como siempre/);
+  assert.match(html, /Estación de servicio, Gonnet<\/b> y se lo entregás a <b>Lucas P\.<\/b>/);
+  assert.match(html, /el otro chofer no hace remito/);
   assert.doesNotMatch(html, /drl-chip-side/);
+  assert.match(src, /S\.outgoing\.find\(x => String\(x\.service_id\) === String\(serviceId\)\)/);
   assert.match(fs.readFileSync('operator-service-bridge.js', 'utf8'), /AuxRelevoChofer\?\.decorateRemito\?\.\(s\.service_id\)/);
 });
 

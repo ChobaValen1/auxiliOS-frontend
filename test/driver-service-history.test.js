@@ -97,13 +97,15 @@ test('history marks relay tramos and explains who closed the remito',()=>{
 test('remito panel and PDF carry the relay tramos',()=>{
  const panel=fs.readFileSync('remitos-admin-panel-v1.js','utf8'),pdf=fs.readFileSync('remito-pdf-v2.js','utf8');
  assert.match(panel,/get_operator_service_relay_v1/);assert.match(panel,/fila\('Tramo 1'/);assert.match(panel,/fila\('Tramo 2'/);assert.match(panel,/P\.relevo=null|P\.relevo\]=loaded/);
- assert.match(pdf,/get_operator_service_relay_v1/);assert.match(pdf,/Servicio con relevo:/);assert.match(pdf,/relay&&relay\.handed_over/);
+ assert.match(pdf,/get_operator_service_relay_v1/);assert.match(pdf,/Servicio con relevo:/);assert.match(pdf,/if\(relay\)\{/,'el remito lo firma el 1º chofer antes de entregar: el relevo va igual');
 });
-test('liquidaciones: el servicio con relevo del 1º chofer se lista y se rotula', () => {
- const mig = fs.readFileSync('migrations/20261113170000_liquidacion_relevo_primer_chofer_v1.sql', 'utf8');
+test('liquidaciones: el chofer del relevo que no hizo el remito se lista sin remito propio y se rotula', () => {
+ const mig = fs.readFileSync('migrations/20261113200000_relevo_remito_primer_chofer_v2.sql', 'utf8');
  assert.match(mig, /relay_first/);
- assert.match(mig, /rl\.from_driver_id=c\.driver_id/);
- assert.match(mig, /'relay_role',case when s\.relay_first then 'primero' end/);
- assert.match(mig, /case when s\.relay_first then 0 else a\.toll_cash end/);
- assert.match(fs.readFileSync('payroll-view.js', 'utf8'), /Servicio con relevo · tramo 1/);
+ assert.match(mig, /when x\.from_driver_id=c\.driver_id then 'primero' when x\.to_driver_id=c\.driver_id then 'segundo'/);
+ assert.match(mig, /r\.status<>'anulado' and r\.driver_id=c\.driver_id\)\) relay_first/);
+ assert.match(mig, /'relay_role',case when s\.relay_first then s\.relay_role end/);
+ assert.match(mig, /case when s\.relay_first then 0 else a\.toll_cash end/, 'no rinde peajes ni efectivo el que no hizo el remito');
+ assert.match(mig, /or rl\.from_driver_id=uid or rl\.to_driver_id=uid/, 'historial: también lo ve el 2º chofer');
+ assert.match(fs.readFileSync('payroll-view.js', 'utf8'), /Servicio con relevo · tramo \$\{r\.relay_role==='primero'\?1:2\}/);
 });

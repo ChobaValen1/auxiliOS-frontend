@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const { PGlite } = require('@electric-sql/pglite');
 
 const MIGRATION = 'migrations/20261113120000_servicio_con_relevo_v1.sql';
+// v2: el remito lo hace el 1º chofer y el 2º marca la entrega en destino.
+const MIGRATION_V2 = 'migrations/20261113200000_relevo_remito_primer_chofer_v2.sql';
 const U = n => `10000000-0000-4000-8000-00000000000${n}`;
 const op = U(1), d1 = U(2), d2 = U(3), other = U(4), sup = U(5);
 const S = n => `40000000-0000-4000-8000-00000000000${n}`;
@@ -19,12 +21,19 @@ const setRelay = (service = S(1), { address = 'Estación de servicio, Gonnet', l
 // Jornada activa de un chofer con un móvil (de ahí sale el móvil que recibe el vehículo).
 const jornada = (driver, truck) => db.query('insert into daily_logs(driver_id, truck_id) values ($1, $2)', [driver, truck]);
 const handover = (service = S(1)) => rpc('select public.mark_operator_service_relay_handover_v1($1) r', [service]);
+// El 1º chofer hace el remito con el cliente al retirar el vehículo (queda en curso, con viaje y remito).
+const conRemito = async (service = S(1), driver = d1, id = 900, firmado = true) => {
+  await db.query('insert into remitos values ($1, $2, $3, $4, now())', [id, service, driver, firmado ? 'firmado' : 'pendiente']);
+  await db.query("update operator_services set trip_id=$2, remito_id=$2, status='at_origin' where service_id=$1", [service, id]);
+};
+const delivered = (service = S(1)) => rpc('select public.mark_operator_service_relay_delivered_v1($1) r', [service]);
 const completed = async () => (await db.query('select service_id, driver_id, remito_id from app_private.completed_driver_services_v2() order by service_id, driver_id')).rows;
 
 before(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync('test/fixtures/service-relay-schema.sql', 'utf8'));
   await db.exec(fs.readFileSync(MIGRATION, 'utf8'));
+  await db.exec(fs.readFileSync(MIGRATION_V2, 'utf8'));
 });
 after(async () => db?.close());
 beforeEach(async () => {
@@ -111,6 +120,7 @@ test('después de entregar, el servicio le queda al 2º como recibido y el 1º y
   await setRelay();
   await as('chofer', d2);
   assert.equal((await rpc('select public.get_driver_relay_state_v1() r')).incoming[0].to_has_active_jornada, true);
+  await conRemito();
   await as('chofer', d1);
   await handover();
   const mine = await rpc('select public.get_driver_relay_state_v1() r');
@@ -121,29 +131,36 @@ test('después de entregar, el servicio le queda al 2º como recibido y el 1º y
   assert.equal(st.received[0].from_driver_name, 'Martín R.');
   assert.equal(st.received[0].handed_over, true);
   assert.equal(st.received[0].to_truck_id, 7);
+  assert.equal(st.received[0].has_remito, true, 'el remito ya lo hizo el 1º');
+  assert.equal(st.received[0].delivered, false);
 });
 
-test('el 1º chofer no puede crear viaje ni remito hasta entregar; después lo crea el 2º', async () => {
+test('el 1º chofer hace el remito antes de entregar; sin remito no puede entregar (Operaciones sí)', async () => {
   await jornada(d2, 7);
   await setRelay();
-  await assert.rejects(db.query('update operator_services set trip_id=55 where service_id=$1', [S(1)]), /RELEVO_PENDIENTE/);
-  await assert.rejects(db.query('update operator_services set remito_id=77 where service_id=$1', [S(1)]), /RELEVO_PENDIENTE/);
-  await db.query('update operator_services set trip_id=55 where service_id=$1', [S(2)]); // sin relevo: igual que siempre
   await as('chofer', d1);
-  await handover();
-  await db.query('update operator_services set trip_id=56, remito_id=78 where service_id=$1', [S(1)]);
-  assert.equal((await one('select trip_id from operator_services where service_id=$1', [S(1)])).trip_id, 56);
+  await assert.rejects(handover(), /RELEVO_SIN_REMITO: primero hacé el remito/);
+  assert.equal((await one('select assigned_driver_id from operator_services where service_id=$1', [S(1)])).assigned_driver_id, d1, 'no se movió nada');
+  await conRemito(); // ya no hay bloqueo: el 1º crea viaje y remito
+  assert.deepEqual({ ...(await one('select trip_id, remito_id from operator_services where service_id=$1', [S(1)])) }, { trip_id: 900, remito_id: 900 });
+  assert.equal((await handover()).has_remito, true);
+  // Operaciones puede marcar la entrega aunque el chofer no haya hecho el remito.
+  await as('operador', op);
+  await db.query("insert into operator_services(service_id, service_number, status, assigned_driver_id, assigned_truck_id) values ($1,'SRV-3','assigned',$2,12)", [S(3), other]);
+  await setRelay(S(3));
+  assert.equal((await handover(S(3))).handover_source, 'operator');
 });
 
 test('la entrega pasa el servicio al 2º chofer, con el móvil de su jornada activa, y deja al 1º en el historial', async () => {
   await jornada(d2, 7);
   await setRelay();
+  await conRemito();
   await as('chofer', d1);
   const r = await handover();
   assert.equal(r.handed_over, true);
   assert.equal(r.handover_source, 'driver');
-  const s = await one('select assigned_driver_id, assigned_truck_id, status from operator_services where service_id=$1', [S(1)]);
-  assert.deepEqual({ ...s }, { assigned_driver_id: d2, assigned_truck_id: 7, status: 'assigned' });
+  const s = await one('select assigned_driver_id, assigned_truck_id, status, remito_id from operator_services where service_id=$1', [S(1)]);
+  assert.deepEqual({ ...s }, { assigned_driver_id: d2, assigned_truck_id: 7, status: 'at_origin', remito_id: 900 }, 'sigue en curso con el remito del 1º');
   const hist = (await db.query('select driver_id, truck_id, status, release_reason_code from operator_service_assignments where service_id=$1 order by assignment_sequence', [S(1)])).rows;
   assert.equal(hist.length, 2);
   assert.deepEqual({ ...hist[0] }, { driver_id: d1, truck_id: 12, status: 'released', release_reason_code: 'relay_handover' });
@@ -156,6 +173,7 @@ test('la entrega pasa el servicio al 2º chofer, con el móvil de su jornada act
 
 test('la entrega necesita que el 2º chofer haya iniciado su jornada con un móvil', async () => {
   await setRelay();
+  await conRemito();
   await as('chofer', d1);
   await assert.rejects(handover(), /RELEVO_SIN_JORNADA: Lucas P\. todavía no inició su jornada/);
   assert.equal((await one('select assigned_driver_id from operator_services where service_id=$1', [S(1)])).assigned_driver_id, d1, 'no se movió nada');
@@ -189,6 +207,44 @@ test('quién puede entregar y cuándo', async () => {
   await assert.rejects(rpc('select public.remove_operator_service_relay_v1($1) r', [S(1)]), /ya se entregó/);
 });
 
+test('el 2º chofer marca la entrega en destino; el servicio sigue en curso hasta que lo finalice Operaciones', async () => {
+  await jornada(d2, 7);
+  await setRelay();
+  await conRemito();
+  await as('chofer', d2);
+  await assert.rejects(delivered(), /RELEVO_SIN_RECIBIR/, 'no puede antes de recibirlo');
+  await as('chofer', d1);
+  await handover();
+  await assert.rejects(delivered(), /no está asignado a este chofer/, 'el 1º no marca el destino');
+  await as('chofer', other);
+  await assert.rejects(delivered(), /no está asignado a este chofer/);
+  await as('supervision', sup);
+  await assert.rejects(delivered(), /Sin permiso/);
+  await as('chofer', d2);
+  const r = await delivered();
+  assert.equal(r.delivered, true);
+  assert.equal(r.delivery_source, 'driver');
+  assert.equal((await one('select status from operator_services where service_id=$1', [S(1)])).status, 'at_origin');
+  assert.equal((await one("select count(*)::int n from operator_service_events where event_type='relay_delivered'")).n, 1);
+  await assert.rejects(delivered(), /ya está marcada/);
+  const st = await rpc('select public.get_driver_relay_state_v1() r');
+  assert.equal(st.received[0].delivered, true, 'sigue en su lista, marcado como entregado');
+  // Operaciones también puede marcarla.
+  await as('operador', op);
+  await db.query('update operator_service_relays set delivered_at=null, delivered_by=null, delivery_source=null');
+  assert.equal((await delivered()).delivery_source, 'operator');
+});
+
+test('sueldos: si el 2º hizo el remito (el 1º no pudo), igual cuentan los dos', async () => {
+  await jornada(d2, 7);
+  await setRelay();
+  await as('operador', op);
+  await handover();
+  await conRemito(S(1), d2, 901);
+  await db.query("update operator_services set status='completed', completed_at=now(), assigned_driver_id=null, assigned_truck_id=null where service_id=$1", [S(1)]);
+  assert.deepEqual((await completed()).filter(r => r.service_id === S(1)).map(r => r.driver_id).sort(), [d1, d2].sort());
+});
+
 test('el relevo se puede quitar mientras no se entregó', async () => {
   await setRelay();
   assert.equal((await rpc('select public.remove_operator_service_relay_v1($1) r', [S(1)])).removed, true);
@@ -199,10 +255,10 @@ test('el relevo se puede quitar mientras no se entregó', async () => {
 test('sueldos: el servicio completado cuenta para los dos choferes; los demás no cambian', async () => {
   await jornada(d2, 7);
   await setRelay();
+  await conRemito();
   await as('chofer', d1);
   await handover();
-  await db.query("insert into remitos values (900, $1, $2, 'firmado', now())", [S(1), d2]);
-  await db.query("update operator_services set remito_id=900, status='completed', completed_at=now(), assigned_driver_id=null, assigned_truck_id=null where service_id=$1", [S(1)]);
+  await db.query("update operator_services set status='completed', completed_at=now(), assigned_driver_id=null, assigned_truck_id=null where service_id=$1", [S(1)]);
   await db.query("update operator_services set status='completed', completed_at=now() where service_id=$1", [S(2)]);
   const rows = await completed();
   const relay = rows.filter(r => r.service_id === S(1)).map(r => r.driver_id).sort();
@@ -232,8 +288,11 @@ test('consultas: Operaciones ve todo; un chofer sólo lo suyo', async () => {
 });
 
 test('permisos y exposición de las funciones', async () => {
-  const sql = fs.readFileSync(MIGRATION, 'utf8');
+  const sql = fs.readFileSync(MIGRATION, 'utf8'), v2 = fs.readFileSync(MIGRATION_V2, 'utf8');
   assert.match(sql, /revoke all on public\.operator_service_relays from public, anon, authenticated;/);
+  assert.match(v2, /grant execute on function public\.mark_operator_service_relay_delivered_v1\(uuid\) to authenticated;/);
+  assert.match(v2, /revoke all on function public\.mark_operator_service_relay_delivered_v1\(uuid\) from public, anon;/);
+  assert.match(v2, /drop trigger if exists operator_services_relay_remito_guard_v1/);
   for (const fn of ['set_operator_service_relay_v1\\(uuid, text, numeric, numeric, text, uuid\\)', 'get_relay_receiver_truck_v1\\(uuid\\)', 'remove_operator_service_relay_v1\\(uuid\\)',
     'get_operator_service_relay_v1\\(uuid\\)', 'list_operator_service_relays_v1\\(uuid\\[\\]\\)', 'get_driver_relay_state_v1\\(\\)', 'mark_operator_service_relay_handover_v1\\(uuid\\)']) {
     assert.match(sql, new RegExp(`grant execute on function public\\.${fn} to authenticated;`));

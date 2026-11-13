@@ -92,9 +92,11 @@ async function openFinalize(id,readOnly=false){
   const obs=direct
     ?`<label class="osl-other"><span>Observaciones · por qué se finaliza sin arribo *</span><textarea id="osl-finalize-notes" rows="3" maxlength="500" required>${esc(s.operator_notes||'')}</textarea></label>`
     :'';
-  /* Relevo sin entregar: el 1º chofer no cuenta el servicio y el 2º nunca lo recibe. Se avisa, no se bloquea. */
+  /* Relevo sin entregar (en el punto de encuentro o en destino): se avisa, no se bloquea. */
   const rel=window.AuxEngancheClip?.relayOf?.(id),avisoRelevo=rel&&!rel.handed_over
-    ?`<div class="osl-warning"><b>Servicio con relevo sin entregar</b><span>El vehículo todavía no pasó a ${esc(rel.to_driver_name||'el segundo chofer')}. Si finalizás ahora, ${esc(rel.from_driver_name||'el primer chofer')} no suma este servicio y el segundo chofer no lo recibe. Si el vehículo ya se entregó, marcalo antes en el ícono de relevo de la tabla.</span></div>`:'';
+    ?`<div class="osl-warning"><b>Servicio con relevo sin entregar</b><span>El vehículo todavía no pasó a ${esc(rel.to_driver_name||'el segundo chofer')}. Si finalizás ahora, ${esc(rel.to_driver_name||'el segundo chofer')} no suma este servicio. Si el vehículo ya se entregó, marcalo antes en el ícono de relevo de la tabla.</span></div>`
+    :rel&&!rel.delivered
+    ?`<div class="osl-warning"><b>Relevo sin entrega en destino</b><span>${esc(rel.to_driver_name||'El segundo chofer')} todavía no marcó que dejó el vehículo en el destino. Si ya lo entregó, podés finalizar igual.</span></div>`:'';
   const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+avisoRelevo+aviso+obs+(window.AuxiliosFinishTime?.field?.()||''),'Finalizar servicio'),id);
   if(readOnly)markReadOnly(m);
   m.querySelector('#osl-form').addEventListener('submit',async e=>{

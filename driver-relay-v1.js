@@ -1,10 +1,12 @@
 /* AuxiliOS · Servicio con relevo · app del chofer (13/11/2026)
    Un mismo servicio lo hacen dos choferes: el 1º lleva el vehículo del cliente de A hasta el punto de intercambio (B)
-   y el 2º, con su móvil, de B hasta C. Un solo servicio y un solo remito (lo cierra el 2º).
-   · 1º chofer: en su tarjeta aparece «Ir al punto B en Maps» y «Entregué el vehículo en B». No crea remito.
-   · 2º chofer: ve el servicio DESDE ANTES (sección «Vas a recibir») con el punto B y un botón que abre Maps; cuando
-     el 1º entrega, el servicio pasa a su lista normal con una nota de quién se lo entregó y Maps hacia el destino.
-   Todo sale de get_driver_relay_state_v1; la entrega es mark_operator_service_relay_handover_v1. */
+   y el 2º, con su móvil, de B hasta C. Un solo servicio y un solo remito: lo hace el 1º con el cliente al retirar.
+   · 1º chofer: hace el remito y cobra como siempre; en su tarjeta aparece el punto de encuentro y, con el remito
+     hecho, «Entregué el vehículo a <2º chofer>».
+   · 2º chofer: ve el servicio DESDE ANTES (sección «Vas a recibir») con el punto B; cuando el 1º entrega, el servicio
+     pasa a su lista. NO hace remito: lo lleva al destino y toca «Entregué el vehículo en destino».
+   Todo sale de get_driver_relay_state_v1; las entregas son mark_operator_service_relay_handover_v1 (en B) y
+   mark_operator_service_relay_delivered_v1 (en destino). */
 (() => {
   'use strict';
   const db = () => (typeof _db !== 'undefined' ? _db : null);
@@ -55,13 +57,18 @@
   const incomingHtml = list => list.length
     ? `<h3 class="drl-title">${ico('repeat')}<span>Vas a recibir</span><b>${list.length}</b></h3>${list.map(incomingCard).join('')}` : '';
 
-  /* ── 1º chofer: en su tarjeta, ir a B y entregar el vehículo ── */
+  /* ── 1º chofer: primero el remito con el cliente; después, ir a B y entregar el vehículo ── */
+  const receiverName = x => (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer');
+  const handoverButton = (x, sure, wait) => `<button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
+        ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el otro chofer')}</button>`;
+  const handoverNote = (x, sure) => !x.has_remito
+    ? `<p class="drl-note is-warn">${ico('file-text')}<span><b>Primero hacé el remito con el cliente</b> y cobrá como siempre. Después llevás el vehículo al punto de encuentro y se lo entregás a ${receiverName(x)}.</span></p>`
+    : `<p class="drl-note">${sure ? 'Al confirmar, el servicio pasa a ' + receiverName(x) + ' para que lo lleve al destino.' : 'Remito hecho. Llevá el vehículo al punto de encuentro y, cuando se lo des a ' + receiverName(x) + ', tocá el botón.'}</p>`;
   function outgoingBox(x, confirming, busy) {
     const sure = confirming === String(x.service_id), wait = busy === String(x.service_id);
     return `<div class="drl-box drl-out-box">
-      <button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
-        ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo en B'}</button>
-      <p class="drl-note">${sure ? 'Al confirmar, el servicio pasa a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer') + ' y no vas a poder crear el remito.' : 'No hace falta crear remito: lo cierra quien recibe el vehículo.'}</p>
+      ${x.has_remito ? handoverButton(x, sure, wait) : ''}
+      ${handoverNote(x, sure)}
     </div>`;
   }
   const receiverText = x => `${esc(x.to_driver_name || 'El segundo chofer')}${x.to_truck_label ? ` <em>· ${esc(truckText(x.to_truck_label, x.to_truck_plate))}</em>` : ''}`;
@@ -85,14 +92,10 @@
   }
 
   /* En la ventana de detalle todo va integrado: el punto de encuentro es una dirección más (con su pin de Maps),
-     el chip de relevo queda a la derecha del vehículo y «Entregué el vehículo en B» ocupa el lugar del botón principal. */
-  function sheetBox(x, confirming, busy, arrived) {
+     el chip de relevo queda a la derecha del vehículo y «Entregué el vehículo a <2º chofer>» ocupa el lugar del botón principal. */
+  function sheetBox(x, confirming, busy) {
     const sure = confirming === String(x.service_id), wait = busy === String(x.service_id);
-    const btn = arrived ? `<button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-handover="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
-        ${wait ? 'Entregando…' : sure ? 'Tocá de nuevo para confirmar la entrega' : 'Entregué el vehículo en B'}</button>` : '';
-    const note = sure ? 'Al confirmar, el servicio pasa a ' + (x.to_driver_name ? esc(x.to_driver_name) : 'el segundo chofer') + ' y no vas a poder crear el remito.'
-      : 'No hace falta crear remito: lo cierra quien recibe el vehículo.';
-    return `<div class="drl-sheet-box drl-out-box">${btn}<p class="drl-note">${note}</p></div>`;
+    return `<div class="drl-sheet-box drl-out-box">${x.has_remito ? handoverButton(x, sure, wait) : ''}${handoverNote(x, sure)}</div>`;
   }
   /* Jerarquía del detalle: dominio grande + vehículo chico, después el cliente (blanco, más chico). */
   function tidyClient(body, keepCall, tramo) {
@@ -123,10 +126,17 @@
   }
 
   /* ── 2º chofer, ya con el servicio: de quién lo recibió y Maps al destino ── */
-  function receivedBox(x) {
+  function receivedBox(x, confirming, busy, cls = 'drl-box') {
     const trip = truckText(x.from_truck_label, x.from_truck_plate);
-    return `<div class="drl-box drl-in-box">
-      <p class="drl-note is-ok">${ico('check')}<span>Recibiste el vehículo de <b>${esc(x.from_driver_name || 'el primer chofer')}</b>${trip ? ` (${esc(trip)})` : ''}${x.handed_over_at ? ` · ${esc(time(x.handed_over_at))}` : ''}.</span></p>
+    const sure = confirming === 'd:' + String(x.service_id), wait = busy === 'd:' + String(x.service_id);
+    const from = `<p class="drl-note is-ok">${ico('check')}<span>Recibiste el vehículo de <b>${esc(x.from_driver_name || 'el primer chofer')}</b>${trip ? ` (${esc(trip)})` : ''}${x.handed_over_at ? ` · ${esc(time(x.handed_over_at))}` : ''}.</span></p>`;
+    if (x.delivered) {
+      return `<div class="${cls} drl-in-box">${from}<p class="drl-note is-ok drl-done">${ico('check')}<span><b>Entregado en destino</b>${x.delivered_at ? ` · ${esc(time(x.delivered_at))}` : ''}. Listo, no tenés que hacer nada más.</span></p></div>`;
+    }
+    return `<div class="${cls} drl-in-box">${from}
+      <button type="button" class="drl-btn ${sure ? 'drl-danger' : 'drl-primary'}" data-drl-delivered="${esc(x.service_id)}" ${wait ? 'disabled aria-busy="true"' : ''}>
+        ${wait ? 'Marcando…' : sure ? 'Tocá de nuevo para confirmar' : 'Entregué el vehículo en destino'}</button>
+      <p class="drl-note">${sure ? 'Confirmá sólo si ya dejaste el vehículo en el destino.' : `No hacés remito: lo hizo ${esc(x.from_driver_name || 'el primer chofer')} con el cliente. Llevalo al destino y tocá el botón.`}</p>
     </div>`;
   }
   /* Tarjeta de la lista (2º chofer, ya con el vehículo): chip arriba a la derecha, «Recibido en» en lugar del origen
@@ -170,7 +180,7 @@
         ${place3('Después lo llevás a', esc(place(x.destination) || 'Destino sin informar'), pinLink(x.destination_lat, x.destination_lng, 'Navegar al destino'))}
         ${x.scheduled_for ? place3('Horario del servicio', esc(when(x.scheduled_for))) : ''}
       </div>
-      <p class="drl-note"><span>Cuando ${esc(x.from_driver_name || 'el primer chofer')} entregue el vehículo, el servicio pasa a tu lista y desde ahí completás el remito con el cliente.</span></p>
+      <p class="drl-note"><span>Cuando ${esc(x.from_driver_name || 'el primer chofer')} te entregue el vehículo, el servicio pasa a tu lista. Lo llevás al destino y tocás «Entregué el vehículo en destino». <b>No hacés remito</b>: lo hace ${esc(x.from_driver_name || 'el primer chofer')} con el cliente.</span></p>
     </div>`;
   }
   function openIncoming(id) {
@@ -178,7 +188,7 @@
     const P3 = window.AuxiliosPhase3;
     if (!x || !P3?.openCustomPreview) return;
     P3.openCustomPreview({ kicker: 'Vas a recibir · Tramo 2 de 2', title: x.label || 'Servicio', body: incomingSheet(x),
-      actions: '<small>Es un solo servicio y un solo remito: lo cerrás vos con el cliente.</small>' });
+      actions: `<small>Es un solo servicio y un solo remito: lo hace ${esc(x.from_driver_name || 'el primer chofer')} al retirar el vehículo.</small>` });
   }
 
   /* Ventana de detalle de un servicio normal: se le saca lo que no corresponde en un relevo. */
@@ -187,44 +197,46 @@
     const key = String(id), o = S.outgoing.find(x => String(x.service_id) === key), r = S.received.find(x => String(x.service_id) === key);
     if (!o && !r) return;
     if (o) {
-      /* 1º chofer: no crea remito ni lo marca como activado; llega al origen, va a B y entrega. */
-      actions.querySelectorAll('[onclick*="abrirRemitoServicio"], .p3-other-actions').forEach(n => n.remove());
-      actions.querySelectorAll('small').forEach(n => { if (/remito|activado/i.test(n.textContent)) n.remove(); });
+      /* 1º chofer: llega al origen y hace el remito con el cliente como siempre (no lo marca como activado);
+         con el remito hecho, va a B y entrega. */
+      actions.querySelectorAll('.p3-other-actions').forEach(n => n.remove());
+      actions.querySelectorAll('small').forEach(n => { if (/activado/i.test(n.textContent)) n.remove(); });
       actions.querySelectorAll(':scope > .drl-box, :scope > .drl-sheet-box').forEach(n => n.remove());
-      const arrived = Boolean(actions.querySelector('.p3-arrived-chip'));
       decorateSheetBody(o);
-      actions.insertAdjacentHTML('beforeend', sheetBox(o, S.confirming, S.busy, arrived));
+      actions.insertAdjacentHTML('beforeend', sheetBox(o, S.confirming, S.busy));
     } else {
-      /* 2º chofer: ya tiene el vehículo (no llega a ningún origen); sigue al destino y completa el remito. */
-      actions.querySelectorAll('.p3-arrive-btn, .p3-arrived-chip').forEach(n => n.remove());
-      actions.querySelectorAll('small').forEach(n => { if (/Tocalo al llegar/i.test(n.textContent)) n.remove(); });
-      actions.querySelectorAll('[onclick*="abrirRemitoServicio"]').forEach(n => { n.classList.remove('p3-preview-secondary'); n.classList.add('p3-preview-primary'); });
-      actions.querySelector(':scope > .drl-box')?.remove();
+      /* 2º chofer: ya tiene el vehículo y el remito ya está hecho; lo lleva al destino y marca la entrega. */
+      actions.querySelectorAll('.p3-arrive-btn, .p3-arrived-chip, [onclick*="abrirRemitoServicio"], .p3-other-actions').forEach(n => n.remove());
+      actions.querySelectorAll('small').forEach(n => { if (/Tocalo al llegar|remito|activado/i.test(n.textContent)) n.remove(); });
+      actions.querySelectorAll(':scope > .drl-box, :scope > .drl-sheet-box').forEach(n => n.remove());
       decorateReceivedSheet(r);
-      actions.insertAdjacentHTML('afterbegin', receivedBox(r));
+      actions.insertAdjacentHTML('afterbegin', receivedBox(r, S.confirming, S.busy, 'drl-sheet-box'));
     }
   }
-  /* Pantalla de remito (2º chofer): deja a la vista que es un solo servicio hecho entre dos y de quién recibió el vehículo. */
-  function remitoBanner(r) {
-    const trip = truckText(r.from_truck_label, r.from_truck_plate);
-    return `<div class="drl-remito-banner">${chipSide(2).replace(' drl-chip-side', '')}
-      <p>Recibiste el vehículo de <b>${esc(r.from_driver_name || 'el primer chofer')}</b>${trip ? ` (${esc(trip)})` : ''} en ${esc(place(r.exchange_address) || 'el punto de encuentro')}${r.handed_over_at ? ` · ${esc(time(r.handed_over_at))}` : ''}.</p>
-      <p class="drl-sub">Es un solo servicio y un solo remito: lo cerrás vos con el cliente en el destino.</p></div>`;
+  /* Pantalla de remito (1º chofer): el remito lo hace él con el cliente; después entrega el vehículo en el punto de encuentro. */
+  function remitoBanner(o) {
+    return `<div class="drl-remito-banner">${chipSide(1).replace(' drl-chip-side', '')}
+      <p>Hacé el remito con el cliente y cobrá como siempre. Después llevás el vehículo a <b>${esc(place(o.exchange_address) || 'el punto de encuentro')}</b> y se lo entregás a <b>${esc(o.to_driver_name || 'el segundo chofer')}</b>.</p>
+      <p class="drl-sub">Es un solo servicio y un solo remito: el otro chofer no hace remito.</p></div>`;
   }
   function decorateRemito(serviceId, retried) {
     const marker = document.getElementById('phase3-remito-context'); if (!marker) return;
     marker.querySelector('.drl-remito-banner')?.remove();
-    const r = S.received.find(x => String(x.service_id) === String(serviceId));
-    if (r) { marker.insertAdjacentHTML('beforeend', remitoBanner(r)); return; }
+    const o = S.outgoing.find(x => String(x.service_id) === String(serviceId));
+    if (o) { marker.insertAdjacentHTML('beforeend', remitoBanner(o)); return; }
     if (!S.loaded && !retried) refresh({ force: true }).then(() => decorateRemito(serviceId, true));
   }
   function refreshPreviewBox() {
     const modal = document.getElementById('p3-service-preview');
     if (!modal || modal.hidden) return;
     const id = modal.dataset.serviceRouteId; if (!id) return;
-    const actions = document.getElementById('p3-preview-actions'), o = S.outgoing.find(x => String(x.service_id) === String(id));
+    const actions = document.getElementById('p3-preview-actions'), key = String(id);
+    const o = S.outgoing.find(x => String(x.service_id) === key), r = S.received.find(x => String(x.service_id) === key);
     const box = actions?.querySelector(':scope > .drl-sheet-box');
-    if (o && box) { const wrap = document.createElement('div'); wrap.innerHTML = sheetBox(o, S.confirming, S.busy, Boolean(actions.querySelector('.p3-arrived-chip'))); box.replaceWith(wrap.firstElementChild); }
+    if (!box || (!o && !r)) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = o ? sheetBox(o, S.confirming, S.busy) : receivedBox(r, S.confirming, S.busy, 'drl-sheet-box');
+    box.replaceWith(wrap.firstElementChild);
   }
 
   /* ── Pintado (se reinserta cada vez que la app vuelve a dibujar su lista) ── */
@@ -250,7 +262,9 @@
     for (const card of list.querySelectorAll('.p3-driver-task[data-service-id]')) {
       const id = card.dataset.serviceId, o = out.get(id), r = rec.get(id);
       let html = '';
-      if (o) html = outgoingBox(o, S.confirming, S.busy); else if (r) html = receivedBox(r);
+      if (o) html = outgoingBox(o, S.confirming, S.busy); else if (r) html = receivedBox(r, S.confirming, S.busy);
+      /* El 2º chofer no hace remito: se sacan los botones de remito de su tarjeta. */
+      if (r) card.querySelectorAll('[onclick*="abrirRemitoServicio"]').forEach(n => n.remove());
       const has = card.querySelector(':scope > .drl-box');
       card.classList.toggle('drl-out', Boolean(o)); card.classList.toggle('drl-in', Boolean(r));
       if (o) patchCard(card, o); else if (r) patchReceivedCard(card, r);
@@ -284,7 +298,7 @@
       const arrived = newlyReceived(prevIncoming, S.received);
       if (arrived.length) {
         const x = arrived[0], who = String(x.from_driver_name || 'El primer chofer');
-        notify(`${who} te entregó el vehículo${arrived.length > 1 ? ` (y ${arrived.length - 1} más)` : ''}. Ya está en tu lista para seguir al destino.`, 'success');
+        notify(`${who} te entregó el vehículo${arrived.length > 1 ? ` (y ${arrived.length - 1} más)` : ''}. Llevalo al destino y marcá la entrega (no hacés remito).`, 'success');
         try { navigator.vibrate?.(200); } catch { /* sin vibración */ }
         try { void window.recargarServiciosChofer?.(); } catch { /* la lista se actualiza sola en el próximo ciclo */ }
       }
@@ -313,11 +327,32 @@
     paint();
   }
 
+  async function deliver(id) {
+    const key = 'd:' + id;
+    if (S.busy) return;
+    if (S.confirming !== key) {
+      S.confirming = key; clearTimeout(S.timer); S.timer = setTimeout(() => { if (S.confirming === key) { S.confirming = ''; paint(); } }, 6000);
+      return paint();
+    }
+    clearTimeout(S.timer); S.confirming = ''; S.busy = key; paint();
+    try {
+      const { error } = await db().rpc('mark_operator_service_relay_delivered_v1', { p_service_id: id });
+      if (error) throw error;
+      notify('Listo: marcaste el vehículo como entregado en destino.', 'success');
+    } catch (e) { notify(friendlyError(e), 'warning'); }
+    S.busy = '';
+    await refresh({ force: true });
+    try { await window.recargarServiciosChofer?.(); } catch { /* la lista se actualiza sola en el próximo ciclo */ }
+    paint();
+  }
+
   function bind() {
     if (S.bound) return; S.bound = true;
     document.addEventListener('click', e => {
       const b = e.target.closest?.('[data-drl-handover]');
       if (b) { e.preventDefault(); e.stopPropagation(); void handover(b.dataset.drlHandover); return; }
+      const dv = e.target.closest?.('[data-drl-delivered]');
+      if (dv) { e.preventDefault(); e.stopPropagation(); void deliver(dv.dataset.drlDelivered); return; }
       /* Toda la tarjeta se toca (como un servicio normal); los botones y links conservan lo suyo. */
       const card = e.target.closest?.('.drl-card[data-drl-service]');
       if (card && !e.target.closest('a,button,input,select,textarea,summary,label')) { if (String(window.getSelection?.() || '').trim()) return; openIncoming(card.dataset.drlService); }
@@ -347,5 +382,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _newlyReceived: newlyReceived, _remitoBanner: remitoBanner, decorateRemito, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, deliver, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _newlyReceived: newlyReceived, _remitoBanner: remitoBanner, decorateRemito, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
 })();
