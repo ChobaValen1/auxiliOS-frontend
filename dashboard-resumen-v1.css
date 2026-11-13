@@ -580,3 +580,21 @@
 #screen-dashboard .rsm-evol-card .axz-tip { display: none !important; }
 #screen-dashboard .rsm-evol-card .rsm-data-details { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 #screen-dashboard .rsm-evol-card .rsm-chart-key { margin: 0; font-size: 11px; }
+
+/* Facturación por tipo: % facturado contra % de servicios. */
+#screen-dashboard .rsm-tipos-lista { gap: 0; }
+#screen-dashboard .rsm-tv-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 6px; color: var(--muted2); font-size: 11px; }
+#screen-dashboard .rsm-tv-leg i { display: inline-block; width: 10px; height: 6px; margin-right: 6px; border-radius: 2px; vertical-align: middle; background: #14b8a6; }
+#screen-dashboard .rsm-tv-leg i.is-serv, #screen-dashboard .rsm-tv-bars i.is-serv { background: #3a4356; }
+#screen-dashboard .rsm-tv-row { display: grid; grid-template-columns: minmax(84px, 108px) minmax(0, 1fr) 46px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border, #262c3a); }
+#screen-dashboard .rsm-tv-name { display: grid; gap: 2px; min-width: 0; }
+#screen-dashboard .rsm-tv-name b { color: var(--text); font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
+#screen-dashboard .rsm-tv-name small { color: var(--muted2); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-dashboard .rsm-tv-bars { display: grid; gap: 3px; }
+#screen-dashboard .rsm-tv-bars i { display: block; height: 7px; border-radius: 3px; }
+#screen-dashboard .rsm-tv-val { display: grid; text-align: right; font-size: 11px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+#screen-dashboard .rsm-tv-val b { color: var(--text); font-weight: 700; }
+#screen-dashboard .rsm-tv-val span { color: var(--muted2); }
+#screen-dashboard .rsm-tv-lectura { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.035); color: var(--muted2); font-size: 12px; line-height: 1.45; }
+#screen-dashboard .rsm-tv-lectura b { color: var(--text); }
+#screen-dashboard .rsm-tv-row .rsm-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

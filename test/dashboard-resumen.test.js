@@ -158,3 +158,25 @@ test('evolución: pestañas Diario, Acumulado (con proyección) y Por prestadora
   assert.match(src, /setFiltro\('empresas', ya \? \[\] : \[id\]\)/);
   assert.match(src, /Diferencia: /);
 });
+
+test('facturación por tipo: % facturado contra % de servicios y lectura sólo si un tipo rinde más', () => {
+  const { api } = cargarModulo();
+  const d = api.normalizar({}, { por_clase: [
+    { clase: 'light', servicios: 512, km: 1, monto: 24800000 },
+    { clase: 'semi_heavy', servicios: 148, km: 1, monto: 9400000 },
+    { clase: 'heavy', servicios: 64, km: 1, monto: 7100000 },
+    { clase: 'uml', servicios: 0, km: 0, monto: 0 }
+  ] });
+  const t = api.filasTipos(d);
+  assert.equal(t.filas.length, 3, 'sin los tipos sin servicios');
+  assert.equal(t.filas[0].nombre, 'Liviano');
+  assert.equal(Math.round(t.filas[2].pm), 17);
+  assert.equal(Math.round(t.filas[2].ps), 9);
+  assert.equal(Math.round(t.filas[2].porServ), 110938);
+  assert.match(api.lecturaTipos(t), /Los <b>pesados<\/b> son el 9% de los servicios pero dejan el <b>17%<\/b>/);
+  const parejo = api.filasTipos(api.normalizar({}, { por_clase: [
+    { clase: 'light', servicios: 10, monto: 1000 }, { clase: 'heavy', servicios: 10, monto: 1000 }] }));
+  assert.equal(api.lecturaTipos(parejo), '');
+  assert.match(index, /<p>¿Qué tipo deja más por servicio\?<\/p>/);
+  assert.match(css, /\.rsm-tv-row \{ display: grid/);
+});

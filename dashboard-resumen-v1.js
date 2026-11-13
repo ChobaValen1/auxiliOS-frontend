@@ -626,11 +626,55 @@
 
   /* ── composición por tipo ─────────────────────────────────────────────── */
 
+  var PLURAL_CLASE = { light: 'livianos', semi_heavy: 'semipesados', heavy: 'pesados', uml: 'UML', otros: 'otros' };
+
+  /* Cuánto del dinero y cuánto del trabajo se lleva cada tipo: dos barras en
+     la misma escala, el % facturado arriba (color del tipo) y el % de
+     servicios abajo (gris). Al lado, lo que deja cada servicio. */
+  function filasTipos(d) {
+    var filas = d.porClase.filter(function (k) { return k.servicios > 0; })
+      .sort(function (a, b) { return b.monto - a.monto; });
+    var tm = filas.reduce(function (s, k) { return s + k.monto; }, 0);
+    var ts = filas.reduce(function (s, k) { return s + k.servicios; }, 0);
+    filas = filas.map(function (k) {
+      return { clase: k.clase, nombre: k.nombre, color: k.color, monto: k.monto, servicios: k.servicios,
+               pm: tm > 0 ? k.monto * 100 / tm : 0, ps: ts > 0 ? k.servicios * 100 / ts : 0,
+               porServ: k.servicios > 0 ? k.monto / k.servicios : 0 };
+    });
+    return { filas: filas, tm: tm, ts: ts };
+  }
+
+  /* Una frase sólo si un tipo rinde claramente más que su peso en servicios. */
+  function lecturaTipos(t) {
+    if (t.filas.length < 2 || t.tm <= 0) return '';
+    var mejor = null;
+    t.filas.forEach(function (k) {
+      if (k.servicios < 3 || k.pm - k.ps < 3) return;
+      if (!mejor || k.pm / k.ps > mejor.pm / mejor.ps) mejor = k;
+    });
+    if (!mejor) return '';
+    var n = PLURAL_CLASE[mejor.clase] || String(mejor.nombre).toLowerCase();
+    return 'Los <b>' + esc(n) + '</b> son el ' + pct(mejor.ps) + ' de los servicios pero dejan el <b>' + pct(mejor.pm) + '</b> de lo facturado.';
+  }
+
   function pintarTipos(d) {
-    var ls=el('rsm-tipos-lista');if(!ls)return;
-    var filas=d.porClase.filter(function(k){return k.servicios>0;}).sort(function(a,b){return b.monto-a.monto;});
-    var total=filas.reduce(function(sum,k){return sum+k.monto;},0);
-    ls.innerHTML=filas.length?filas.map(function(k){var share=total>0?k.monto*100/total:null;return '<div class="rsm-type-row"><div><b>'+esc(k.nombre)+'</b><strong>'+pesos(k.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,share||0))+'%"></i></div><small>'+miles(k.servicios)+' servicios · '+miles(k.km)+' km facturados · '+(share===null?'Sin participación calculable':pct(share,1)+' del total')+'</small></div>';}).join(''):'<div class="rsm-vacio">Sin servicios en el período.</div>';
+    var ls = el('rsm-tipos-lista'); if (!ls) return;
+    var t = filasTipos(d);
+    if (!t.filas.length) { ls.innerHTML = '<div class="rsm-vacio">Sin servicios en el período.</div>'; return; }
+    var mx = Math.max.apply(null, t.filas.map(function (k) { return Math.max(k.pm, k.ps); })) || 1;
+    var ancho = function (v) { return Math.max(v > 0 ? 1.5 : 0, Math.min(100, v * 100 / mx)).toFixed(1) + '%'; };
+    var lect = lecturaTipos(t);
+    ls.innerHTML =
+      '<div class="rsm-tv-leg" aria-hidden="true"><span><i class="is-fact"></i>% de la facturación</span><span><i class="is-serv"></i>% de los servicios</span></div>' +
+      t.filas.map(function (k) {
+        return '<div class="rsm-tv-row" title="' + esc(k.nombre + ': ' + pesos(k.monto) + ' en ' + miles(k.servicios) + (k.servicios === 1 ? ' servicio' : ' servicios')) + '">' +
+          '<div class="rsm-tv-name"><b>' + esc(k.nombre) + '</b><small>' + pesosCorto(k.porServ) + ' / serv.</small></div>' +
+          '<div class="rsm-tv-bars" aria-hidden="true"><i style="width:' + ancho(k.pm) + ';background:' + k.color + '"></i><i class="is-serv" style="width:' + ancho(k.ps) + '"></i></div>' +
+          '<div class="rsm-tv-val"><b>' + pct(k.pm) + '</b><span>' + pct(k.ps) + '</span></div>' +
+          '<span class="rsm-sr-only">' + esc(k.nombre) + ': ' + pct(k.pm) + ' de la facturación, ' + pct(k.ps) + ' de los servicios, ' + pesos(k.porServ) + ' por servicio.</span>' +
+        '</div>';
+      }).join('') +
+      (lect ? '<p class="rsm-tv-lectura">' + lect + '</p>' : '');
   }
 
   /* ── evolución de facturado ───────────────────────────────────────────── */
@@ -1180,6 +1224,9 @@
     normalizar: normalizar,
     rankingRows: rankingRows,
     pintarRanking: pintarRanking,
+    filasTipos: filasTipos,
+    pintarTipos: pintarTipos,
+    lecturaTipos: lecturaTipos,
     cobertura: function (d, radio) {
       var prev = estado.radio;
       if (radio != null) estado.radio = radio;
