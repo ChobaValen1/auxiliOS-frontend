@@ -598,3 +598,28 @@
 #screen-dashboard .rsm-tv-lectura { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.035); color: var(--muted2); font-size: 12px; line-height: 1.45; }
 #screen-dashboard .rsm-tv-lectura b { color: var(--text); }
 #screen-dashboard .rsm-tv-row .rsm-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Mapa: vista Puntos/Calor, agrupados y fuera de radio. */
+#screen-dashboard .rsm-mapa-vista { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,.18); }
+#screen-dashboard .rsm-mapa-vista button { padding: 4px 11px; border: 0; border-radius: 6px; background: none; color: var(--muted2); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+#screen-dashboard .rsm-mapa-vista button[aria-pressed="true"] { background: var(--border2, #2f3747); color: var(--text); }
+#screen-dashboard .rsm-mapa-vista button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+#screen-dashboard .rsm-mapa-stats .rsm-stat-fuera { display: grid; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+#screen-dashboard .rsm-mapa-stats .rsm-stat-fuera.is-alert { border-color: rgba(255,92,92,.7); }
+#screen-dashboard .rsm-mapa-stats .rsm-stat-fuera.is-alert b { color: #ff8a8a; }
+#screen-dashboard .rsm-mapa-stats .rsm-stat-fuera.is-on { background: rgba(255,92,92,.18); border-color: #ff5c5c; }
+#screen-dashboard .rsm-mapa-stats .rsm-stat-fuera:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+#screen-dashboard .rsm-mapa-fuera { display: grid; padding: 4px 18px 12px; }
+#screen-dashboard .rsm-fuera-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 14px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; font-variant-numeric: tabular-nums; }
+#screen-dashboard .rsm-fuera-fila span { color: var(--text); overflow-wrap: anywhere; }
+#screen-dashboard .rsm-fuera-fila b { color: #ff8a8a; font-weight: 700; }
+#screen-dashboard .rsm-fuera-fila em { min-width: 64px; color: var(--muted2); font-style: normal; text-align: right; }
+#screen-dashboard .rsm-fuera-fila.is-vacia { display: block; color: var(--muted2); }
+#screen-dashboard .rsm-lg-calor { width: 120px; height: 6px; margin: 4px 0 2px; border-radius: 3px; background: linear-gradient(90deg, rgba(56,189,248,.35), #38bdf8, #ffc85c, #ff5c5c); }
+#screen-dashboard .rsm-lg-calor-et { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--muted2); font-size: 9px; }
+#screen-dashboard .rsm-calor { position: absolute; pointer-events: none; }
+#screen-dashboard .rsm-mapa-popup .is-fuera { color: #d93636; }
+#screen-dashboard .rsm-mapa-popup .is-ayuda { color: #6b7280; font-weight: 500; }
+#screen-dashboard .rsm-mapa-stats > .rsm-stat-fuera { gap: 3px; min-width: 72px; padding: 7px 10px; border: 1px solid var(--border2); border-radius: 8px; background: rgba(12,14,18,.86); pointer-events: auto; }
+@media (max-width: 600px) { #screen-dashboard .rsm-mapa-stats > .rsm-stat-fuera { min-width: 0; padding: 5px 7px; } }
+@media (max-width: 600px) { #screen-dashboard .rsm-mapa-card .rsm-mapa-leyenda { display: none; } }
