@@ -49,7 +49,8 @@
     lineas: false,
     fact: null,
     res: null,
-    filtros: null
+    filtros: null,
+    rankSel: null
   };
 
   var mapa = null;
@@ -168,7 +169,7 @@
      en su leyenda y en la tabla. Más allá de siete, gris de "Otros": la paleta
      validada no se cicla. */
   function coloresPrestadoras(d) {
-    var pal = (ch() && ch().PALETA) || ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9'];
+    var pal = ['#7c8cff', '#ff8a5b', '#3ddc97', '#ffc85c', '#f472b6', '#38bdf8', '#a3e635'];
     var m = Object.create(null);
     d.empresas.forEach(function (e, i) {
       m[String(e.id)] = i < MAX_PRESTADORAS ? pal[i % pal.length] : COLOR_OTROS;
@@ -282,28 +283,75 @@
 
   function rankingRows(d){
     var all=d.empresas.slice().sort(function(a,b){return b.monto-a.monto||a.nombre.localeCompare(b.nombre);});
-    var rows=all.slice(0,5).map(function(e){return {id:e.id,nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
-    if(all.length>5)rows.push({id:null,nombre:'Otras '+(all.length-5)+' prestadoras',monto:all.slice(5).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(5).reduce(function(n,e){return n+e.servicios;},0)});
+    var corte=all.length===6?6:5,rows=all.slice(0,corte).map(function(e){return {id:e.id,nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
+    if(all.length>corte)rows.push({id:null,nombre:'Otras '+(all.length-corte)+' prestadoras',monto:all.slice(corte).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(corte).reduce(function(n,e){return n+e.servicios;},0)});
     var total=all.reduce(function(n,e){return n+e.monto;},0);
     return rows.map(function(e){return Object.assign(e,{share:total>0?e.monto*100/total:null});});
   }
-  /* Torta de participación: el color de cada prestadora es el mismo que en el mapa y en su leyenda. */
+  /* Torta de participación (donut con etiquetas y guías, dibujado con d3-shape). Tocar una prestadora —en la
+     torta o en la lista— la ilumina y el centro muestra su importe; tocarla de nuevo vuelve al total.
+     Con lugar (≥ 430 px) van las etiquetas afuera; desde 720 px la lista va al costado; si no, gráfico arriba y lista abajo. */
+  var D3_SHAPE = '/vendor/d3-shape-3.2.1.min.js';
+  var cargandoD3 = null, rankObs = null, rankAncho = 0, rankDatos = null;
+  function cargarD3() {
+    if (global.d3 && global.d3.arc && global.d3.pie) return Promise.resolve(global.d3);
+    if (!cargandoD3) cargandoD3 = (typeof global.loadAuxiliosModule === 'function'
+        ? global.loadAuxiliosModule('d3-shape-js', D3_SHAPE) : Promise.reject(new Error('sin cargador')))
+      .then(function () { return global.d3; }).catch(function (e) { cargandoD3 = null; throw e; });
+    return cargandoD3;
+  }
+  function svgTorta(rows, colores, total, servicios, sel, ancho) {
+    var d3 = global.d3, conEtiquetas = ancho >= 430, W = conEtiquetas ? 430 : Math.max(220, Math.min(ancho, 340)), H = conEtiquetas ? 290 : 250;
+    var R = Math.min(W, H) / 2 - (conEtiquetas ? 40 : 14), uid = 'rsmp';
+    var pie = d3.pie().sort(null).value(function (e) { return e.monto; }).padAngle(.022)(rows);
+    var arc = d3.arc().innerRadius(R * .64).outerRadius(R).cornerRadius(7), arcA = d3.arc().innerRadius(R * .62).outerRadius(R + 9).cornerRadius(8);
+    var defs = '<defs>' + rows.map(function (e, i) {
+      var base = colores[i];
+      return '<linearGradient id="' + uid + 'g' + i + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + base + '" stop-opacity="1"/><stop offset="1" stop-color="' + base + '" stop-opacity=".72"/></linearGradient>';
+    }).join('') + '<filter id="' + uid + 'glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+    var hay = sel != null;
+    var porciones = pie.map(function (p, i) {
+      var on = sel === i;
+      return '<path class="rsm-pie-slice" data-i="' + i + '" d="' + (on ? arcA(p) : arc(p)) + '" fill="url(#' + uid + 'g' + i + ')"' + (on ? ' filter="url(#' + uid + 'glow)"' : '') +
+        ' style="opacity:' + (hay && !on ? .28 : 1) + '"><title>' + esc(rows[i].nombre) + ': ' + esc(pesos(rows[i].monto)) + '</title></path>';
+    }).join('');
+    var etiquetas = '';
+    if (conEtiquetas) {
+      var o = d3.arc().innerRadius(R + 6).outerRadius(R + 6);
+      etiquetas = pie.filter(function (p) { return p.endAngle - p.startAngle > .22; }).map(function (p) {
+        var i = p.index, a = o.centroid(p), m = (p.startAngle + p.endAngle) / 2, s = m < Math.PI ? 1 : -1, bx = a[0] * 1.18, by = a[1] * 1.18;
+        var share = rows[i].share == null ? '' : ' · ' + Math.round(rows[i].share) + '%';
+        return '<g style="opacity:' + (hay && sel !== i ? .25 : 1) + '"><polyline fill="none" stroke="' + colores[i] + '" stroke-width="1.2" opacity=".8" points="' + a.join(',') + ' ' + bx + ',' + by + ' ' + (bx + s * 14) + ',' + by + '"/>' +
+          '<text x="' + (bx + s * 18) + '" y="' + (by + 4) + '" text-anchor="' + (s > 0 ? 'start' : 'end') + '" class="rsm-pie-lbl">' + esc(String(rows[i].nombre).split(' ')[0] + share) + '</text></g>';
+      }).join('');
+    }
+    var e = hay ? rows[sel] : null;
+    var centro = '<g text-anchor="middle">' +
+      '<text y="-12" class="rsm-pie-c1"' + (e ? ' style="fill:' + colores[sel] + ';font-weight:600"' : '') + '>' + esc(e ? e.nombre : 'Total facturado') + '</text>' +
+      '<text y="12" class="rsm-pie-c2" style="font-size:' + (R > 100 ? 19 : 17) + 'px">' + esc(pesos(e ? e.monto : total)) + '</text>' +
+      '<text y="31" class="rsm-pie-c3">' + esc(e ? (e.share == null ? '' : pct(e.share, 1) + ' del total') : miles(servicios) + ' servicios') + '</text></g>';
+    return '<svg class="rsm-pie-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Participación de cada prestadora en la facturación del período">' + defs +
+      '<g transform="translate(' + W / 2 + ',' + H / 2 + ')"><circle r="' + (R + 15) + '" fill="none" class="rsm-pie-track"/>' + porciones + etiquetas + centro + '</g></svg>';
+  }
   function pintarRanking(d){
-    var n=el('rsm-ranking');if(!n)return;
+    var n=el('rsm-ranking');if(!n)return;rankDatos=d;
     if(chartRank){chartRank.destroy();chartRank=null;}
     var rows=rankingRows(d);
     if(!d.hayDatos||!rows.length){n.innerHTML='<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';return;}
-    var colores=coloresPrestadoras(d),color=function(e){return e.id==null?COLOR_OTROS:(colores[String(e.id)]||COLOR_OTROS);};
-    var total=rows.reduce(function(s,e){return s+e.monto;},0);
-    n.innerHTML='<div class="rsm-pie"><div class="rsm-pie-canvas"><canvas id="rsm-pie-canvas" role="img" aria-label="Participación de cada prestadora en la facturación del período. Total: '+esc(pesos(total))+'"></canvas></div>'+
-      '<ol class="rsm-pie-legend">'+rows.map(function(e){return '<li><i style="background:'+color(e)+'" aria-hidden="true"></i><span><b>'+esc(e.nombre)+'</b><small>'+miles(e.servicios)+' servicios</small></span><strong>'+pesos(e.monto)+'<em>'+(e.share===null?GUION:pct(e.share,1))+'</em></strong></li>';}).join('')+'</ol></div>';
-    var cv=el('rsm-pie-canvas');
-    if(!cv||typeof global.Chart==='undefined')return;
-    var borde=(global.getComputedStyle?global.getComputedStyle(document.documentElement).getPropertyValue('--card'):'')||'#161a22';
-    chartRank=new global.Chart(cv,{type:'pie',
-      data:{labels:rows.map(function(e){return e.nombre;}),datasets:[{data:rows.map(function(e){return e.monto;}),backgroundColor:rows.map(color),borderColor:borde.trim()||'#161a22',borderWidth:2}]},
-      options:{responsive:true,maintainAspectRatio:false,animation:global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){var e=rows[c.dataIndex];return ' '+e.nombre+': '+pesos(e.monto)+(e.share===null?'':' · '+pct(e.share,1));}}}}}});
+    var mapa=coloresPrestadoras(d),colores=rows.map(function(e){return e.id==null?COLOR_OTROS:(mapa[String(e.id)]||COLOR_OTROS);});
+    var total=rows.reduce(function(s,e){return s+e.monto;},0),servicios=rows.reduce(function(s,e){return s+e.servicios;},0);
+    var sel=estado.rankSel==null?-1:rows.findIndex(function(e){return e.nombre===estado.rankSel;});if(sel<0)sel=null;
+    var leyenda='<ol class="rsm-pie-legend">'+rows.map(function(e,i){var on=sel===i,dim=sel!=null&&!on;return '<li role="button" tabindex="0" data-i="'+i+'" aria-pressed="'+on+'" class="'+(on?'is-on':'')+(dim?' is-dim':'')+'" style="--c:'+colores[i]+'"><i aria-hidden="true"></i><span><b>'+esc(e.nombre)+'</b><small>'+miles(e.servicios)+' servicios</small></span><strong>'+pesos(e.monto)+'<em>'+(e.share===null?GUION:pct(e.share,1))+'</em></strong></li>';}).join('')+'</ol>';
+    var ancho=n.clientWidth||0;rankAncho=ancho;
+    var dibujar=function(){n.innerHTML='<div class="rsm-pie'+(ancho>=720?' is-wide':'')+'"><div class="rsm-pie-chart">'+(global.d3&&global.d3.arc?svgTorta(rows,colores,total,servicios,sel,ancho>=720?430:(ancho||340)):'')+'</div>'+leyenda+'</div>';};
+    dibujar();
+    if(!(global.d3&&global.d3.arc))cargarD3().then(function(){if(estado.res===d)pintarRanking(d);}).catch(function(){});
+    if(!n.dataset.pieBound){n.dataset.pieBound='1';
+      var elegir=function(i,teclado){if(!rankDatos)return;var rs=rankingRows(rankDatos),nom=rs[i]&&rs[i].nombre;estado.rankSel=estado.rankSel===nom?null:nom;pintarRanking(rankDatos);if(teclado){var b=n.querySelector('li[data-i="'+i+'"]');if(b)b.focus({preventScroll:true});}};
+      n.addEventListener('click',function(ev){var t=ev.target.closest&&ev.target.closest('[data-i]');if(t)elegir(Number(t.getAttribute('data-i')));});
+      n.addEventListener('keydown',function(ev){if(ev.key!=='Enter'&&ev.key!==' ')return;var t=ev.target.closest&&ev.target.closest('li[data-i]');if(t){ev.preventDefault();elegir(Number(t.getAttribute('data-i')),true);}});
+      if(typeof global.ResizeObserver==='function'){rankObs=new global.ResizeObserver(function(){var w=n.clientWidth||0;if(Math.abs(w-rankAncho)>24&&rankDatos)pintarRanking(rankDatos);});rankObs.observe(n);}
+    }
   }
 
   function chartColors(){var light=document.documentElement?.dataset.theme==='light';return {accent:light?'#a86600':'#f5a623',previous:light?'#66758b':'#8590ab',grid:light?'rgba(70,85,110,.15)':'rgba(100,115,140,.2)'};}
@@ -973,6 +1021,7 @@
   global.AuxDashResumen = {
     normalizar: normalizar,
     rankingRows: rankingRows,
+    pintarRanking: pintarRanking,
     cobertura: function (d, radio) {
       var prev = estado.radio;
       if (radio != null) estado.radio = radio;

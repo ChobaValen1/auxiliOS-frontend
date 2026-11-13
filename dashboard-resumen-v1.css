@@ -494,14 +494,27 @@
   #screen-dashboard .rsm-mapa-card .rsm-mapa-lienzo { height: 340px; }
 }
 
-/* ¿Qué prestadoras aportan más?: torta con su leyenda (mismos colores que el mapa). */
-#screen-dashboard .rsm-pie { display: grid; gap: 14px; }
-#screen-dashboard .rsm-pie-canvas { position: relative; height: 210px; }
-#screen-dashboard .rsm-pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-#screen-dashboard .rsm-pie-legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 12px; }
-#screen-dashboard .rsm-pie-legend i { width: 10px; height: 10px; border-radius: 3px; }
+/* ¿Qué prestadoras aportan más?: donut con etiquetas y guías (opción D). */
+#screen-dashboard .rsm-pie { display: grid; gap: 10px; }
+#screen-dashboard .rsm-pie.is-wide { grid-template-columns: 430px minmax(0, 1fr); align-items: center; gap: 6px; }
+#screen-dashboard .rsm-pie-chart { display: grid; place-items: center; min-height: 250px; }
+#screen-dashboard .rsm-pie-svg { max-width: 100%; height: auto; overflow: visible; }
+#screen-dashboard .rsm-pie-slice { cursor: pointer; transition: opacity .2s ease; }
+#screen-dashboard .rsm-pie-track { stroke: color-mix(in srgb, var(--text) 7%, transparent); }
+#screen-dashboard .rsm-pie-lbl { fill: var(--muted2); font: 600 11px Inter, 'DM Sans', sans-serif; }
+#screen-dashboard .rsm-pie-c1 { fill: var(--muted); font: 500 11px Inter, 'DM Sans', sans-serif; }
+#screen-dashboard .rsm-pie-c2 { fill: var(--text); font-family: Inter, 'DM Sans', sans-serif; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+#screen-dashboard .rsm-pie-c3 { fill: var(--muted2); font: 500 11px Inter, 'DM Sans', sans-serif; }
+#screen-dashboard .rsm-pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; min-width: 0; }
+#screen-dashboard .rsm-pie-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 10px; border-radius: 12px; cursor: pointer; transition: background .2s, opacity .2s; outline: none; }
+#screen-dashboard .rsm-pie-legend li:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+#screen-dashboard .rsm-pie-legend li:focus-visible { box-shadow: 0 0 0 2px var(--amber); }
+#screen-dashboard .rsm-pie-legend li.is-on { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 18%, transparent), transparent); }
+#screen-dashboard .rsm-pie-legend li.is-dim { opacity: .42; }
+#screen-dashboard .rsm-pie-legend i { width: 8px; height: 22px; border-radius: 4px; background: var(--c); }
 #screen-dashboard .rsm-pie-legend span { display: grid; min-width: 0; }
-#screen-dashboard .rsm-pie-legend b { font-weight: 600; overflow-wrap: anywhere; }
-#screen-dashboard .rsm-pie-legend small { color: var(--muted2); font-size: 10px; }
-#screen-dashboard .rsm-pie-legend strong { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
-#screen-dashboard .rsm-pie-legend em { display: block; color: var(--muted2); font-style: normal; font-size: 10px; font-weight: 400; }
+#screen-dashboard .rsm-pie-legend b { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+#screen-dashboard .rsm-pie-legend small { color: var(--muted); font-size: 11px; }
+#screen-dashboard .rsm-pie-legend strong { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-dashboard .rsm-pie-legend em { display: block; font-style: normal; color: var(--muted2); font-size: 11px; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { #screen-dashboard .rsm-pie-slice, #screen-dashboard .rsm-pie-legend li { transition: none; } }

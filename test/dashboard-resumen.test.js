@@ -54,8 +54,11 @@ test('el Resumen ya no muestra km reales de servicios ni el ratio f/r, y el rank
   assert.doesNotMatch(src, /Km reales de servicios|Ratio f\/r|realesSobreFacturados|claseRatio/);
   assert.match(src, /Ticket promedio/);
   assert.match(src, /<th class="rsm-num">Km facturados<\/th>/);
-  assert.match(src, /type:'pie'/);
+  assert.match(src, /\/vendor\/d3-shape-3\.2\.1\.min\.js/);
   assert.match(src, /rsm-pie-legend/);
+  assert.match(src, /estado\.rankSel===nom\?null:nom/);
+  assert.ok(fs.existsSync('vendor/d3-shape-3.2.1.min.js') && fs.existsSync('vendor/LICENSE-d3.txt'));
+  assert.match(fs.readFileSync('sw.js', 'utf8'), /\/vendor\/d3-shape-3\.2\.1\.min\.js/);
   assert.ok(html.includes('id="rsm-ranking"'));
 });
 
@@ -138,4 +141,10 @@ test('zero revenue does not manufacture percentages',()=>{const {api}=cargarModu
 test('summary puts evolution before geography, keeps exact-value access and avoids repeated efficiency KPI',()=>{
  const section=index.slice(index.indexOf('id="dashx-sec-facturacion"'),index.indexOf('<!-- SECCIÓN 1b'));
  assert.ok(section.indexOf('id="rsm-evol-card"')<section.indexOf('id="rsm-geography"'));assert.ok(section.includes('id="rsm-evol-data"'));assert.match(section,/<section class="rsm-card rsm-mapa-card rsm-pinned" id="rsm-geography"/);assert.doesNotMatch(section,/rsm-disclosure/);assert.match(section,/id="rsm-provider-detail"/);assert.ok(section.indexOf('id="rsm-eficiencia"')<section.indexOf('id="rsm-tipos-lista"')&&section.indexOf('id="rsm-tipos-lista"')<section.indexOf('id="rsm-geography"'),'eficiencia y tipo en la misma fila, antes del mapa');assert.match(js,/ServiceRouteMap\.loadSdk/);assert.doesNotMatch(js,/maplibre/);assert.doesNotMatch(js,/tile\('Eficiencia de km'/);assert.doesNotMatch(js,/rpc\(RPC_FLOTA/);assert.doesNotMatch(js,/type: 'doughnut'/);
+});
+test('con exactamente 6 prestadoras se muestran todas (no «Otras 1 prestadoras»)', () => {
+  const { api } = cargarModulo();
+  const rows = api.rankingRows({ empresas: Array.from({ length: 6 }, (_, i) => ({ id: i, nombre: 'P' + i, monto: (i + 1) * 100, servicios: 1 })) });
+  assert.equal(rows.length, 6);
+  assert.ok(rows.every(r => !/^Otras/.test(r.nombre)));
 });
