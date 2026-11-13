@@ -91,3 +91,12 @@ test('detalle del 1º chofer: un solo botón principal (aparece al llegar) y sin
   assert.match(after, /No hace falta crear remito/);
   assert.match(R._sheetBox(x, 's1', '', true), /Tocá de nuevo para confirmar la entrega/);
 });
+
+test('pantalla de remito del 2º chofer: banner de relevo con quién le entregó el vehículo', () => {
+  const html = R._remitoBanner({ ...x, handed_over_at: '2026-11-13T14:42:00Z' });
+  assert.match(html, /Con relevo · Tramo 2 de 2/);
+  assert.match(html, /Recibiste el vehículo de <b>Martín R\.<\/b> \(Móvil 12 · AB123CD\) en Estación de servicio, Gonnet/);
+  assert.match(html, /un solo servicio y un solo remito/);
+  assert.doesNotMatch(html, /drl-chip-side/);
+  assert.match(fs.readFileSync('operator-service-bridge.js', 'utf8'), /AuxRelevoChofer\?\.decorateRemito\?\.\(s\.service_id\)/);
+});

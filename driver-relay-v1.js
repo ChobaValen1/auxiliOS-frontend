@@ -204,6 +204,20 @@
       actions.insertAdjacentHTML('afterbegin', receivedBox(r));
     }
   }
+  /* Pantalla de remito (2º chofer): deja a la vista que es un solo servicio hecho entre dos y de quién recibió el vehículo. */
+  function remitoBanner(r) {
+    const trip = truckText(r.from_truck_label, r.from_truck_plate);
+    return `<div class="drl-remito-banner">${chipSide(2).replace(' drl-chip-side', '')}
+      <p>Recibiste el vehículo de <b>${esc(r.from_driver_name || 'el primer chofer')}</b>${trip ? ` (${esc(trip)})` : ''} en ${esc(place(r.exchange_address) || 'el punto de encuentro')}${r.handed_over_at ? ` · ${esc(time(r.handed_over_at))}` : ''}.</p>
+      <p class="drl-sub">Es un solo servicio y un solo remito: lo cerrás vos con el cliente en el destino.</p></div>`;
+  }
+  function decorateRemito(serviceId, retried) {
+    const marker = document.getElementById('phase3-remito-context'); if (!marker) return;
+    marker.querySelector('.drl-remito-banner')?.remove();
+    const r = S.received.find(x => String(x.service_id) === String(serviceId));
+    if (r) { marker.insertAdjacentHTML('beforeend', remitoBanner(r)); return; }
+    if (!S.loaded && !retried) refresh({ force: true }).then(() => decorateRemito(serviceId, true));
+  }
   function refreshPreviewBox() {
     const modal = document.getElementById('p3-service-preview');
     if (!modal || modal.hidden) return;
@@ -318,5 +332,5 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', bind, { once: true }) : bind();
   }
-  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
+  window.AuxRelevoChofer = { refresh, paint, handover, openIncoming, decoratePreview, _incomingSheet: incomingSheet, _mapsUrl: mapsUrl, _friendlyError: friendlyError, _incomingHtml: incomingHtml, _outgoingBox: outgoingBox, _sheetBox: sheetBox, _patchCard: patchCard, _remitoBanner: remitoBanner, decorateRemito, _patchReceivedCard: patchReceivedCard, _receivedBox: receivedBox, _state: S };
 })();
