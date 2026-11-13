@@ -102,3 +102,11 @@ test('Operaciones: marca la entrega desde el ícono de relevo (doble toque) y av
   assert.match(life, /Servicio con relevo sin entregar/);
   assert.match(life, /rel&&!rel\.handed_over/);
 });
+
+test('el Excel de Facturación tiene la columna opcional «Relevo» con los dos tramos y si se entregó', () => {
+  const js = read('operator-billing-export.js');
+  assert.match(js, /serviceColumn\('relay','Relevo'/);
+  assert.match(js, /list_operator_service_relays_v1/);
+  assert.match(js, /Tramo 1: \$\{t1\}/);
+  assert.match(js, /serviceCols\.some\(c=>c\.id==='relay'\)\)enriched=await attachRelays\(enriched\)/);
+});
