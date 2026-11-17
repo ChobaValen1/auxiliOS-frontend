@@ -70,6 +70,6 @@ test('modificar un servicio desde Facturación muestra la validación', () => {
 
 test('la exportación de Facturación no duplica aviso: confirma una sola vez', () => {
   const fn = billingExport.split('async function confirmExport()')[1].split('const exportCurrent=')[0];
-  assert.match(fn, /excel\(\)\.download\(\{[^}]*detalle:/);
+  assert.match(fn, /excel\(\)\.downloadStyled\(\{filename[\s\S]*detalle:/);
   assert.doesNotMatch(fn, /registros exportados a Excel/);
 });
