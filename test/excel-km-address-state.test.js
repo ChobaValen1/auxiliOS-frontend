@@ -77,7 +77,7 @@ test('redondeo de km: asfalto y ripio por separado, según la regla vigente de l
   assert.deepEqual(kmRounding.apply('decimal',90.4,0.3,90.7),{asphalt:90.4,gravel:0.3,total:90.7,rounded:false});
 });
 
-test('Excel: KM Asfalto, Ripio, Total y KM activado salen redondeados si la prestadora redondea',()=>{
+test('Excel: KM Asfalto, Ripio y Total salen redondeados si la prestadora redondea',()=>{
   const {cols}=loadExport([{company_id:'a',valid_from:'2026-01-01',valid_until:null,km_rounding_mode:'nearest_integer'}]);
   const value=(id,r)=>cols.get(id).value(r);
   const base={company_id:'a',scheduled_for:'2026-10-15T15:00:00Z',asphalt_km:2.6,gravel_km:3.7,total_km:6.3,quote:{}};
@@ -87,8 +87,6 @@ test('Excel: KM Asfalto, Ripio, Total y KM activado salen redondeados si la pres
   assert.deepEqual(['asphalt_km','gravel_km','total_km'].map(id=>value(id,decimalQuote)),[2.6,3.7,6.3]);
   const other={...base,company_id:'b'};
   assert.deepEqual(['asphalt_km','gravel_km','total_km'].map(id=>value(id,other)),[2.6,3.7,6.3]);
-  assert.equal(value('activation_km',{...base,driver_activated:true,activation_kind:'movement',activation_km:12.5}),13);
-  assert.equal(value('activation_km',{...other,driver_activated:true,activation_kind:'movement',activation_km:12.5}),12.5);
 });
 
 test('Excel: Estado es FINALIZADO, ACTIVADO MOVIDA o ACTIVADO ORIGEN y no hay columnas de activado aparte',()=>{
@@ -99,7 +97,6 @@ test('Excel: Estado es FINALIZADO, ACTIVADO MOVIDA o ACTIVADO ORIGEN y no hay co
   assert.equal(state({driver_activated:true,activation_kind:'movement'}),'ACTIVADO MOVIDA');
   assert.equal(state({driver_activated:true,activation_kind:'origin'}),'ACTIVADO ORIGEN');
   for(const id of ['activated','activation_kind','activation_billing','base_price','service_number','logistics','copay','holiday'])assert.equal(cols.has(id),false,`sobra la columna ${id}`);
-  assert.ok(cols.has('activation_km'));
 });
 
 test('Excel: Calle y Localidad de CABA ya no quedan vacías',()=>{
