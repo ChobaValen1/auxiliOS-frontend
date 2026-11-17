@@ -855,7 +855,7 @@
       var p = r.data || {}, f = p.formattedAddress || s.text || s.mainText;
       Object.assign(st.d, (function () {
         var o = {};
-        o[kind] = f; o[kind + '_formatted_address'] = f; o[kind + '_place_id'] = p.placeId || s.placeId;
+        o[kind] = f; o[kind + '_formatted_address'] = f; o[kind + '_place_id'] = String(s.placeId || '').startsWith('coord:') ? s.placeId : p.placeId || s.placeId;
         o[kind + '_lat'] = p.location ? p.location.latitude : ''; o[kind + '_lng'] = p.location ? p.location.longitude : '';
         return o;
       })());
