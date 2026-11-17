@@ -92,5 +92,21 @@ test('las pantallas de servicio guardan «coord:lat,lng» cuando el origen se pe
   assert.match(ws,/String\(s\.placeId\|\|''\)\.startsWith\('coord:'\)\?s\.placeId:data\?\.placeId\|\|s\.placeId/);
   assert.match(priv,/String\(s\.placeId \|\| ''\)\.startsWith\('coord:'\) \? s\.placeId : p\.placeId \|\| s\.placeId/);
   const exp=fs.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
-  assert.match(exp,/from\('operator_services'\)\.select\('service_id,origin_place_id'\)/);
+  assert.match(exp,/from\('operator_services'\)\.select\('service_id,origin_place_id,origin_lat,origin_lng'\)/);
+});
+
+test('columna opcional Coordenadas Origen: el punto exacto de todos los servicios, también los viejos',()=>{
+  const {cols}=loadExport();
+  const c=cols.get('origin_coords');
+  assert.ok(c&&c.optional,'opcional: no entra marcada por defecto');
+  assert.equal(c.header,'Coordenadas Origen');
+  // Servicio viejo con dirección de Google: sale el punto guardado.
+  assert.equal(c.value({origin_place_id:'ChIJabc',origin_lat:'-37.3903300',origin_lng:'-57.1298144'}),'-37.39033, -57.1298144');
+  // Cargado por coordenadas: el punto pegado.
+  assert.equal(c.value({origin_place_id:'coord:-37.16,-56.9',origin_lat:'-37.1600000',origin_lng:'-56.9000000'}),'-37.16, -56.9');
+  // Sin punto guardado: vacía.
+  assert.equal(c.value({origin_place_id:'ChIJabc',origin_lat:null,origin_lng:null}),'');
+  // Va en el grupo Recorrido, después de Provincia Origen.
+  const ids=[...cols.keys()];
+  assert.equal(ids[ids.indexOf('origin_province')+1],'origin_coords');
 });
