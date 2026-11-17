@@ -76,13 +76,13 @@ test('Excel: una columna nueva (que nunca estuvo en el orden guardado) entra mar
   assert.deepEqual(plain([...E.restoreColumnSelection('current','service')]),['total_price','order','arrival']);
 });
 
-test('Excel: movida y km que no corresponden por la regla de la prestadora se explican en la columna',()=>{
+test('Excel: movida y km que no corresponden por la regla de la prestadora van en 0 y se explican en Regla de cobro',()=>{
   const E=load('operator-billing-export.js').OperatorBillingExcel,col=id=>E.serviceColumns.find(c=>c.id===id);
   const far={quote:{movement_applied:false,distance_applied:true,movement_charge_until_km:200,covered_radius_km:10,distance_km:215.5,billable_distance_km:205.5,components:[{role:'distance_asphalt',component_type:'distance',terrain:'asphalt',subtotal:1000}]}};
   const near={quote:{movement_applied:true,distance_applied:false,movement_charge_until_km:200,covered_radius_km:10,distance_km:9.7,billable_distance_km:0,components:[{role:'movement',subtotal:50000}]}};
-  assert.equal(col('movement_amount').value(far),'No corresponde: el recorrido supera 200 km (cobra movida hasta 200 km)');
+  assert.equal(col('movement_amount').value(far),0);
   assert.equal(col('km_amount').value(far),1000);
-  assert.equal(col('km_amount').value(near),'No corresponde: dentro del radio cubierto de 10 km');
+  assert.equal(col('km_amount').value(near),0);
   assert.equal(col('movement_amount').value(near),50000);
   assert.equal(col('billing_rule').value(far),'Sin movida: supera 200 km · Radio cubierto: se descuentan 10 km');
   assert.equal(col('billing_rule').value(near),'Sin km: dentro del radio de 10 km');

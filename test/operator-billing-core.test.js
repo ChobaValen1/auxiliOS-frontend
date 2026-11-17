@@ -208,7 +208,7 @@ test('catálogo Excel de servicios conserva los datos comerciales y operativos',
     'Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Tarifa KM Asfalto','Tarifa KM Ripio',
     'Extra %','Precio Total (sin peajes)','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total',
     'Observaciones','Peajes','N° Remito','Arribo','Finalización','Demora otorgada (min)','Cliente / Socio',
-    'Tercerizado','KM activado','KM Facturables','Regla de cobro',
+    'Tercerizado','Regla de cobro',
     'Adicionales $','Recargos $','Total con peajes','Conceptos sí/no'
   ];
   for(const label of required)assert.ok(billingExport.includes(`'${label}'`),`falta columna ${label}`);
