@@ -45,7 +45,7 @@ function downloadCsv({filename='AuxiliOS',columns=[],rows=[],detalle=''}={}){
    SUBTOTAL(109,…) para las columnas con total:true (suma sólo lo filtrado) y las fórmulas de cada columna. */
 let excelJsLoading=null;
 function loadExcelJs(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);excelJsLoading=excelJsLoading||new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='/vendor/exceljs-4.4.0.min.js';s.onload=()=>window.ExcelJS?resolve(window.ExcelJS):reject(new Error('No se pudo cargar el exportador de Excel. Recargá AuxiliOS e intentá nuevamente.'));s.onerror=()=>{excelJsLoading=null;reject(new Error('No se pudo cargar el exportador de Excel. Revisá la conexión e intentá nuevamente.'))};document.head.appendChild(s)});return excelJsLoading}
-const STYLE={amber:'FFF5A623',ink:'FF1A1203',dark:'FF14171D',gray:'FF6B7180',zebra:'FFF7F8FA',line:'FFE3E5EA',band:'FFFFF4E0',total:'FFFDEBC8'};
+const STYLE={amber:'FFF5A623',ink:'FF1A1203',dark:'FF14171D',gray:'FF6B7180',zebra:'FFF7F8FA',line:'FFE3E5EA',band:'FFFFF4E0',total:'FFFDEBC8',dupe:'FFFBE0DE',dupeInk:'FF9B1C1C'};
 const NUMFMT={money:'"$" #,##0.00;[Red]-"$" #,##0.00',km:'#,##0.0',count:'#,##0',int:'0',percent:'0.##" %"'};
 const fill=argb=>({type:'pattern',pattern:'solid',fgColor:{argb}});
 function colLetter(n){let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26)}return s}
@@ -56,7 +56,7 @@ function styledSheet(wb,{name,columns,rows,title='',subtitle='',group=null,total
   const ws=wb.addWorksheet(cleanSheetName(name),{properties:{tabColor:{argb:STYLE.amber}},pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9}});
   ws.columns=cols.map(c=>({width:Math.max(8,Math.min(60,Number(c.width)||16))}));
   ws.mergeCells(1,1,1,n);const t=ws.getCell(1,1);t.value=title||cleanSheetName(name);t.font={bold:true,size:16,color:{argb:STYLE.dark}};ws.getRow(1).height=24;
-  ws.mergeCells(2,1,2,n);const sub=ws.getCell(2,1);sub.value=subtitle;sub.font={size:10,color:{argb:STYLE.gray}};
+  ws.mergeCells(2,1,2,n);const sub=ws.getCell(2,1);sub.value=subtitle;sub.font={size:10,color:{argb:STYLE.gray}};sub.alignment={wrapText:true,vertical:'top'};if(String(subtitle).includes('\n'))ws.getRow(2).height=28;
   let headerRow=3;
   if(typeof group==='function'){headerRow=4;let start=0;for(let i=1;i<=n;i++){if(i<n&&group(cols[i])===group(cols[start]))continue;if(i-1>start)ws.mergeCells(3,start+1,3,i);const g=ws.getCell(3,start+1);g.value=group(cols[start])||'';g.font={bold:true,size:10,color:{argb:STYLE.ink}};g.fill=fill(STYLE.band);g.alignment={horizontal:'center',vertical:'middle'};g.border={left:{style:'thin',color:{argb:STYLE.amber}},right:{style:'thin',color:{argb:STYLE.amber}}};start=i}}
   const hr=ws.getRow(headerRow);cols.forEach((c,i)=>{hr.getCell(i+1).value=text(c.header)});hr.height=30;hr.eachCell((c,ci)=>{c.font={bold:true,color:{argb:STYLE.ink}};c.fill=fill(STYLE.amber);c.alignment={vertical:'middle',wrapText:true,horizontal:cols[ci-1]?.format?'right':'left'};c.border={bottom:{style:'thin',color:{argb:STYLE.ink}}}});
@@ -72,6 +72,8 @@ function styledSheet(wb,{name,columns,rows,title='',subtitle='',group=null,total
   if(totals&&data.length&&cols.some(c=>c.total)){const tr=ws.getRow(last+1);let labeled=false;
     cols.forEach((c,ci)=>{const cell=tr.getCell(ci+1);if(c.total){const L=colLetter(ci+1),sum=data.reduce((a,row)=>{const v=cellValue(c,row);return a+(typeof v==='number'?v:0)},0);cell.value={formula:`SUBTOTAL(109,${L}${first}:${L}${last})`,result:Math.round(sum*100)/100};if(c.format&&NUMFMT[c.format])cell.numFmt=NUMFMT[c.format]}else if(!labeled){cell.value=`TOTAL · ${data.length} ${totalsLabel}`;labeled=true}
       cell.font={bold:true,color:{argb:STYLE.ink}};cell.fill=fill(STYLE.total);cell.border={top:{style:'medium',color:{argb:STYLE.ink}}}});tr.height=20}
+  /* Valores repetidos (dupes:true): fondo rojo claro, como «Resaltar duplicados» de Excel. Con COUNTIF funciona igual en Excel, Google Sheets y LibreOffice. */
+  if(data.length)cols.forEach((c,ci)=>{if(!c.dupes)return;const L=colLetter(ci+1);ws.addConditionalFormatting({ref:`${L}${first}:${L}${last}`,rules:[{type:'expression',priority:1,formulae:[`AND(${L}${first}<>"",COUNTIF($${L}$${first}:$${L}$${last},${L}${first})>1)`],style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:STYLE.dupe}},font:{color:{argb:STYLE.dupeInk}}}}]})});
   ws.autoFilter={from:{row:headerRow,column:1},to:{row:Math.max(headerRow,last),column:n}};
   ws.views=[{state:'frozen',ySplit:headerRow,xSplit:freezeFirstColumn?1:0}];
   ws.pageSetup.printTitlesRow=`${headerRow}:${headerRow}`;

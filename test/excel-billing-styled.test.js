@@ -75,3 +75,23 @@ test('Facturación descarga con formato y carga ExcelJS recién al exportar',()=
   assert.match(xs,/\/vendor\/exceljs-4\.4\.0\.min\.js/);
   assert.match(xs,/fullCalcOnLoad=true/);
 });
+
+test('los filtros aplicados en Facturación quedan escritos bajo el título',()=>{
+  const S={company:'c1',filters:{companies:[{company_id:'c1',company_name:'ACME'}]},period:'2026-11-01_2026-11-15',base:'Base Sur',serviceType:'Remolque',search:' AB123 '};
+  assert.equal(E.filtersLabel(S,'Selección'),'Filtros · Prestadora: ACME · Período: 01/11/2026 al 15/11/2026 · Base: Base Sur · Tipo: Remolque · Búsqueda: «AB123» · Alcance: Selección');
+  assert.equal(E.filtersLabel({period:'2026-11'},'Servicios'),'Filtros · Prestadora: Todas · Período: 11/2026');
+  assert.equal(E.filtersLabel({period:''}),'Filtros · Prestadora: Todas · Período: Todos los períodos');
+});
+
+test('N° Orden, N° Remito y Patente repetidos se resaltan en rojo claro (sólo en Servicios)',async()=>{
+  const cols=['order','remito','plate','total_price'].map(col);
+  const rows=[row({remito_number:'10',vehicle_plate:'AA123BC'}),row({remito_number:'11',vehicle_plate:'AA123BC'}),row({service_order_number:'A-3',remito_number:'12',vehicle_plate:'ZZ999ZZ'})];
+  const sheets=E.styledSheets([{name:'Servicios',columns:cols,rows},{name:'Peajes',columns:E.tollColumns,rows:[{service_order_number:'A-1'},{service_order_number:'A-1'}]}],'x','Filtros · Prestadora: ACME');
+  assert.equal(sheets[0].subtitle,'Servicios · 3 servicios · generado x\nFiltros · Prestadora: ACME');
+  const wb=X.styledWorkbook(ExcelJS,{title:'t',sheets});
+  const ws=wb.getWorksheet('Servicios');
+  const refs=ws.conditionalFormattings.map(cf=>cf.ref);
+  assert.deepEqual(refs,['A5:A7','B5:B7','C5:C7']);
+  assert.equal(ws.conditionalFormattings[0].rules[0].formulae[0],'AND(A5<>"",COUNTIF($A$5:$A$7,A5)>1)');
+  assert.equal(wb.getWorksheet('Peajes').conditionalFormattings.length,0,'en Peajes el N° Orden se repite por cada peaje');
+});
