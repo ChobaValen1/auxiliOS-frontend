@@ -80,6 +80,7 @@ test('el formulario, maps-proxy y el Excel conocen los recorridos nuevos', () =>
   assert.match(ws, /rm==='base_origin_destination'\?\[base,origin,dest\]:rm==='origin_destination_base'\?\[origin,dest,base\]/);
   assert.match(proxy, /mode === "base_origin_destination"[\s\S]*destination: latLngWaypoint\(destination\), intermediates: \[latLngWaypoint\(origin\)\]/);
   assert.match(proxy, /mode === "origin_destination_base"[\s\S]*destination: latLngWaypoint\(base\), intermediates: \[latLngWaypoint\(destination\)\]/);
-  assert.match(exporter, /const mode=r\.chain_route_mode\|\|r\.billing_route_mode\|\|'origin_destination';/);
+  // Activado Origen manda sobre el enganche: el móvil no llegó al destino (Base → Origen).
+  assert.match(exporter, /const mode=activatedOrigin\?'base_origin':r\.chain_route_mode\|\|r\.billing_route_mode\|\|'origin_destination';/);
   assert.match(exporter, /list_operator_service_chain_route_modes_v1/);
 });
