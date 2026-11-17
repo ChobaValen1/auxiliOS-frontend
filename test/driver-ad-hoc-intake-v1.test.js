@@ -60,7 +60,7 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(services,/Ingresos sin servicio/);
   assert.match(services,/<details id="os-driver-intakes"/);
   assert.match(services,/link_driver_service_intake_v1/);
-  assert.match(services,/Crear servicio con estos datos/);
+  assert.match(services,/Crear un servicio nuevo con los datos del remito/);
   assert.match(services,/list_driver_service_intakes_v2/);
   assert.match(services,/Crear servicio/);
   assert.match(services,/crearServicioDesdeIngresoChofer/);

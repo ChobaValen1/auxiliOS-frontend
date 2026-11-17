@@ -43,7 +43,7 @@ test('Operador: Anular en la lista de ingresos y Pendientes sin chofer al vincul
   assert.match(services,/rpc\('annul_driver_service_intake_v1',\{p_intake_id:id/);
   assert.match(services,/id="os-intake-annul" hidden role="dialog" aria-modal="true"/);
   assert.match(services,/const pending=S\.services\.filter\(s=>s\.status==='pending'&&!s\.remito_id&&!s\.assigned_driver_id\)/);
-  assert.match(services,/<optgroup label="Sin asignar">/);
+  assert.match(services,/group\('Sin asignar',pendingRows\)/);
   assert.match(services,/e\.key==='Escape'/);
   // Nombres globales propios: no pisar las funciones del chofer (window.confirmarAnularIngresoChofer).
   assert.doesNotMatch(services,/AnularIngresoChofer/);

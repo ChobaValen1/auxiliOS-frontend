@@ -29,8 +29,9 @@ test('ingresos sin servicio: una fila legible con recorrido, cargos y estado', (
 
 test('crear servicio desde ingreso: sin un servicio compatible va directo al alta', () => {
   assert.match(services, /if\(!candidates\.length\)return createServiceFromIntake\(\);/);
-  assert.match(services, /<b>¿Ya existe este servicio\?<\/b>/);
-  assert.match(services, /onclick="confirmarVinculoIngresoChofer\(\)">Asociar a este servicio<\/button>/);
+  assert.match(services, /<b>Remito sin servicio asignado<\/b>/);
+  assert.match(services, /id="os-intake-link-primary" onclick="confirmarModalIngresoChofer\(\)">Asociar remito<\/button>/);
+  assert.match(services, /Crear un servicio nuevo con los datos del remito/);
   // Lo que marcó el chofer (Prestadora o Particular) abre ese formulario, sin volver a preguntar.
   assert.match(privateForm, /if \(info && info\.client_kind === 'prestadora'\) \{ ocultarCuentaEnPrestadoras\(\); return abrirPrestadora\(intake\); \}/);
 });

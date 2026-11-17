@@ -490,3 +490,36 @@
 #os-intake-link .os-intake-select span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
 :is(#os-intake-link, #os-intake-annul) .os-view-dialog footer .btn { white-space: nowrap; }
 #os-intake-link .os-view-dialog { width: min(600px, calc(100vw - 32px)); }
+
+/* Remito sin servicio: dos caminos (asociar o crear) y una tabla que dice qué valor queda. */
+#os-intake-link .os-il-remito { display: grid; gap: 3px; }
+#os-intake-link .os-il-label { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#os-intake-link .os-il-remito b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-intake-link .os-il-opt { margin: var(--ax-sp-3) var(--ax-sp-5) 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#os-intake-link .os-il-opt[data-on="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#os-intake-link .os-il-head { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
+#os-intake-link .os-il-head input { flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--ax-accent); }
+#os-intake-link .os-il-head b { display: block; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-intake-link .os-il-head small { display: block; margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#os-intake-link .os-il-badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: var(--ax-fs-sm); font-style: normal; font-weight: var(--ax-fw-bold); vertical-align: 1px; }
+#os-intake-link .os-il-panel { display: none; padding: 0 14px 14px 40px; }
+#os-intake-link .os-il-opt[data-on="true"] .os-il-panel { display: block; }
+#os-intake-link .os-il-panel .os-intake-select { margin: 0; padding: 0; border: 0; background: transparent; }
+#os-intake-link .os-il-match { margin: 8px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#os-intake-link .os-il-match[data-level="exact"] { color: var(--ax-ok); }
+#os-intake-link .os-il-warn { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--ax-warn); border-radius: var(--ax-radius); color: var(--ax-warn); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#os-intake-link .os-il-warn svg { flex: 0 0 auto; width: 14px; height: 14px; margin-top: 1px; }
+#os-intake-link .os-il-table { width: 100%; margin-top: 10px; border-collapse: collapse; table-layout: fixed; font-size: var(--ax-fs-sm); }
+#os-intake-link .os-il-table th { padding: 4px 6px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font-size: 10px; font-weight: var(--ax-fw-bold); letter-spacing: .05em; text-align: left; text-transform: uppercase; }
+#os-intake-link .os-il-table th:first-child, #os-intake-link .os-il-table td:first-child { width: 22%; }
+#os-intake-link .os-il-table th:last-child, #os-intake-link .os-il-table td:last-child { width: 26px; text-align: center; }
+#os-intake-link .os-il-table td { padding: 6px; border-bottom: 1px solid var(--ax-border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ax-text-2); }
+#os-intake-link .os-il-table td:nth-child(2) { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#os-intake-link .os-il-table td span { display: block; overflow: hidden; text-overflow: ellipsis; }
+#os-intake-link .os-il-table td em { color: var(--ax-text-3); font-style: normal; font-weight: var(--ax-fw-regular, 400); }
+#os-intake-link .os-il-table tr[data-state="different"] .os-il-mark { color: var(--ax-warn); }
+#os-intake-link .os-il-table tr[data-state="exact"] .os-il-mark { color: var(--ax-ok); }
+#os-intake-link .os-il-mark { font-weight: var(--ax-fw-bold); }
+#os-intake-link .os-il-note { margin: 10px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.45; }
+#os-intake-link .os-il-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 520px) { #os-intake-link .os-il-panel { padding-left: 14px; } }

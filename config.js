@@ -181,7 +181,8 @@ async function loadCriticalAuxiliosModules() {
   // Separador de direcciones y redondeo de km de la prestadora: los usan Servicios, Facturación y el Excel.
   await Promise.all([
     loadAuxiliosModule('auxilios-address-parts-v1', '/address-parts-v1.js'),
-    loadAuxiliosModule('auxilios-km-rounding-v1', '/km-rounding-v1.js')
+    loadAuxiliosModule('auxilios-km-rounding-v1', '/km-rounding-v1.js'),
+    loadAuxiliosModule('auxilios-intake-match-v1', '/operator-intake-match-v1.js')
   ]);
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
