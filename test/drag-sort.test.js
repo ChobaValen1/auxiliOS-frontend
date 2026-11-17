@@ -23,7 +23,7 @@ test('arrastrar: el lugar final es la posición original más cercana al puntero
 test('todas las listas de columnas se pueden arrastrar (además de las flechas)', () => {
   for (const [file, re] of [
     ['ui/export-picker-v1.js', /data-drag-key="' \+ esc\(id\)/],
-    ['operator-billing-export.js', /class="obx-order-row" data-drag-key=/],
+    ['operator-billing-export.js', /class="obx2-orow" data-drag-key=/],
     ['table-columns-v1.js', /data-tc-row="' \+ esc\(i\.key\) \+ '" data-drag-key=/],
     ['operator-services.js', /class="os-view-row" data-drag-key=/],
     ['service-module-configuration.js', /class="smc-col\$\{on\?'':' is-off'\}" data-drag-key=/],

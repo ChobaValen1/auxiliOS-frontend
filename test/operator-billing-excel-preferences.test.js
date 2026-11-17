@@ -5,19 +5,21 @@ const fs=require('node:fs');
 const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
 
 test('selector Excel mantiene todas las columnas accesibles con scroll interno real',()=>{
-  assert.match(billingExport,/\.obx-picker-body\{[^}]*flex:1 1 auto[^}]*min-height:0[^}]*overflow-y:auto/s);
-  assert.match(billingExport,/scrollbar-gutter:stable/);
-  assert.match(billingExport,/overscroll-behavior:contain/);
+  const css=fs.readFileSync('facturacion-ax-v1.css','utf8');
+  assert.match(css,/\.obx2-scroll\{[^}]*flex:1 1 auto[^}]*min-height:0[^}]*overflow:auto/s);
+  assert.match(css,/\.obx2-order-list\{[^}]*min-height:0[^}]*overflow:auto/s);
+  assert.match(css,/scrollbar-gutter:stable/);
+  assert.match(css,/overscroll-behavior:contain/);
   assert.match(billingExport,/height:min\(780px,94vh\)/);
-  assert.match(billingExport,/@media\(max-width:480px\)\{\.obx-col-grid\{grid-template-columns:1fr\}/);
+  assert.match(css,/@media\(max-width:820px\)\{[^]*\.obx2-cols\{grid-template-columns:1fr 1fr\}/);
 });
 
-test('marcar una columna no vuelve a renderizar el modal ni pierde la posicion de scroll',()=>{
-  const fn=billingExport.split('function onPickerChange(e)')[1].split('function onPickerClick(e)')[0];
-  assert.match(fn,/syncPickerGroup\(type\)/);
-  assert.doesNotMatch(fn,/renderPicker\(/);
-  assert.match(billingExport,/const previousScroll=back\.querySelector\('\.obx-picker-body'\)\?\.scrollTop\|\|0/);
-  assert.match(billingExport,/body\.scrollTop=previousScroll/);
+test('marcar una columna no vuelve a dibujar la lista de columnas ni pierde el foco o el scroll',()=>{
+  const fn=billingExport.split('function onPickerChange(e)')[1].split('function onPickerInput(e)')[0];
+  assert.match(fn,/afterSelection\(\)/);
+  assert.doesNotMatch(fn.split('const all=')[0],/refreshPicker\('groups'\)|renderPicker\(/);
+  assert.match(billingExport,/const scroll=back\.querySelector\('\.obx2-scroll'\)\?\.scrollTop\|\|0/);
+  assert.match(billingExport,/s\.scrollTop=scroll/);
 });
 
 test('ultima seleccion de columnas se persiste por accion de exportacion',()=>{

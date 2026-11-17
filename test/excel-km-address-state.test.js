@@ -141,6 +141,6 @@ test('selector del Excel: columnas agrupadas por tema y orden dentro de cada gru
   // Todas las columnas del catálogo tienen grupo explícito salvo las de Otros.
   const src=fs2.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
   for(const id of ids)if(!['toggles','notes','toll_names'].includes(id))assert.ok(src.includes(`'${id}'`)&&E.groupedIds('service',[id]).length===1,id);
-  assert.match(src,/ordenar dentro de cada grupo; el Excel sale en este mismo orden/);
-  assert.match(src,/data-obx-sub-on="1"/);
+  assert.match(src,/ponerlas en el orden que quieras/);
+  assert.match(src,/data-obx-group-all/);
 });

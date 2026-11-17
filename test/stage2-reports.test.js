@@ -57,7 +57,7 @@ test('CSV es UTF-8, usa coma decimal, escapa saltos, comillas y fórmulas sin al
 });
 
 test('Excel conserva orden guardado, reconcilia columnas nuevas y omite nombres de peajes por defecto',()=>{
-  const prefs={current:{service:['total_price','order'],serviceOrder:['total_price','order','desconocida']}};
+  const prefs={current:{service:['total_price','order'],serviceOrder:['total_price','order','desconocida'],orderFree:true}};
   const E=load('operator-billing-export.js',{localStorage:{getItem:()=>JSON.stringify(prefs)}}).OperatorBillingExcel;
   const sel=E.restoreColumnSelection('current','service');
   assert.deepEqual(plain([...sel].slice(0,2)),['total_price','order']);
