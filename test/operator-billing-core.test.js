@@ -193,9 +193,8 @@ test('Facturación conserva selección, servicios visibles y todo lo filtrado pa
 });
 
 test('Excel permite elegir columnas antes de descargar',()=>{
-  assert.match(billingExport,/Elegí qué columnas querés incluir/);
-  assert.match(billingExport,/Seleccionar Todos/);
-  assert.match(billingExport,/Deseleccionar Todos/);
+  assert.match(billingExport,/Elegí las columnas y ordenalas como quieras/);
+  assert.match(billingExport,/data-obx-quick=/);
   assert.match(billingExport,/data-obx-col/);
   assert.match(billingExport,/selectedColumns/);
   assert.match(billingExport,/confirmExport/);
