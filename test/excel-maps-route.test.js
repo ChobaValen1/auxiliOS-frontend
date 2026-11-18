@@ -92,7 +92,7 @@ test('las pantallas de servicio guardan «coord:lat,lng» cuando el origen se pe
   assert.match(ws,/String\(s\.placeId\|\|''\)\.startsWith\('coord:'\)\?s\.placeId:data\?\.placeId\|\|s\.placeId/);
   assert.match(priv,/String\(s\.placeId \|\| ''\)\.startsWith\('coord:'\) \? s\.placeId : p\.placeId \|\| s\.placeId/);
   const exp=fs.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
-  assert.match(exp,/from\('operator_services'\)\.select\('service_id,origin_place_id,origin_lat,origin_lng'\)/);
+  assert.match(exp,/from\('operator_services'\)\.select\('service_id,origin_place_id,origin_lat,origin_lng,destination_lat,destination_lng'\)/);
 });
 
 test('columna opcional Coordenadas Origen: el punto exacto de todos los servicios, también los viejos',()=>{
