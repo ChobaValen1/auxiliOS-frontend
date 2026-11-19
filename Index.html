@@ -883,9 +883,9 @@
           <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
           <div class="rsm">
             <div id="rsm-period-context" class="rsm-period-context"></div>
+            <p class="opx-frase" id="rsm-frase" role="status"></p>
             <div class="rsm-kpis" id="dashx-fact-kpis"></div>
 
-            <div id="rsm-secondary" class="rsm-secondary"></div>
             <p id="rsm-data-context" class="rsm-data-context" role="status"></p>
             <div class="rsm-fila rsm-fila-evol">
               <section class="rsm-card rsm-evol-card" id="rsm-evol-card">
@@ -896,7 +896,7 @@
                   </div>
                   <div class="rsm-evol-seg" role="group" aria-label="Vista del gráfico"><button type="button" data-evol-vista="diario" aria-pressed="true">Diario</button><button type="button" data-evol-vista="acum" aria-pressed="false">Acumulado</button><button type="button" data-evol-vista="prest" aria-pressed="false">Por prestadora</button></div>
                 </header>
-                <div class="rsm-chart-key"><span><i></i>Este período</span><span id="rsm-previous-key"><i class="is-previous"></i>Período anterior</span></div><p id="rsm-evol-reading" class="rsm-chart-reading"></p><div id="rsm-evol-fallback" class="rsm-vacio" hidden></div><div class="rsm-evol"><canvas id="rsm-evol-canvas" role="img" aria-label="Facturado por día, período actual y anterior"></canvas></div><details class="rsm-data-details"><summary>Ver valores diarios</summary><div id="rsm-evol-data"></div></details><div id="rsm-evol-alt" class="rsm-evol-alt" hidden></div><div data-evol-tend><button type="button" class="rsm-link" onclick="dashxIrATendencia()">Ver tendencia →</button></div>
+                <div class="rsm-chart-key"><span><i></i>Este período</span><span id="rsm-previous-key"><i class="is-previous"></i>Período anterior</span></div><p id="rsm-evol-reading" class="rsm-chart-reading"></p><div id="rsm-evol-fallback" class="rsm-vacio" hidden></div><div class="rsm-evol"><canvas id="rsm-evol-canvas" role="img" aria-label="Facturado por día, período actual y anterior"></canvas></div><details class="rsm-data-details"><summary>Ver valores diarios</summary><div id="rsm-evol-data"></div></details><div id="rsm-evol-alt" class="rsm-evol-alt" hidden></div><div data-evol-tend><button type="button" class="rsm-link" onclick="dashxIrATendencia()">Ver últimos 12 meses →</button></div>
               </section>
               <section class="rsm-card rsm-ranking-card" aria-labelledby="rsm-ranking-title">
                 <header class="rsm-card-head"><h3 id="rsm-ranking-title">¿Qué prestadoras aportan más?</h3><p>Participación en la facturación del período</p></header>
