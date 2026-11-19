@@ -1,0 +1,154 @@
+/* AuxiliOS · Chofer: pantalla fija sin scroll v1
+   Capa final para celular. El wizard del remito ocupa exactamente el alto visible
+   (100dvh): cabecera, pasos y botonera quedan fijos y sólo el contenido del paso
+   puede desplazarse si de verdad no entra. Los modales del chofer se compactan para
+   que el formulario completo se vea de un vistazo en 360×740. */
+
+@media (max-width: 767px) {
+  /* ---------- Remito: layout fijo al viewport ---------- */
+  #remitos-nuevo.rmv-flow {
+    position: fixed; inset: 0;
+    width: 100% !important; max-width: none; margin: 0;
+    height: 100vh !important; height: 100dvh !important;
+    min-height: 0 !important;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* sigma.js muestra/oculta la vista con style.display; sólo cuando está visible
+     la pasamos a columna flex (sin pisar el display:none). */
+  #remitos-nuevo.rmv-flow:not([style*="none"]) { display: flex !important; }
+  #remitos-nuevo.rmv-flow > :is(.rem-wizard-header, #rmv-motion-progress) { flex: none; position: static; }
+  #remitos-nuevo.rmv-flow > .rem-wizard-header { min-height: 48px; padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; }
+  #remitos-nuevo.rmv-flow > .rem-progress { display: none !important; }
+
+  /* Stepper compacto: misma información, la mitad de alto */
+  #remitos-nuevo.rmv-flow .rmv-motion-steps { padding: 6px 12px 8px; }
+  #remitos-nuevo.rmv-flow .rmv-motion-steps li { gap: 3px; }
+  #remitos-nuevo.rmv-flow .rmv-motion-number { width: 24px; height: 24px; font-size: 11px; }
+  #remitos-nuevo.rmv-flow .rmv-motion-track { top: 12px; }
+  #remitos-nuevo.rmv-flow .rmv-motion-label { font-size: 10px; line-height: 1.2; }
+
+  /* El paso activo toma el espacio libre; scroll interno sólo como último recurso */
+  #remitos-nuevo.rmv-flow > .rem-step-panel.active {
+    flex: 1 1 auto !important;
+    min-height: 0 !important; max-height: none !important; height: auto !important;
+    overflow-y: auto !important; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px 12px !important;
+  }
+  #remitos-nuevo.rmv-flow > .rem-wizard-footer {
+    position: static !important; flex: none;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Tarjetas y campos más densos (touch target ≥ 44px) */
+  #remitos-nuevo.rmv-flow .rmv-card { padding: 12px 14px; border-radius: 14px; }
+  #remitos-nuevo.rmv-flow .rmv-step-head { margin-bottom: 10px; }
+  #remitos-nuevo.rmv-flow .rmv-step-head h2 { font-size: 18px; line-height: 1.2; }
+  #remitos-nuevo.rmv-flow .rmv-step-head p { margin-top: 2px; font-size: 12px; line-height: 1.4; }
+  #remitos-nuevo.rmv-flow .rmv-fields { gap: 10px; }
+  #remitos-nuevo.rmv-flow .rmv-fields label { gap: 4px; }
+  #remitos-nuevo.rmv-flow :is(.rmv-input, .rem-addon-input) { min-height: 44px; padding: 9px 12px; }
+  #remitos-nuevo.rmv-flow .rmv-fields label.rmv-no-phone { margin-top: 0; min-height: 32px; }
+
+  /* Ingreso sin servicio: patente y modelo en una fila, recorrido más corto */
+  #remitos-nuevo.rmv-flow .rmv-intake-vehicle { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+  #remitos-nuevo.rmv-flow .rmv-intake-group + .rmv-intake-group { margin-top: 12px; padding-top: 10px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-group legend { margin-bottom: 8px; font-size: 14px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-help { margin-bottom: 8px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-note { margin-bottom: 12px; padding: 8px 12px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-place > label { margin-bottom: 4px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-distance { padding: 8px 12px; }
+  #remitos-nuevo.rmv-flow .rmv-intake-distance input[readonly] { min-height: 30px; font-size: 20px; }
+  #remitos-nuevo.rmv-flow .rmv-map-status { margin-top: 3px; }
+
+  /* Evidencia y observaciones */
+  #remitos-nuevo.rmv-flow .rmv-evidence-empty { padding: 12px; }
+  #remitos-nuevo.rmv-flow .rmv-notes-card { margin-top: 10px; }
+  #remitos-nuevo.rmv-flow .rmv-notes-label textarea { min-height: 72px; }
+
+  /* Firma: conformidades en lista de una columna (texto completo, sin cortar),
+     la firma ocupa el resto del alto disponible. */
+  #remitos-nuevo.rmv-flow > .rmv-signature-step.active {
+    display: flex !important; flex-direction: column; gap: 8px;
+    padding: 8px 12px 12px !important;
+  }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone { flex: none; display: flex; flex-direction: column; gap: 6px; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card { margin: 0 !important; padding: 8px 10px !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card .rmv-step-head { margin: 0 0 6px !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card .rmv-step-head h2 { font-size: 15px !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card > .card-label { display: none !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card > div:nth-of-type(2) { display: flex !important; flex-direction: column; gap: 4px !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 44px !important; margin: 0 !important; padding: 5px 8px !important;
+    border-radius: 8px !important;
+  }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-info { min-width: 0; flex: 1; line-height: 1.2; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-title { font-size: 12px !important; line-height: 1.2; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-desc { display: block !important; margin-top: 1px; font-size: 10.5px !important; line-height: 1.25; color: var(--muted2, var(--muted)); }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle { flex: none; transform: none; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card > div:nth-of-type(3) { margin-top: 6px !important; padding: 4px 8px !important; }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone {
+    flex: 1 1 auto; display: flex; min-height: 180px !important; height: auto !important;
+  }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone > .card { flex: 1; display: flex; flex-direction: column; margin: 0 !important; padding: 6px 8px !important; }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone > .card > div { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 4px !important; }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone #sig-canvas { flex: 1; height: auto !important; min-height: 150px; }
+}
+
+/* Pantallas bajas (o teclado abierto): se ocultan los textos de ayuda que repiten
+   lo que ya dicen las etiquetas. */
+@media (max-width: 767px) and (max-height: 760px) {
+  #remitos-nuevo.rmv-flow .rmv-step-head p,
+  #remitos-nuevo.rmv-flow .rmv-intake-help { display: none; }
+  #remitos-nuevo.rmv-flow .rmv-motion-label { font-size: 9px; }
+  /* El texto legal de Arrastre se mantiene siempre visible. */
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-row:not(#row-arrastre) .toggle-desc { display: none !important; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone .toggle-row:not(#row-arrastre) { min-height: 40px !important; }
+}
+
+/* ---------- Modales del chofer (camión, combustible, jornada) ---------- */
+@media (max-width: 767px) {
+  :is(#modal-combustible, #modal-service-log, #modal-neumaticos, #modal-rendicion-cierre, #modal-nueva-jornada, #modal-cerrar-jornada) .modal-box {
+    max-height: calc(100dvh - 12px - env(safe-area-inset-top));
+  }
+  :is(#modal-combustible, #modal-service-log, #modal-neumaticos) .modal-head { padding-top: 12px; padding-bottom: 10px; }
+  :is(#modal-combustible, #modal-service-log, #modal-neumaticos) .modal-body { padding-top: 10px; padding-bottom: 10px; overscroll-behavior: contain; }
+  :is(#modal-combustible, #modal-service-log, #modal-neumaticos) .modal-footer { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+
+  /* Combustible */
+  #modal-combustible .fuel-body { gap: 8px; }
+  #modal-combustible .fuel-context { padding: 8px 10px; }
+  #modal-combustible .fuel-scan { min-height: 52px; padding: 8px 12px; }
+  #modal-combustible .fuel-section { margin: 6px 0 0; font-size: 12px; }
+  #modal-combustible .fuel-grid { gap: 8px; }
+  #modal-combustible .fuel-field input { min-height: 44px; }
+  #modal-combustible .fuel-numbers input { font-size: 20px; }
+  #modal-combustible .fuel-total { min-height: 0; padding: 8px 12px; }
+  #modal-combustible .fuel-total strong { font-size: 22px; }
+  #modal-combustible .fuel-pay button { min-height: 52px; padding: 6px; }
+
+  /* Service y neumáticos: camión en una línea y campos sin aire de sobra */
+  :is(#modal-service-log, #modal-neumaticos) .modal-body > div:first-child {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 10px !important; padding: 6px 12px !important;
+  }
+  :is(#modal-service-log, #modal-neumaticos) .modal-body > div:first-child > div:last-child { font-size: 16px !important; }
+  :is(#modal-service-log, #modal-neumaticos) .form-group { margin-bottom: 10px; }
+  :is(#modal-service-log, #modal-neumaticos) .form-grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  :is(#modal-service-log, #modal-neumaticos) textarea.form-input { min-height: 52px !important; }
+  #modal-neumaticos .condition-field { margin-bottom: 10px; }
+}
+
+/* Celulares chicos con barra del navegador visible (≈ 360×640 útiles) */
+@media (max-width: 767px) and (max-height: 680px) {
+  #remitos-nuevo.rmv-flow .rmv-motion-steps { padding: 4px 12px 6px; }
+  #remitos-nuevo.rmv-flow .rmv-motion-label { display: none; }
+  #remitos-nuevo.rmv-flow .rmv-step-head { margin-bottom: 6px; }
+  #remitos-nuevo.rmv-flow .rmv-confirm-zone > .card > div:nth-of-type(3) { display: none !important; }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone { min-height: 130px !important; }
+  #remitos-nuevo.rmv-flow .rmv-sign-zone #sig-canvas { min-height: 100px; }
+  #remitos-nuevo.rmv-flow .rmv-map-status { display: none; }
+  #remitos-nuevo.rmv-flow .rmv-map-status:is(.ok, .error) { display: block; }
+}
