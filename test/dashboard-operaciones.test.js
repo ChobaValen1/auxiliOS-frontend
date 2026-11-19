@@ -508,3 +508,16 @@ test('el gráfico acepta una línea de tendencia, selección y entrada en cascad
   assert.match(charts, /datos\.animar === false/);
   assert.match(charts, /datos\.cascada/);
 });
+
+test('un día elegido pide la misma RPC con ese día como rango, sin migración', () => {
+  assert.match(ops, /function pedirDia/);
+  assert.match(ops, /Object\.assign\(\{ p_desde: dia, p_hasta: dia \}, estado\.base\)/);
+  // Combustible, medios de pago, móviles y choferes salen de esa respuesta.
+  assert.match(ops, /datos = diaListo\(\) \|\| datos;/);
+  assert.match(ops, /var dd = diaListo\(\);\n    var c = /);
+  // Al cargar otros filtros no quedan días viejos en la caché.
+  assert.match(ops, /estado\.diaCache = \{\};/);
+  // Nada de migraciones nuevas para esto.
+  const nuevas = fs.readdirSync('migrations').filter(f => /operaciones/.test(f));
+  assert.equal(nuevas.length, 4);
+});
