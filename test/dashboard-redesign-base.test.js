@@ -237,7 +237,7 @@ test('Operaciones tiene el bloque de combustible con sus razones', () => {
   assert.match(ops, /function pesosFinos/);
   assert.match(ops, /pesosFinos\(c\.costo_por_km\)/);
   // Cada razón trae con qué se compara: "12,81" solo no dice si está bien o mal.
-  assert.match(ops, /delta\(valor\(c\.km_por_litro\), ca && valor\(ca\.km_por_litro\)\)/);
+  assert.match(ops, /delta\(valor\(cd\.km_por_litro\), dd \? valor\(c\.km_por_litro\) : ca && valor\(ca\.km_por_litro\)/);
 });
 
 test('la RPC de operaciones devuelve el bloque de combustible', () => {
