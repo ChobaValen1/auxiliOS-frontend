@@ -34,7 +34,7 @@ const PRECACHE_ASSETS=[
   '/toll-management.css','/toll-management.js','/toll-map-v1.css','/toll-map-v1.js',
   '/rendition-journey-source-v1.js',
   '/remito-addons-v2.css','/remito-addons-v2.js','/private-collection-v1.css','/private-collection-v1.js',
-  '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js','/remito-delivery-feedback.js','/remito-delivery-feedback.css',
+  '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js','/driver-fit-v1.css','/remito-delivery-feedback.js','/remito-delivery-feedback.css',
   '/driver-km-v1.js','/driver-km-v1.css',
   '/operator-remito-review-v2.css','/operator-remito-review-v2.js',
   '/supabase.js','/offline.js','/manifest.json',

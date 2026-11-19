@@ -1,0 +1,17 @@
+const fs=require('fs'),path=require('path'),http=require('http'),{chromium}=require('playwright');
+// Uso: node scripts/qa/driver-fit-v1.cjs [carpeta-capturas]. Falla si algún paso del remito o modal del chofer necesita scroll en 360×740 o 390×844.
+const assert=require('node:assert/strict'),root=process.cwd(),out=process.argv[2]||require('node:os').tmpdir()+'/auxilios-driver-fit';fs.mkdirSync(out,{recursive:true});const sizes=JSON.parse(process.env.SIZES||'[[360,740],[390,844]]');
+const types={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.html':'text/html','.json':'application/json','.png':'image/png'};
+const srv=http.createServer((q,r)=>{let p=new URL(q.url,'http://x').pathname;if(p==='/')p='/Index.html';const f=path.join(root,p);if(!fs.existsSync(f)||fs.statSync(f).isDirectory()){r.statusCode=404;return r.end()}r.setHeader('Content-Type',types[path.extname(f)]||'application/octet-stream');r.end(fs.readFileSync(f))});
+const modals=(process.env.MODALS||'modal-nueva-jornada,modal-cerrar-jornada,modal-combustible,modal-rendicion-cierre,modal-service-log,modal-neumaticos').split(',');
+(async()=>{await new Promise(r=>srv.listen(0,'127.0.0.1',r));const b=await chromium.launch();
+for(const [w,h] of sizes){const pg=await b.newPage({viewport:{width:w,height:h}});pg.on('pageerror',()=>{});
+await pg.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
+await pg.goto('http://127.0.0.1:'+srv.address().port+'/',{waitUntil:'load'});await pg.waitForTimeout(800);
+const sc=()=>pg.evaluate(()=>[...document.querySelectorAll('#remitos-nuevo .rem-step-panel.active, .modal-backdrop.open .modal-body')].filter(e=>e.scrollHeight>e.clientHeight+4).map(e=>(e.id||e.className)+':+'+(e.scrollHeight-e.clientHeight)).join(' '));const _unused=()=>pg.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getClientRects().length&&e.scrollHeight>e.clientHeight+4&&/(auto|scroll)/.test(getComputedStyle(e).overflowY)).map(e=>(e.id||e.className.toString().slice(0,30))+':+'+(e.scrollHeight-e.clientHeight)).join(' ')+' doc:+'+(document.documentElement.scrollHeight-innerHeight));
+for(const id of modals){await pg.evaluate(id=>{document.querySelectorAll('.modal-backdrop.open').forEach(e=>e.classList.remove('open'));document.getElementById(id).classList.add('open')},id);await pg.waitForTimeout(400);{const o=await sc();console.log(w,h,id,o||'ok');assert.equal(o,'',`${id} ${w}x${h}`);}await pg.screenshot({path:`${out}/${w}-${id}.png`});}
+await pg.evaluate(()=>document.querySelectorAll('.modal-backdrop.open').forEach(e=>e.classList.remove('open')));
+for(const adhoc of [false,true]){await pg.evaluate(a=>{document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('active',e.id==='screen-remitos'));document.querySelectorAll('#screen-remitos > div').forEach(e=>e.style.display=e.id==='remitos-nuevo'?'block':'none');AuxiliosRemitoMobileV3.setAdHocMode(a)},adhoc);
+ const n=adhoc?5:4;for(let st=1;st<=n;st++){await pg.evaluate(st=>{document.querySelectorAll('.rem-step-panel').forEach(p=>p.classList.toggle('active',p.id==='rem-step-'+st))},st);await pg.waitForTimeout(250);const tag=(adhoc?'adhoc':'svc')+'-'+st;{const o=await sc();console.log(w,h,tag,o||'ok');assert.equal(o,'',`${tag} ${w}x${h}`);}await pg.screenshot({path:`${out}/${w}-rem-${tag}.png`});}}
+await pg.close();}
+await b.close();srv.close();console.log('PASS driver-fit-v1');})().catch(e=>{console.error(e.message);process.exitCode=1;srv.close();});
