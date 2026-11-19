@@ -110,3 +110,29 @@ test('el selector nuevo tiene dos paneles, buscador, grupos plegables y teclado'
   for(const s of ['obx2-pick','obx2-order','data-obx-search','data-obx-quick','data-obx-preset','data-obx-save-preset','data-obx-fold','data-obx-group-all','aria-live="polite"'])assert.ok(src.includes(s),s);
   assert.doesNotMatch(src,/Seleccionar Todos|data-obx-sub-on/);
 });
+
+test('una selección guardada se edita: agregar y quitar columnas, cambiar el orden y renombrar',()=>{
+  const{E}=load();
+  const a=E.savePreset({name:'Contabilidad',service:['order','total_price'],toll:null,extrasMode:'sheet',includeExcess:true});
+  const b=E.savePreset({name:'Peajes',service:null,toll:['date']});
+  // Agrega «plate», quita «total_price», suma «date» primero y cambia adicionales/Excedentes.
+  const up=E.updatePreset(a.id,{name:'Contabilidad',service:['date','order','plate'],toll:null,extrasMode:'inline',includeExcess:false});
+  assert.equal(up.id,a.id,'misma selección, no una nueva');
+  assert.deepEqual(plain(up.service),['date','order','plate']);
+  assert.equal(up.extrasMode,'inline');assert.equal(up.includeExcess,false);
+  assert.equal(E.readPresets().length,2);
+  // Renombrar: sí a un nombre libre, no al de otra selección.
+  assert.equal(E.updatePreset(a.id,{name:'Para el contador',service:['order']}).name,'Para el contador');
+  assert.equal(E.updatePreset(a.id,{name:'peajes',service:['order']}),null,'el nombre ya lo usa otra');
+  assert.equal(E.readPresets().find(p=>p.id===a.id).name,'Para el contador');
+  // Sin nombre conserva el que tenía; un id inexistente no crea nada.
+  assert.equal(E.updatePreset(a.id,{name:'  ',service:['plate']}).name,'Para el contador');
+  assert.equal(E.updatePreset('nope',{name:'x',service:['order']}),null);
+  assert.equal(E.readPresets().length,2);
+  assert.deepEqual(plain(E.readPresets().find(p=>p.id===b.id).toll),['date'],'la otra no se toca');
+});
+
+test('el modal ofrece editar cada selección y guardar los cambios encima',()=>{
+  const src=fs.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
+  for(const s of ['data-obx-preset-edit','data-obx-edit-form','data-obx-edit-cancel','data-obx-preset-update','Guardar cambios'])assert.ok(src.includes(s),s);
+});
