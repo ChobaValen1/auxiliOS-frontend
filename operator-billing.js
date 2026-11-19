@@ -957,6 +957,80 @@
     </div>${remito || pick ? `<footer class="ob-detail-foot"><small>${selected ? esc(joinParts(selectionParts())) + ' en la factura' : '← → para pasar de servicio'}</small><div>${remito}${pick}</div></footer>` : ''}</aside>`;
   }
 
+  /* Mapa del recorrido: una sola instancia de Google Maps que se reutiliza al pasar de un servicio
+     a otro (el div del mapa se guarda aparte y se vuelve a pegar después de cada render).
+     En celular sólo se arma cuando se abre el área Recorrido. */
+  const MAP = { el: null, map: null, line: null, markers: [], job: 0 };
+  function routeNote(service) {
+    if (service.driver_activated && service.activation_kind !== 'origin') return 'Activado con kilometraje manual: no hay un recorrido automático.';
+    return 'Este servicio no tiene un recorrido calculado.';
+  }
+  function mapLinks(service, points) {
+    const q = p => `${p.lat},${p.lng}`;
+    const o = points.origin, d = points.destination;
+    if (!o && !d) return '';
+    let href = 'https://www.google.com/maps/dir/?api=1&travelmode=driving';
+    if (o) href += `&origin=${encodeURIComponent(q(o))}`;
+    if (d) href += `&destination=${encodeURIComponent(q(d))}`;
+    return `<a class="ob-button" href="${href}" target="_blank" rel="noopener">${ico('external-link')}Google Maps</a>`;
+  }
+  async function ensureRouteMap() {
+    if (window.ServiceRouteMap) return window.ServiceRouteMap;
+    try {
+      if (!document.getElementById('service-route-map-css')) {
+        const link = document.createElement('link');
+        link.id = 'service-route-map-css'; link.rel = 'stylesheet'; link.href = '/service-route-map.css';
+        document.head.appendChild(link);
+      }
+      if (typeof window.loadAuxiliosModule === 'function') await window.loadAuxiliosModule('service-route-map-js', '/service-route-map.js');
+    } catch { /* se muestra el aviso de "sin recorrido" */ }
+    return window.ServiceRouteMap || null;
+  }
+
+  async function mountMap(screen) {
+    const slot = screen.querySelector('.ob-map-slot[data-ob-map]');
+    const service = S.detail?.service;
+    if (!slot || !service) return;
+    const SRM = await ensureRouteMap();
+    if (!slot.isConnected) return;
+    const coord = (lat, lng) => SRM?.coordinate ? SRM.coordinate(lat, lng) : null;
+    const points = { origin: coord(service.origin_lat, service.origin_lng), destination: coord(service.destination_lat, service.destination_lng) };
+    const path = SRM?.decode ? SRM.decode(service.route_polyline) : [];
+    if (!SRM?.loadSdk || (!path.length && !points.origin && !points.destination)) {
+      slot.innerHTML = `<p class="ob-map-note">${esc(routeNote(service))}</p>`;
+      return;
+    }
+    const area = slot.closest('details');
+    if (area && !area.open) { area.addEventListener('toggle', () => { if (area.open) mountMap(document.getElementById('screen-facturacion') || screen); }, { once: true }); return; }
+    const job = ++MAP.job;
+    slot.innerHTML = `<div class="ob-map-box"><div class="ob-map-loading">Cargando mapa…</div></div><div class="ob-map-actions">${mapLinks(service, points)}<button class="ob-button" type="button" data-ob="map-expand" data-service-id="${esc(S.detailId)}">${ico('map')}Ampliar</button></div>${path.length ? '' : '<p class="ob-map-note">Sin trazado guardado: se muestran sólo el origen y el destino.</p>'}`;
+    try {
+      const maps = await SRM.loadSdk();
+      if (job !== MAP.job || !slot.isConnected) return;
+      const box = slot.querySelector('.ob-map-box');
+      if (!MAP.el) { MAP.el = document.createElement('div'); MAP.el.className = 'ob-map-canvas'; }
+      box.replaceChildren(MAP.el);
+      if (!MAP.map) MAP.map = new maps.Map(MAP.el, { disableDefaultUI: true, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false, styles: SRM.mapStyle ? SRM.mapStyle() : undefined });
+      MAP.line?.setMap(null);
+      MAP.markers.forEach(m => m.setMap(null));
+      MAP.markers = [];
+      const bounds = new maps.LatLngBounds();
+      if (path.length) {
+        MAP.line = new maps.Polyline({ map: MAP.map, path, strokeColor: '#f5a623', strokeWeight: 4, clickable: false });
+        path.forEach(p => bounds.extend(p));
+      }
+      [['A', points.origin, 'Origen'], ['B', points.destination, 'Destino']].forEach(([label, point, title]) => {
+        if (!point) return;
+        MAP.markers.push(new maps.Marker({ map: MAP.map, position: point, label, title }));
+        bounds.extend(point);
+      });
+      maps.event.trigger(MAP.map, 'resize');
+      MAP.map.fitBounds(bounds, 24);
+    } catch (error) {
+      if (job === MAP.job && slot.isConnected) slot.querySelector('.ob-map-box').innerHTML = `<p class="ob-map-note">${esc(error.message || 'No se pudo cargar el mapa.')}</p>`;
+    }
+  }
+
   /* Cada render redibuja la mesa entera: se conserva el scroll de la tabla y el foco del
      control que se usó, así tildar una fila no te manda al principio. */
   function captureView(screen) {
@@ -1031,6 +1105,7 @@
     S.tabChanged = false;
     restoreView(screen, view);
     tweenAmounts(screen);
+    if (S.detail) mountMap(screen);
     document.dispatchEvent(new CustomEvent('auxilios:billing-rendered'));
     refreshChainGaps();
   }
@@ -1096,7 +1171,9 @@
     S.rowAction = null;
     render();
     try {
-      const { data, error } = await db().rpc('get_operator_billing_service_detail_v4_km_v1', { p_service_id: id });
+      // v5 suma el recorrido y los peajes por cruce; si la base todavía no la tiene, se usa la v4.
+      let { data, error } = await db().rpc('get_operator_billing_service_detail_v5_km_v1', { p_service_id: id });
+      if (error && /does not exist|Could not find|schema cache/i.test(error.message || '')) ({ data, error } = await db().rpc('get_operator_billing_service_detail_v4_km_v1', { p_service_id: id }));
       if (S.detailToken !== token) return;
       if (error) throw error;
       S.detail = data;
@@ -1443,6 +1520,7 @@
     if (action === 'confirm-invoice') return createInvoice();
     if (action === 'columns') return colsFor(S.tab).open(() => render());
     if (action === 'close-detail') return closeDetail();
+    if (action === 'map-expand') { const btn = event.target.closest('[data-service-id]'); if (btn) ensureRouteMap().then(srm => srm?.open?.(btn.dataset.serviceId, btn)); return; }
     if (action === 'detail-prev') return stepDetail(-1);
     if (action === 'detail-next') return stepDetail(1);
     if (action === 'detail-toggle-select') { if (S.detailId) toggleSelection(S.detailId, !S.selected.has(String(S.detailId))); return; }

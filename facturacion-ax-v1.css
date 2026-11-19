@@ -763,3 +763,12 @@
   #screen-facturacion .ob-detail-areas .ob-col-wide { order: 9; }
 }
 #screen-facturacion .ob-fact-note { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular, 400); }
+
+/* Mapa del recorrido dentro del detalle */
+#screen-facturacion .ob-map-box { height: 220px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); overflow: hidden; background: var(--ax-surface); }
+#screen-facturacion .ob-map-canvas { width: 100%; height: 100%; }
+#screen-facturacion .ob-map-loading { display: grid; place-items: center; height: 100%; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-map-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: var(--ax-sp-2); }
+#screen-facturacion .ob-map-actions .ob-button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+#screen-facturacion .ob-map-note { margin: var(--ax-sp-2) 0 0; padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+@media (max-width: 760px) { #screen-facturacion .ob-map-box { height: 200px; } }

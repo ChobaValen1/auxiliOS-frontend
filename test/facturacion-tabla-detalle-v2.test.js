@@ -137,3 +137,14 @@ test('en celular las áreas son acordeones', () => {
   assert.match(css, /\.ob-area > summary \{[^}]*min-height: 44px/);
   assert.match(css, /\.ob-detail-areas \.ob-detail-body \{ grid-template-columns: 1fr;/);
 });
+
+test('el detalle pide la v5 (con recorrido) y cae a la v4 si la base no la tiene; el mapa reutiliza una sola instancia', () => {
+  assert.match(billing, /get_operator_billing_service_detail_v5_km_v1/);
+  assert.match(billing, /get_operator_billing_service_detail_v4_km_v1/);
+  assert.equal((billing.match(/new maps\.Map\(/g) || []).length, 1);
+  assert.match(billing, /MAP\.el/);
+  const sql = fs.readFileSync('migrations/20261119150000_facturacion_detalle_v5_recorrido.sql', 'utf8');
+  assert.match(sql, /get_operator_billing_service_detail_v4\(p_service_id\)/);
+  assert.match(sql, /'administracion','facturacion','supervision'/);
+  assert.doesNotMatch(sql, /drop function|alter table/i);
+});
