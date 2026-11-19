@@ -111,3 +111,29 @@ test('celular: tarjeta compacta sin etiquetas en los datos principales y total p
   assert.match(css, /\.ob-services-table tfoot \{ position: sticky; bottom: 8px;/);
   assert.match(css, /\.ob-table-card:has\(\.ob-services-table\) \{ overflow: visible; \}/);
 });
+
+test('el detalle se ordena en cinco áreas y esconde lo que el servicio no tiene', () => {
+  const B = load();
+  B.S.rows = [{ service_id: 's1' }];
+  B.S.detailId = 's1';
+  B.S.detail = {
+    service: { service_id: 's1', service_order_number: '4419319-1', company_name: 'SOS', billing_base_name: 'Base Pinamar', service_name: 'Liviano', customer_name: 'Pérez', origin: 'Del Cangrejo 1869, B7167 Pinamar, Provincia de Buenos Aires', destination: 'San José 1283, C1151 Cdad. Autónoma de Buenos Aires' },
+    current_quote: { currency: 'ARS', current_company_amount: 1000, stored_company_amount: 900, billing_delta: 100 },
+    revisions: []
+  };
+  const html = B._test.detailMarkup();
+  const order = ['Servicio', 'Info de Facturación', 'Cliente y Vehículo', 'Recorrido', 'Desglose de costos', 'Historial de Facturación'].map(t => html.indexOf(`>${t}`));
+  assert.ok(order.every(i => i > 0), 'faltan áreas: ' + order);
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  assert.match(html, /Tarifa cambió/);
+  assert.match(html, /Sin remito/);
+  assert.match(html, /data-ob-map="s1"/);
+  // Sin patente, ni DNI, ni notas: no aparecen rótulos vacíos.
+  assert.doesNotMatch(html, /Patente|DNI \/ CUIT|Notas del operador/);
+  assert.doesNotMatch(html, /confirmActionMarkup|Anular servicio/);
+});
+
+test('en celular las áreas son acordeones', () => {
+  assert.match(css, /\.ob-area > summary \{[^}]*min-height: 44px/);
+  assert.match(css, /\.ob-detail-areas \.ob-detail-body \{ grid-template-columns: 1fr;/);
+});

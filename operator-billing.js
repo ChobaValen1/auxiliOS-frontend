@@ -870,6 +870,15 @@
     return `<div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
   }
 
+  /* Detalle por áreas, en el orden que se lee una factura:
+     Servicio · Info de Facturación · Cliente y Vehículo · Recorrido · Desglose de costos.
+     Sólo se muestra lo que el servicio tiene; en celular cada área es un acordeón. */
+  function detailArea(key, title, body, open) {
+    if (!body) return '';
+    return `<details class="ob-area" data-ob-area="${key}"${open ? ' open' : ''}><summary>${esc(title)}<span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${body}</div></details>`;
+  }
+  const isMobileView = () => Boolean(window.matchMedia?.('(max-width: 760px)').matches);
+
   function detailMarkup() {
     const detail = S.detail;
     const service = detail.service || {};
@@ -891,35 +900,60 @@
     const pricingError = row.pricing_error || quote.pricing_error || '';
     const selected = S.selected.has(id);
     const canSelect = canInvoice() && row.service_id && !pricingError;
-    const remito = service.remito_id && window.RemitoPanel?.open
+    const hasRemito = Boolean(service.remito_id);
+    const remito = hasRemito && window.RemitoPanel?.open
       ? `<button class="ob-button" type="button" data-ob="open-remito" data-remito-id="${esc(service.remito_id)}">${ico('file-text')}Ver remito</button>` : '';
     const pick = canSelect
       ? `<button class="ob-button ${selected ? '' : 'primary'} ob-detail-pick" type="button" data-ob="detail-toggle-select" aria-pressed="${selected}">${ico(selected ? 'check' : 'plus')}${selected ? 'En la factura' : 'Sumar a la factura'}</button>` : '';
-    const fact = (label, value, cls = '') => `<div class="ob-fact${cls}"><small>${label}</small><b>${value}</b></div>`;
+    const fact = (label, value, cls = '') => value ? `<div class="ob-fact${cls}"><small>${label}</small><b>${value}</b></div>` : '';
+    const facts = (...items) => { const html = items.join(''); return html ? `<div class="ob-facts">${html}</div>` : ''; };
     const placeBlock = (label, value) => { const p = placeParts(value); return `<div><small>${label}</small><b title="${esc(p.raw)}">${esc(p.top || '—')}</b>${p.sub ? `<span>${esc(p.sub)}</span>` : ''}</div>`; };
-    const table = componentMarkup(quote);
-    return `<aside class="ob-detail" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio')}<div class="ob-detail-body">
-      <section class="ob-hero${changed ? ' has-change' : ''}${pricingError ? ' has-error' : ''}">
-        <small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>
-        ${pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : ''}
-        ${changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre: al cierre era <b>${esc(money(quote.stored_company_amount, cur))}</b> (${esc(signedMoney(delta, cur))}). Revisá la diferencia antes de facturar.</span></div>` : (pricingError ? '' : '<small class="ob-hero-ok">Coincide con el importe al cierre.</small>')}
-        ${separateTolls ? `<small>Más ${esc(money(quote.separate_toll_amount, cur))} de peajes que se facturan por separado.</small>` : ''}
-      </section>
-      <section class="ob-section ob-ficha"><h4>Servicio</h4>
-        <div class="ob-route">${placeBlock('Origen', service.origin)}<span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span>${placeBlock('Destino', service.destination)}</div>
-        ${kmLine ? `<p class="ob-km-line">${kmLine}</p>` : ''}
-        <div class="ob-facts">
-          ${fact('Prestadora', esc(service.company_name || '—'))}${fact('Base', esc(service.billing_base_name || '—'))}${fact('Tipo', esc(service.service_name || '—'))}
-          ${fact('Fecha del servicio', esc(date(service.scheduled_for)))}${fact('Finalizado', esc(date(service.completed_at)))}${fact('Cliente', esc(service.customer_name || '—'))}
-          ${fact('Patente', esc(service.vehicle_plate || '—'))}${fact('Vehículo', esc(service.vehicle_make_model || '—'), ' is-wide')}
-        </div>
-        ${service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''}
-      </section>
-      <section class="ob-section"><h4>Desglose de costos</h4>${table}
-        <p class="ob-tariff">${ico('file-check')}<span>${esc(quote.rate_card_name || 'Sin tarifario')}${quote.rate_card_version ? ` · v${esc(quote.rate_card_version)}` : ''}${quote.contract_name ? ` · Contrato ${esc(quote.contract_name)}` : ''}</span></p>
-        ${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${esc(signedMoney(delta, cur))}</b></div></div>` : ''}
-      </section>
-      <section class="ob-section"><h4>Historial de Facturación</h4>${revisionTimeline(detail.revisions, cur)}</section>
+    const open = !isMobileView();
+    const company = service.company_name || '';
+    const chips = [
+      pricingError ? `<span class="ob-chip is-error">${ico('circle-alert')}Error tarifario</span>` : '',
+      changed ? `<span class="ob-chip is-warn">${ico('triangle-alert')}Tarifa cambió ${esc(signedMoney(delta, cur))}</span>` : '',
+      !hasRemito ? `<span class="ob-chip is-warn">${ico('file-x')}Sin remito</span>` : ''
+    ].join('');
+    const summary = `<div class="ob-detail-summary${pricingError ? ' has-error' : changed ? ' has-change' : ''}">
+      <div><small>${esc([company, service.billing_base_name].filter(Boolean).join(' · ') || 'Servicio')}</small><span class="ob-chips">${chips}</span></div>
+      <div class="ob-detail-amount"><small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div>
+    </div>`;
+
+    const areaServicio = [
+      facts(fact('Tipo', esc(service.service_name || '')), fact('N° de orden', esc(service.service_order_number || service.service_number || '')),
+        fact('Fecha del servicio', service.scheduled_for ? esc(date(service.scheduled_for)) : ''), fact('Finalizado', service.completed_at ? esc(date(service.completed_at)) : '')),
+      service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''
+    ].join('');
+
+    const areaFact = [
+      pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : '',
+      changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre. Revisá la diferencia antes de facturar.</span></div>` : '',
+      !hasRemito ? `<div class="ob-hero-change">${ico('file-x')}<span>Este servicio no tiene remito cargado.</span></div>` : '',
+      facts(fact('Prestadora', esc(company)), fact('Base', esc(service.billing_base_name || '')),
+        fact('Importe a facturar', `<span class="ob-money">${esc(money(quote.current_company_amount, cur))}</span>`),
+        fact('Importe al cierre', `<span class="ob-money">${esc(money(quote.stored_company_amount, cur))}</span>`),
+        separateTolls ? fact('Peajes aparte', `<span class="ob-money">${esc(money(quote.separate_toll_amount, cur))}</span><span class="ob-fact-note">peajes que se facturan por separado</span>`) : '',
+        fact('Tarifario', esc([quote.rate_card_name || 'Sin tarifario', quote.rate_card_version ? `v${quote.rate_card_version}` : '', quote.contract_name ? `Contrato ${quote.contract_name}` : ''].filter(Boolean).join(' · '))))
+    ].join('');
+
+    const areaCliente = facts(fact('Cliente', esc(service.customer_name || '')),
+      fact('DNI / CUIT', esc(service.customer_tax_id || service.customer_document || '')),
+      fact('Condición de IVA', esc(service.customer_tax_condition || '')),
+      fact('Patente', esc(service.vehicle_plate || '')), fact('Vehículo', esc(service.vehicle_make_model || ''), ' is-wide'));
+
+    const areaRecorrido = `<div class="ob-route">${placeBlock('Origen', service.origin)}<span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span>${placeBlock('Destino', service.destination)}</div>
+      ${kmLine ? `<p class="ob-km-line"><small>Cómo se calculó</small>${kmLine}</p>` : ''}<div class="ob-map-slot" data-ob-map="${esc(id)}"></div>`;
+
+    const areaDesglose = `${componentMarkup(quote)}${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${esc(signedMoney(delta, cur))}</b></div></div>` : ''}`;
+
+    const revisions = Array.isArray(detail.revisions) ? detail.revisions : [];
+    const history = `<details class="ob-area ob-area-history" data-ob-area="history"><summary>Historial de Facturación (${revisions.length})<span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${revisionTimeline(revisions, cur)}</div></details>`;
+
+    return `<aside class="ob-detail ob-detail-areas" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio')}${summary}<div class="ob-detail-body">
+      <div class="ob-col">${detailArea('servicio', 'Servicio', areaServicio, true)}${detailArea('facturacion', 'Info de Facturación', areaFact, true)}${detailArea('cliente', 'Cliente y Vehículo', areaCliente, open)}</div>
+      <div class="ob-col">${detailArea('recorrido', 'Recorrido', areaRecorrido, open)}${detailArea('desglose', 'Desglose de costos', areaDesglose, open)}</div>
+      <div class="ob-col ob-col-wide">${history}</div>
     </div>${remito || pick ? `<footer class="ob-detail-foot"><small>${selected ? esc(joinParts(selectionParts())) + ' en la factura' : '← → para pasar de servicio'}</small><div>${remito}${pick}</div></footer>` : ''}</aside>`;
   }
 
@@ -1464,7 +1498,7 @@
   Object.assign(B, {
     open, load, render, openDetail, clearSelection, canRead, canInvoice, canCorrect,
     openInvoice, createInvoice, selectedRows, selectedTollRows, selectedExcessGroups,
-    _test: { excessGroups, extraBillingState, collectorPill, joinParts, selectionParts, placeParts, placeCell, rowFlag, servicesFootMarkup, detailNav, COLUMN_DEFS }
+    _test: { excessGroups, extraBillingState, collectorPill, joinParts, selectionParts, placeParts, placeCell, rowFlag, detailMarkup, servicesFootMarkup, detailNav, COLUMN_DEFS }
   });
   Object.assign(window, { abrirFacturacionOperador: open, cargarFacturacionOperador: load });
   document.readyState === 'loading'

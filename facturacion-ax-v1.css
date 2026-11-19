@@ -724,3 +724,42 @@
   #screen-facturacion .ob-detail-foot > div { flex: 1; }
   #screen-facturacion .ob-detail-foot .ob-button { flex: 1; justify-content: center; height: 44px; }
 }
+
+/* ── Detalle por áreas: cabecera fija, dos columnas en escritorio, acordeones en celular ── */
+#screen-facturacion .ob-detail.ob-detail-areas { width: min(960px, 96vw); }
+#screen-facturacion .ob-detail-summary { flex: none; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding: 10px 20px 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-summary.has-change { box-shadow: inset 3px 0 0 var(--ax-warn); }
+#screen-facturacion .ob-detail-summary.has-error { box-shadow: inset 3px 0 0 var(--ax-danger); }
+#screen-facturacion .ob-detail-summary small { display: block; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-detail-amount { text-align: right; flex: none; }
+#screen-facturacion .ob-detail-amount b { display: block; font: var(--ax-fw-semibold) 24px var(--ax-font-mono); font-variant-numeric: tabular-nums; line-height: 1.15; }
+#screen-facturacion .ob-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+#screen-facturacion .ob-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); background: var(--ax-warn-soft); color: var(--ax-text); }
+#screen-facturacion .ob-chip.is-error { background: var(--ax-danger-soft); }
+#screen-facturacion .ob-chip .ax-icon { width: 13px; height: 13px; }
+#screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--ax-sp-3); align-items: start; }
+#screen-facturacion .ob-detail-areas .ob-col { display: grid; gap: var(--ax-sp-3); align-content: start; min-width: 0; }
+#screen-facturacion .ob-detail-areas .ob-col-wide { grid-column: 1 / -1; }
+#screen-facturacion .ob-area { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-area > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; padding: 10px 14px; cursor: default; font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); color: var(--ax-text); }
+#screen-facturacion .ob-area > summary::-webkit-details-marker { display: none; }
+#screen-facturacion .ob-area-chev { display: none; }
+#screen-facturacion .ob-area-body { display: grid; gap: var(--ax-sp-2); padding: 0 14px 14px; }
+#screen-facturacion .ob-area .ob-facts { border-top: 0; padding-top: 0; }
+#screen-facturacion .ob-area .ob-hero-change { margin-top: 0; }
+#screen-facturacion .ob-area-history > summary { cursor: pointer; }
+#screen-facturacion .ob-area-history .ob-area-chev { display: inline-flex; }
+#screen-facturacion .ob-km-line small { display: block; color: var(--ax-text-3); }
+#screen-facturacion .ob-map-slot:empty { display: none; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-detail.ob-detail-areas { width: 100%; }
+  #screen-facturacion .ob-detail-summary { padding: 8px 14px 10px; }
+  #screen-facturacion .ob-detail-amount b { font-size: 20px; }
+  #screen-facturacion .ob-detail-areas .ob-detail-body { grid-template-columns: 1fr; gap: var(--ax-sp-2); }
+  #screen-facturacion .ob-detail-areas .ob-col { display: contents; }
+  #screen-facturacion .ob-area > summary { cursor: pointer; min-height: 44px; }
+  #screen-facturacion .ob-area-chev { display: inline-flex; transition: transform .15s; }
+  #screen-facturacion .ob-area[open] > summary .ob-area-chev { transform: rotate(180deg); }
+  #screen-facturacion .ob-detail-areas .ob-col-wide { order: 9; }
+}
+#screen-facturacion .ob-fact-note { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular, 400); }
