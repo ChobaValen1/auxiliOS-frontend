@@ -772,3 +772,48 @@
 #screen-facturacion .ob-map-actions .ob-button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 #screen-facturacion .ob-map-note { margin: var(--ax-sp-2) 0 0; padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 @media (max-width: 760px) { #screen-facturacion .ob-map-box { height: 200px; } }
+
+/* ── Detalle: sin franja superior, emoticones y tres versiones (A, B, C) para comparar ── */
+#screen-facturacion .ob-area-title { display: inline-flex; align-items: center; gap: 8px; }
+#screen-facturacion .ob-area-emoji { font-size: 1.1em; line-height: 1; }
+#screen-facturacion .ob-km-split { color: var(--ax-text-2); }
+#screen-facturacion .ob-variant { display: inline-flex; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); overflow: hidden; margin-right: 4px; }
+#screen-facturacion .ob-variant button { min-width: 28px; height: 30px; padding: 0 8px; border: 0; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); cursor: pointer; }
+#screen-facturacion .ob-variant button.is-on { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-facturacion .ob-detail-areas .ob-detail-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-auto-flow: row dense; }
+/* A y C usan dos columnas independientes (sin huecos entre tarjetas) */
+#screen-facturacion .ob-detail-areas .ob-detail-body { display: block; }
+#screen-facturacion .ob-detail-areas .ob-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--ax-sp-3); align-items: start; }
+#screen-facturacion .ob-detail-areas .ob-col { display: grid; gap: var(--ax-sp-3); align-content: start; min-width: 0; }
+#screen-facturacion .ob-detail-areas .ob-area-history { margin-top: var(--ax-sp-3); }
+#screen-facturacion .v-b .ob-detail-body { display: grid; gap: var(--ax-sp-3); }
+/* B · una columna compacta: datos en fila, mapa al lado de la ruta */
+#screen-facturacion .ob-detail.v-b { width: min(760px, 96vw); }
+#screen-facturacion .v-b .ob-detail-body { grid-template-columns: 1fr; }
+#screen-facturacion .v-b .ob-area { grid-column: 1; }
+#screen-facturacion .v-b .ob-facts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#screen-facturacion .v-b [data-ob-area="cliente"] .ob-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-area-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-route { grid-template-columns: 1fr; }
+#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-route-arrow { display: none; }
+#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-km-line { grid-column: 1; }
+#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-map-slot { grid-column: 2; grid-row: 1 / span 3; }
+#screen-facturacion .v-b .ob-map-box { height: 190px; }
+/* C · mapa grande a la derecha, todo lo demás a la izquierda */
+#screen-facturacion .ob-detail.v-c { width: min(1100px, 96vw); }
+#screen-facturacion .v-c .ob-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+#screen-facturacion .v-c .ob-col:last-child { position: sticky; top: 0; }
+#screen-facturacion .v-c .ob-map-box { height: 340px; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-detail-areas.v-a, #screen-facturacion .ob-detail-areas.v-b, #screen-facturacion .ob-detail-areas.v-c { width: 100%; }
+  #screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; grid-template-columns: 1fr; gap: var(--ax-sp-2); }
+  #screen-facturacion .ob-detail-areas .ob-cols { display: contents; }
+  #screen-facturacion .ob-detail-areas .ob-area { grid-column: 1 !important; grid-row: auto !important; position: static !important; }
+  #screen-facturacion .v-b .ob-facts, #screen-facturacion .v-b [data-ob-area="cliente"] .ob-facts { grid-template-columns: 1fr 1fr; }
+  #screen-facturacion .v-b [data-ob-area="recorrido"] .ob-area-body { grid-template-columns: 1fr; }
+  #screen-facturacion .v-b [data-ob-area="recorrido"] .ob-map-slot { grid-column: 1; grid-row: auto; }
+  #screen-facturacion .ob-variant { display: none; }
+}
+#screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-foot-amount b { color: var(--ax-text); font: var(--ax-fw-semibold) 18px var(--ax-font-mono); }
+@media (max-width: 760px) { #screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: none; } }

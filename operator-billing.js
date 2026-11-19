@@ -861,21 +861,35 @@
     return { list, index, prev: index > 0 ? list[index - 1] : null, next: index >= 0 && index < list.length - 1 ? list[index + 1] : null };
   }
 
-  function detailHeadMarkup(title) {
+  function detailHeadMarkup(title, extra = '') {
     const nav = detailNav();
     const pos = nav.index >= 0 ? `<span class="ob-detail-pos" aria-live="polite">${nav.index + 1} de ${nav.list.length}</span>` : '';
     const navButtons = nav.index >= 0 ? `<div class="ob-detail-nav" role="group" aria-label="Recorrer servicios">
         <button class="ob-button ob-icon-button" type="button" data-ob="detail-prev" ${nav.prev ? '' : 'disabled'} title="Servicio anterior (←)" aria-label="Servicio anterior">${ico('chevron-left')}</button>${pos}<button class="ob-button ob-icon-button" type="button" data-ob="detail-next" ${nav.next ? '' : 'disabled'} title="Servicio siguiente (→)" aria-label="Servicio siguiente">${ico('chevron-right')}</button>
       </div>` : '';
-    return `<div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
+    return `<div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${extra}${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
   }
 
   /* Detalle por áreas, en el orden que se lee una factura:
      Servicio · Info de Facturación · Cliente y Vehículo · Recorrido · Desglose de costos.
      Sólo se muestra lo que el servicio tiene; en celular cada área es un acordeón. */
+  const AREA_EMOJI = { facturacion: '🧾', cliente: '🚗', recorrido: '📍', desglose: '💰', history: '🕘' };
   function detailArea(key, title, body, open) {
     if (!body) return '';
-    return `<details class="ob-area" data-ob-area="${key}"${open ? ' open' : ''}><summary>${esc(title)}<span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${body}</div></details>`;
+    return `<details class="ob-area" data-ob-area="${key}"${open ? ' open' : ''}><summary><span class="ob-area-title"><span class="ob-area-emoji" aria-hidden="true">${AREA_EMOJI[key] || ''}</span>${esc(title)}</span><span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${body}</div></details>`;
+  }
+  const VARIANTS = ['a', 'b', 'c'];
+  /* A: datos a la izquierda, recorrido y costos a la derecha. B: una sola columna.
+     C: mapa grande a la derecha, todo lo demás a la izquierda. */
+  function areasLayout(variant, a) {
+    const col = (...items) => `<div class="ob-col">${items.join('')}</div>`;
+    if (variant === 'b') return `${a.facturacion}${a.cliente}${a.recorrido}${a.desglose}`;
+    if (variant === 'c') return `<div class="ob-cols">${col(a.facturacion, a.cliente, a.desglose)}${col(a.recorrido)}</div>`;
+    return `<div class="ob-cols">${col(a.facturacion, a.cliente)}${col(a.recorrido, a.desglose)}</div>`;
+  }
+  function detailVariant() {
+    if (!S.detailVariant) { let saved = ''; try { saved = localStorage.getItem('ob-detail-variant') || ''; } catch { /* sin storage */ } S.detailVariant = VARIANTS.includes(saved) ? saved : 'a'; }
+    return S.detailVariant;
   }
   const isMobileView = () => Boolean(window.matchMedia?.('(max-width: 760px)').matches);
 
@@ -889,12 +903,8 @@
     const separateTolls = quote.toll_billing_mode === 'separate' && num(quote.separate_toll_amount) > 0;
     const km = BD()?.kilometros(quote, service) || {};
     const kmNum = value => esc(num(value).toLocaleString('es-AR', { maximumFractionDigits: 1 }));
-    const kmLine = [
-      km.asfalto ? `Asfalto ${kmNum(km.asfalto)} km` : '',
-      km.ripio ? `Ripio ${kmNum(km.ripio)} km` : '',
-      km.radio != null ? `Radio cubierto ${esc(km.radio)} km` : '',
-      km.facturable != null ? `<b>Facturable ${kmNum(km.facturable)} km</b>` : ''
-    ].filter(Boolean).join(' · ');
+    const kmLine = km.facturable != null
+      ? `<b>${kmNum(km.facturable)} km</b>${km.ripio ? ` <span class="ob-km-split">(Asfalto ${kmNum(km.asfalto)} km · Ripio ${kmNum(km.ripio)} km)</span>` : ''}` : '';
     const id = String(S.detailId || service.service_id || '');
     const row = S.rows.find(item => String(item.service_id) === id) || {};
     const pricingError = row.pricing_error || quote.pricing_error || '';
@@ -910,51 +920,41 @@
     const placeBlock = (label, value) => { const p = placeParts(value); return `<div><small>${label}</small><b title="${esc(p.raw)}">${esc(p.top || '—')}</b>${p.sub ? `<span>${esc(p.sub)}</span>` : ''}</div>`; };
     const open = !isMobileView();
     const company = service.company_name || '';
-    const chips = [
-      pricingError ? `<span class="ob-chip is-error">${ico('circle-alert')}Error tarifario</span>` : '',
-      changed ? `<span class="ob-chip is-warn">${ico('triangle-alert')}Tarifa cambió ${esc(signedMoney(delta, cur))}</span>` : '',
-      !hasRemito ? `<span class="ob-chip is-warn">${ico('file-x')}Sin remito</span>` : ''
-    ].join('');
-    const summary = `<div class="ob-detail-summary${pricingError ? ' has-error' : changed ? ' has-change' : ''}">
-      <div><small>${esc([company, service.billing_base_name].filter(Boolean).join(' · ') || 'Servicio')}</small><span class="ob-chips">${chips}</span></div>
-      <div class="ob-detail-amount"><small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div>
-    </div>`;
-
-    const areaServicio = [
-      facts(fact('Tipo', esc(service.service_name || '')), fact('N° de orden', esc(service.service_order_number || service.service_number || '')),
-        fact('Fecha del servicio', service.scheduled_for ? esc(date(service.scheduled_for)) : ''), fact('Finalizado', service.completed_at ? esc(date(service.completed_at)) : '')),
-      service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''
+    const variant = detailVariant();
+    const alerts = [
+      pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : '',
+      changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre (${esc(signedMoney(delta, cur))}). Revisá la diferencia antes de facturar.</span></div>` : '',
+      !hasRemito ? `<div class="ob-hero-change">${ico('file-x')}<span>Este servicio no tiene remito cargado.</span></div>` : ''
     ].join('');
 
     const areaFact = [
-      pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : '',
-      changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre. Revisá la diferencia antes de facturar.</span></div>` : '',
-      !hasRemito ? `<div class="ob-hero-change">${ico('file-x')}<span>Este servicio no tiene remito cargado.</span></div>` : '',
-      facts(fact('Prestadora', esc(company)), fact('Base', esc(service.billing_base_name || '')),
-        fact('Importe a facturar', `<span class="ob-money">${esc(money(quote.current_company_amount, cur))}</span>`),
-        fact('Importe al cierre', `<span class="ob-money">${esc(money(quote.stored_company_amount, cur))}</span>`),
-        separateTolls ? fact('Peajes aparte', `<span class="ob-money">${esc(money(quote.separate_toll_amount, cur))}</span><span class="ob-fact-note">peajes que se facturan por separado</span>`) : '',
-        fact('Tarifario', esc([quote.rate_card_name || 'Sin tarifario', quote.rate_card_version ? `v${quote.rate_card_version}` : '', quote.contract_name ? `Contrato ${quote.contract_name}` : ''].filter(Boolean).join(' · '))))
+      alerts,
+      facts(fact('Fecha', service.scheduled_for ? esc(date(service.scheduled_for)) : ''), fact('Prestadora', esc(company)), fact('Base', esc(service.billing_base_name || '')),
+        fact('Tipo de servicio', esc(service.service_name || '')), fact('N° de orden', esc(service.service_order_number || service.service_number || ''))),
+      service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''
     ].join('');
 
     const areaCliente = facts(fact('Cliente', esc(service.customer_name || '')),
       fact('DNI / CUIT', esc(service.customer_tax_id || service.customer_document || '')),
       fact('Condición de IVA', esc(service.customer_tax_condition || '')),
-      fact('Patente', esc(service.vehicle_plate || '')), fact('Vehículo', esc(service.vehicle_make_model || ''), ' is-wide'));
+      fact('Marca y modelo', esc(service.vehicle_make_model || '')), fact('Patente', esc(service.vehicle_plate || '')));
 
     const areaRecorrido = `<div class="ob-route">${placeBlock('Origen', service.origin)}<span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span>${placeBlock('Destino', service.destination)}</div>
-      ${kmLine ? `<p class="ob-km-line"><small>Cómo se calculó</small>${kmLine}</p>` : ''}<div class="ob-map-slot" data-ob-map="${esc(id)}"></div>`;
+      ${kmLine ? `<p class="ob-km-line"><small>Distancia</small>${kmLine}</p>` : ''}<div class="ob-map-slot" data-ob-map="${esc(id)}"></div>`;
 
-    const areaDesglose = `${componentMarkup(quote)}${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${esc(signedMoney(delta, cur))}</b></div></div>` : ''}`;
+    const areaDesglose = `${componentMarkup(quote)}
+      ${separateTolls ? `<p class="ob-tariff">${ico('info')}<span>Más ${esc(money(quote.separate_toll_amount, cur))} de peajes que se facturan por separado.</span></p>` : ''}
+      ${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${esc(signedMoney(delta, cur))}</b></div></div>` : ''}
+      <p class="ob-tariff">${ico('file-check')}<span>${esc(quote.rate_card_name || 'Sin tarifario')}${quote.rate_card_version ? ` · v${esc(quote.rate_card_version)}` : ''}${quote.contract_name ? ` · Contrato ${esc(quote.contract_name)}` : ''}</span></p>`;
 
     const revisions = Array.isArray(detail.revisions) ? detail.revisions : [];
-    const history = `<details class="ob-area ob-area-history" data-ob-area="history"><summary>Historial de Facturación (${revisions.length})<span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${revisionTimeline(revisions, cur)}</div></details>`;
+    const history = `<details class="ob-area ob-area-history" data-ob-area="history"><summary><span class="ob-area-title"><span class="ob-area-emoji" aria-hidden="true">${AREA_EMOJI.history}</span>Historial de Facturación (${revisions.length})</span><span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${revisionTimeline(revisions, cur)}</div></details>`;
 
-    return `<aside class="ob-detail ob-detail-areas" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio')}${summary}<div class="ob-detail-body">
-      <div class="ob-col">${detailArea('servicio', 'Servicio', areaServicio, true)}${detailArea('facturacion', 'Info de Facturación', areaFact, true)}${detailArea('cliente', 'Cliente y Vehículo', areaCliente, open)}</div>
-      <div class="ob-col">${detailArea('recorrido', 'Recorrido', areaRecorrido, open)}${detailArea('desglose', 'Desglose de costos', areaDesglose, open)}</div>
-      <div class="ob-col ob-col-wide">${history}</div>
-    </div>${remito || pick ? `<footer class="ob-detail-foot"><small>${selected ? esc(joinParts(selectionParts())) + ' en la factura' : '← → para pasar de servicio'}</small><div>${remito}${pick}</div></footer>` : ''}</aside>`;
+    const switcher = `<div class="ob-variant" role="group" aria-label="Versión del detalle">${['a', 'b', 'c'].map(v => `<button type="button" class="${variant === v ? 'is-on' : ''}" data-ob="detail-variant" data-variant="${v}" aria-pressed="${variant === v}">${v.toUpperCase()}</button>`).join('')}</div>`;
+
+    return `<aside class="ob-detail ob-detail-areas v-${variant}" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio', switcher)}<div class="ob-detail-body">
+      ${areasLayout(variant, { facturacion: detailArea('facturacion', 'Info de Facturación', areaFact, true), cliente: detailArea('cliente', 'Cliente y Vehículo', areaCliente, true), recorrido: detailArea('recorrido', 'Recorrido', areaRecorrido, open), desglose: detailArea('desglose', 'Desglose de costos', areaDesglose, open) })}${history}
+    </div>${`<footer class="ob-detail-foot"><small class="ob-foot-amount">Importe a facturar <b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>${selected ? ` · ${esc(joinParts(selectionParts()))} en la factura` : ''}</small><div>${remito}${pick}</div></footer>`}</aside>`;
   }
 
   /* Mapa del recorrido: una sola instancia de Google Maps que se reutiliza al pasar de un servicio
@@ -1521,6 +1521,7 @@
     if (action === 'columns') return colsFor(S.tab).open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'map-expand') { const btn = event.target.closest('[data-service-id]'); if (btn) ensureRouteMap().then(srm => srm?.open?.(btn.dataset.serviceId, btn)); return; }
+    if (action === 'detail-variant') { const v = event.target.closest('[data-variant]')?.dataset.variant; if (VARIANTS.includes(v)) { S.detailVariant = v; try { localStorage.setItem('ob-detail-variant', v); } catch { /* sin storage */ } render(); } return; }
     if (action === 'detail-prev') return stepDetail(-1);
     if (action === 'detail-next') return stepDetail(1);
     if (action === 'detail-toggle-select') { if (S.detailId) toggleSelection(S.detailId, !S.selected.has(String(S.detailId))); return; }
