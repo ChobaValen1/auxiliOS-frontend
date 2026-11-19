@@ -19,3 +19,8 @@ test('el remito ocupa el alto visible y sólo el paso activo puede desplazarse',
 test('el texto legal de Arrastre nunca se oculta',()=>{
   assert.match(css,/\.toggle-row:not\(#row-arrastre\) \.toggle-desc \{ display: none !important; \}/);
 });
+
+test('"Escanear ticket" se muestra como acción recomendada',()=>{
+  assert.match(css,/\.fuel-scan::after \{[^}]*content: "Recomendado"/);
+  assert.match(css,/\.fuel-scan \{[^}]*border: 2px solid var\(--amber\)/);
+});
