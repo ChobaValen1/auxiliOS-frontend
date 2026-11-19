@@ -232,3 +232,19 @@ test('mapa: dos grupos con centros cercanos se funden para que las burbujas no s
   assert.equal(g.grupos.length, 1);
   assert.equal(g.grupos[0].idx.length, 8);
 });
+
+test('la frase del Resumen dice cuánto, contra qué y quién aporta más', () => {
+  const nodo = { innerHTML: '', textContent: '' };
+  const win = { AuxDash: { registrarSeccion() {}, setFiltro() {} }, AuxDashCharts: { PALETA: [] } };
+  vm.runInNewContext(js, { window: win, document: { getElementById: id => (id === 'rsm-frase' ? nodo : null), addEventListener() {} }, console });
+  const d = win.AuxDashResumen.normalizar({
+    desde: '2020-01-01', hasta: '2020-01-31',
+    totales: { facturado: 1200000, servicios: 30, peajes: 0 }, anterior: { facturado: 1000000, servicios: 25, peajes: 0 },
+    por_empresa: [{ id: 'a', nombre: 'Alfa', monto: 800000, servicios: 20 }, { id: 'b', nombre: 'Beta', monto: 400000, servicios: 10 }]
+  }, null);
+  win.AuxDashResumen.pintarFrase(d);
+  assert.match(nodo.innerHTML, /\$ 1,2M/);
+  assert.match(nodo.innerHTML, /20 % más/);
+  assert.match(nodo.innerHTML, /<b>Alfa<\/b> \(67%\)/);
+  assert.doesNotMatch(nodo.innerHTML, /cerraría/, 'un período ya cerrado no se proyecta');
+});
