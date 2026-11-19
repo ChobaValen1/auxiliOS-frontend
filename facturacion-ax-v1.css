@@ -599,3 +599,118 @@
 
 #obx-picker-backdrop .obx2-sheet .ax-seg>button{flex:1 1 0}
 #obx-picker-backdrop .obx2-sheet>div:first-child{flex:1 1 0}
+
+/* ── Tabla de Servicios v2: filas de dos renglones, alertas sólo donde hay algo y total al pie ──
+   El recorrido muestra la localidad (lo que se mira para facturar) y la calle debajo, en una
+   línea cada una; la dirección completa queda en el título. */
+#screen-facturacion .ob-services-table td.ob-place { max-width: 210px; white-space: nowrap; }
+#screen-facturacion .ob-place-text { display: block; min-width: 0; }
+#screen-facturacion .ob-place-text b, #screen-facturacion .ob-place-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-facturacion .ob-place-text b { color: var(--ax-text); }
+#screen-facturacion .ob-services-table td[data-col="order"] b { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--ax-fw-medium); white-space: nowrap; }
+#screen-facturacion .ob-services-table td[data-col="company"] small, #screen-facturacion .ob-services-table td[data-col="type"] small { white-space: nowrap; }
+#screen-facturacion .ob-services-table tbody tr[data-ob-open] { cursor: pointer; }
+#screen-facturacion .ob-services-table tbody tr[data-ob-open]:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ax-accent); }
+#screen-facturacion .ob-services-table tbody tr.is-open { background: var(--ax-surface-3); }
+/* Fila con algo para revisar: filete a la izquierda del color de la alerta. */
+#screen-facturacion .ob-services-table tbody tr.is-error td:first-child { box-shadow: inset 3px 0 0 var(--ax-danger); }
+#screen-facturacion .ob-services-table tbody tr.is-changed td:first-child { box-shadow: inset 3px 0 0 var(--ax-warn); }
+#screen-facturacion .ob-flag { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#screen-facturacion .ob-table td small.ob-flag { display: inline-flex; }
+#screen-facturacion .ob-flag .ax-icon { width: 12px; height: 12px; flex: 0 0 auto; }
+#screen-facturacion .ob-flag.is-error, #screen-facturacion .ob-table td small.ob-flag.is-error { color: var(--ax-danger); }
+#screen-facturacion .ob-flag.is-changed, #screen-facturacion .ob-table td small.ob-flag.is-changed { color: var(--ax-warn); }
+#screen-facturacion .ob-services-table td.ob-money-cell { text-align: right; }
+/* Total al pie, siempre a la vista mientras se recorre la tabla. */
+#screen-facturacion .ob-services-table tfoot td { position: sticky; bottom: 0; z-index: 2; height: 44px; padding-top: 0; padding-bottom: 0; border-top: 1px solid var(--ax-border-strong); border-bottom: 0; background: var(--ax-surface); vertical-align: middle; }
+#screen-facturacion .ob-services-table tfoot .ob-foot-label { white-space: nowrap; }
+#screen-facturacion .ob-services-table tfoot .ob-foot-label > b { display: inline; margin-right: 14px; }
+#screen-facturacion .ob-foot-notes { display: inline-flex; gap: 14px; vertical-align: middle; }
+#screen-facturacion .ob-foot-notes .ob-flag { margin: 0; }
+#screen-facturacion .ob-services-table tfoot .ob-money { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-services-table tfoot td.ob-actions { background: var(--ax-surface); box-shadow: none; }
+#screen-facturacion .ob-foot-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* ── Detalle v2: encabezado con ‹ ›, datos en tres columnas y acciones al pie ── */
+#screen-facturacion .ob-detail { display: flex; flex-direction: column; overflow: hidden; outline: none; }
+#screen-facturacion .ob-detail-head { flex: none; align-items: center; }
+#screen-facturacion .ob-detail-body { flex: 1; min-height: 0; overflow-y: auto; }
+#screen-facturacion .ob-detail-nav { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+#screen-facturacion .ob-detail-pos { min-width: 64px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+#screen-facturacion .ob-icon-button { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm, 32px); min-width: 0; height: var(--ax-h-sm, 32px); padding: 0; }
+#screen-facturacion .ob-icon-button .ax-icon { width: 16px; height: 16px; margin: 0; }
+#screen-facturacion .ob-detail .ob-button { display: inline-flex; align-items: center; gap: 6px; }
+#screen-facturacion .ob-detail .ob-button .ax-icon { width: 15px; height: 15px; }
+#screen-facturacion .ob-hero.has-error { border-left: 3px solid var(--ax-danger); }
+#screen-facturacion .ob-hero-change.is-error { background: var(--ax-danger-soft); }
+#screen-facturacion .ob-hero-change.is-error .ax-icon { color: var(--ax-danger); }
+#screen-facturacion .ob-route { padding: 10px 14px; }
+#screen-facturacion .ob-route > div { min-width: 0; }
+#screen-facturacion .ob-route b { font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-route span:not(.ob-route-arrow) { display: block; margin-top: 1px; color: var(--ax-text-2); font-size: var(--ax-fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-facturacion .ob-km-line { margin: var(--ax-sp-2) 0; }
+#screen-facturacion .ob-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-fact { min-width: 0; }
+#screen-facturacion .ob-fact.is-wide { grid-column: span 2; }
+#screen-facturacion .ob-fact small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-fact b { display: block; margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); overflow-wrap: anywhere; }
+#screen-facturacion .ob-detail-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-foot > small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-detail-foot > div { display: flex; gap: var(--ax-sp-2); }
+#screen-facturacion .ob-detail-foot .ob-button { height: var(--ax-h, 36px); padding: 0 14px; font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-detail-pick[aria-pressed="true"] { border-color: var(--ax-accent); color: var(--ax-text); }
+#screen-facturacion .ob-detail-pick[aria-pressed="true"] .ax-icon { color: var(--ax-accent); }
+:is(#screen-facturacion, #screen-facturas) .bd-rounding-note { margin: 0 0 var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+
+/* ── Celular: tarjeta compacta de cuatro renglones ──
+   N° de orden y fecha | importe · prestadora y base | tipo y patente · origen → destino · cliente y km.
+   Las columnas opcionales que se agreguen siguen apareciendo debajo, con su etiqueta. */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-services-table tbody tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px 12px; grid-auto-flow: row dense; }
+  #screen-facturacion .ob-services-table td[data-label]:not([data-col="datetime"])::before { display: none; }
+  #screen-facturacion .ob-services-table td { grid-column: 1 / -1; }
+  #screen-facturacion .ob-services-table td.ob-check { top: 10px; left: 12px; }
+  #screen-facturacion .ob-services-table td[data-col="order"] { grid-row: 1; grid-column: 1 / span 2; padding-left: 34px; }
+  #screen-facturacion .ob-services-table td[data-col="datetime"] { grid-row: 4; grid-column: 1; padding: 0; border: 0; color: var(--ax-text-2); }
+  #screen-facturacion .ob-services-table td[data-col="datetime"] b, #screen-facturacion .ob-services-table td[data-col="datetime"] small { display: inline; margin: 0 4px 0 0; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); color: var(--ax-text-2); }
+  #screen-facturacion .ob-services-table td[data-col="amount"] { grid-row: 1 / span 2; grid-column: 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 0; border: 0; text-align: right; }
+  #screen-facturacion .ob-services-table td[data-col="amount"] .ob-money { font-size: var(--ax-fs-md); }
+  #screen-facturacion .ob-services-table td[data-col="company"] { grid-row: 2; grid-column: 1; }
+  #screen-facturacion .ob-services-table td[data-col="type"] { grid-row: 2; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="origin"] { grid-row: 3; grid-column: 1; }
+  #screen-facturacion .ob-services-table td[data-col="destination"] { grid-row: 3; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="destination"] .ob-place-text b::before { content: "→ "; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+  #screen-facturacion .ob-services-table td.ob-place { max-width: none; }
+  #screen-facturacion .ob-services-table td.ob-place small { display: none; }
+  #screen-facturacion .ob-services-table td[data-col="client"] { grid-row: 4; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="km"] { grid-row: 3; grid-column: 3; justify-self: end; align-self: center; }
+  #screen-facturacion .ob-services-table td[data-col="client"] b, #screen-facturacion .ob-services-table td[data-col="km"] { color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+  #screen-facturacion .ob-services-table td.ob-actions { position: static; grid-row: 4; grid-column: 3; justify-self: end; align-self: center; margin: -6px -6px -6px 0; }
+  #screen-facturacion .ob-services-table td :is(b, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Opcionales: debajo, con su etiqueta. */
+  #screen-facturacion .ob-services-table td:is([data-col="completed"], [data-col="base"], [data-col="plate"], [data-col="vehicle"], [data-col="kmsplit"], [data-col="remito"]) { display: flex; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: 1px solid var(--ax-border); font-size: var(--ax-fs-xs); }
+  #screen-facturacion .ob-services-table td:is([data-col="completed"], [data-col="base"], [data-col="plate"], [data-col="vehicle"], [data-col="kmsplit"], [data-col="remito"]):not([data-col="datetime"])::before { display: block; content: attr(data-label); margin: 0; color: var(--ax-text-3); }
+  #screen-facturacion .ob-services-table tbody tr.is-error, #screen-facturacion .ob-services-table tbody tr.is-changed { box-shadow: none; }
+  #screen-facturacion .ob-services-table tbody tr.is-error { border-left: 3px solid var(--ax-danger); }
+  #screen-facturacion .ob-services-table tbody tr.is-changed { border-left: 3px solid var(--ax-warn); }
+  #screen-facturacion .ob-services-table tbody tr.is-error td:first-child, #screen-facturacion .ob-services-table tbody tr.is-changed td:first-child { box-shadow: none; }
+  /* Total: barra fija arriba de la navegación (la tarjeta no puede recortar, si no el pie no se pega). */
+  #screen-facturacion .ob-table-card:has(.ob-services-table) { overflow: visible; }
+  #screen-facturacion .ob-services-table tfoot { position: sticky; bottom: 8px; z-index: 3; }
+  #screen-facturacion .ob-services-table tfoot tr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); box-shadow: var(--ax-shadow-pop); }
+  #screen-facturacion .ob-services-table tfoot td { position: static; height: auto; padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-services-table tfoot td.ob-foot-label { flex: 1; min-width: 0; white-space: normal; }
+  #screen-facturacion .ob-services-table tfoot td:not(.ob-foot-label):not([data-col="amount"]) { display: none; }
+  #screen-facturacion .ob-foot-notes { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
+  #screen-facturacion .ob-facts { grid-template-columns: 1fr 1fr; }
+  #screen-facturacion .ob-detail-head { flex-wrap: nowrap; padding: 12px 14px; }
+  #screen-facturacion .ob-detail-head h3 { font-size: var(--ax-fs-lg); }
+  #screen-facturacion .ob-detail-actions .ob-button[data-ob="close-detail"] { width: var(--ax-h-sm, 32px); padding: 0; justify-content: center; font-size: 0; gap: 0; }
+  #screen-facturacion .ob-detail-pos { min-width: 0; padding: 0 2px; }
+  #screen-facturacion .ob-detail-body { padding: 12px 14px; }
+  #screen-facturacion .ob-hero > b { font-size: 26px; }
+  #screen-facturacion .ob-detail-foot { padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #screen-facturacion .ob-detail-foot > small { display: none; }
+  #screen-facturacion .ob-detail-foot > div { flex: 1; }
+  #screen-facturacion .ob-detail-foot .ob-button { flex: 1; justify-content: center; height: 44px; }
+}

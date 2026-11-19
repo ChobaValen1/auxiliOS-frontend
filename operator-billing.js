@@ -545,22 +545,47 @@
   const orderCode = row => row.service_order_number || row.service_number || '—';
   const paymentLabel = value => MEDIO[value] || (value === 'not_collected' ? 'No cobrado' : value) || '—';
 
+  /* Recorrido legible: la localidad arriba y la calle abajo, en una línea cada una.
+     La dirección completa queda en el título (se ve al pasar el mouse). */
+  const placeParts = value => {
+    const raw = String(value || '').trim();
+    const parsed = raw && window.AuxiliosAddress?.parse ? window.AuxiliosAddress.parse(raw) : null;
+    const locality = parsed?.locality || '';
+    return { raw, top: locality || parsed?.street || raw, sub: locality ? (parsed?.street || '') : '' };
+  };
+  const placeCell = value => {
+    const p = placeParts(value);
+    if (!p.raw) return '<small>—</small>';
+    return `<span class="ob-place-text" title="${esc(p.raw)}"><b>${esc(p.top)}</b>${p.sub ? `<small>${esc(p.sub)}</small>` : ''}</span>`;
+  };
+  const placeShort = value => placeParts(value).top || '—';
+  /* Lo único que distingue a una fila pendiente de otra: error de tarifa o tarifa cambiada desde el cierre. */
+  const hasDelta = row => Math.abs(num(row.billing_delta)) > .009;
+  const signedMoney = (value, currency) => `${num(value) > 0 ? '+' : '−'}${money(Math.abs(num(value)), currency)}`;
+  function rowFlag(row) {
+    if (row.pricing_error) return `<small class="ob-flag is-error" title="${esc(row.pricing_error)}">${ico('circle-alert')}Error tarifario</small>`;
+    if (hasDelta(row)) return `<small class="ob-flag is-changed" title="Al cierre era ${esc(money(row.stored_company_amount, row.currency))}">${ico('triangle-alert')}Tarifa ${esc(signedMoney(row.billing_delta, row.currency))}</small>`;
+    return '';
+  }
+
   const COLUMN_DEFS = {
     services: [
-      { key: 'order', label: 'Código', optional: true, td: row => `<b>${esc(orderCode(row))}</b>` },
-      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: row => `${when(row)}${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}` },
+      { key: 'order', label: 'N° Orden', td: row => `<b>${esc(orderCode(row))}</b>` },
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
       { key: 'completed', label: 'Finalizado', optional: true, td: row => { const p = dateParts(row.completed_at); return row.completed_at ? stacked(p.day, p.time) : '<small>—</small>'; } },
-      { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
-      { key: 'base', label: 'Base', td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
-      { key: 'type', label: 'Tipo de Servicio', td: row => `<b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>` },
-      { key: 'origin', label: 'Origen', cls: 'ob-place', td: row => esc(row.origin || '—') },
-      { key: 'destination', label: 'Destino', cls: 'ob-place', td: row => esc(row.destination || '—') },
+      /* Base va debajo de la prestadora salvo que se pida su propia columna. */
+      { key: 'company', label: 'Prestadora', td: row => stacked(row.company_name || '—', colsFor('services').has('base') ? '' : row.billing_base_name || '') },
+      { key: 'base', label: 'Base', optional: true, td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
+      /* Todas las filas de esta mesa están pendientes: en vez de repetirlo, debajo del tipo va la patente. */
+      { key: 'type', label: 'Tipo de Servicio', td: row => stacked(row.service_name || '—', colsFor('services').has('plate') ? '' : row.vehicle_plate || '') },
+      { key: 'origin', label: 'Origen', cls: 'ob-place', td: row => placeCell(row.origin) },
+      { key: 'destination', label: 'Destino', cls: 'ob-place', td: row => placeCell(row.destination) },
       { key: 'client', label: 'Cliente', td: row => `<b>${esc(row.customer_name || '—')}</b>` },
       { key: 'plate', label: 'Patente', optional: true, td: row => esc(row.vehicle_plate || '—') },
       { key: 'vehicle', label: 'Vehículo', optional: true, td: row => esc(row.vehicle_make_model || '—') },
       { key: 'km', label: 'KM', cls: 'ob-km', td: row => esc(kmText(billedKm(row).total)) },
       { key: 'kmsplit', label: 'Km asfalto / ripio', optional: true, cls: 'ob-km', td: row => (row.estimated_asphalt_km != null || row.estimated_gravel_km != null) ? esc(`${num(billedKm(row).asphalt).toLocaleString('es-AR', { maximumFractionDigits: 1 })} / ${num(billedKm(row).gravel).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`) : '<small>—</small>' },
-      { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>` },
+      { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>${rowFlag(row)}` },
       { key: 'remito', label: 'Remito', optional: true, td: row => row.remito_id ? 'Con remito' : '<small>Sin remito</small>' }
     ],
     tolls: [
@@ -688,17 +713,40 @@
     if (!rowsSrv.length) return '<div class="ob-empty">No hay servicios disponibles para facturar con estos filtros.</div>';
     const selectable = rowsSrv.filter(row => !row.pricing_error);
     const allSelected = selectable.length > 0 && selectable.every(row => S.selected.has(String(row.service_id)));
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
+    return `<div class="ob-table-wrap"><table class="ob-table ob-services-table"><thead><tr>
       <th class="ob-check"><input type="checkbox" data-ob-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos"></th>
       ${headCells('services')}<th class="ob-actions"></th>
-      </tr></thead><tbody>${rowsSrv.map(rowMarkup).join('')}</tbody></table></div>`;
+      </tr></thead><tbody>${rowsSrv.map(rowMarkup).join('')}</tbody>${servicesFootMarkup(rowsSrv)}</table></div>`;
+  }
+
+  /* Pie de la tabla: cuántos servicios hay, cuánto suman y cuántos tienen algo para revisar. */
+  function servicesFootMarkup(rows) {
+    const currencies = new Set(rows.map(row => row.currency || 'ARS'));
+    const cur = [...currencies][0] || 'ARS';
+    const total = rows.reduce((t, row) => t + num(row.current_company_amount), 0);
+    const errors = rows.filter(row => row.pricing_error).length;
+    const changed = rows.filter(row => !row.pricing_error && hasDelta(row)).length;
+    const notes = [
+      errors ? `<span class="ob-flag is-error">${ico('circle-alert')}${plural(errors, 'con error tarifario', 'con error tarifario')}</span>` : '',
+      changed ? `<span class="ob-flag is-changed">${ico('triangle-alert')}${plural(changed, 'con tarifa cambiada', 'con tarifa cambiada')}</span>` : ''
+    ].filter(Boolean).join('');
+    const defs = visibleDefs('services');
+    const amountAt = defs.findIndex(c => c.key === 'amount');
+    const label = `<b>${esc(plural(rows.length, 'servicio', 'servicios'))}</b>${notes ? `<span class="ob-foot-notes">${notes}</span>` : ''}`;
+    const amount = currencies.size === 1
+      ? `<b class="ob-money" data-ob-tween="${total}" data-ob-currency="${esc(cur)}">${esc(money(total, cur))}</b>`
+      : '<small>Varias monedas</small>';
+    if (amountAt < 0) return `<tfoot><tr class="ob-foot"><td></td><td colspan="${defs.length + 1}"><div class="ob-foot-row">${label}${amount}</div></td></tr></tfoot>`;
+    return `<tfoot><tr class="ob-foot"><td></td><td class="ob-foot-label" colspan="${amountAt}">${label}</td><td class="ob-money-cell" data-col="amount">${amount}</td>${defs.length - amountAt - 1 > 0 ? `<td colspan="${defs.length - amountAt - 1}"></td>` : ''}<td class="ob-actions"></td></tr></tfoot>`;
   }
 
   function rowMarkup(row) {
     const id = String(row.service_id);
     const checked = S.selected.has(id);
     const disabled = Boolean(row.pricing_error);
-    return `<tr data-billing-service="${esc(id)}" class="${checked ? 'selected' : ''}">
+    const cls = [checked ? 'selected' : '', row.pricing_error ? 'is-error' : hasDelta(row) ? 'is-changed' : '', S.detailId && String(S.detailId) === id ? 'is-open' : ''].filter(Boolean).join(' ');
+    // Toda la fila abre el detalle (el tilde y el menú siguen haciendo lo suyo).
+    return `<tr data-billing-service="${esc(id)}" data-ob-open="${esc(id)}" tabindex="0" class="${cls}">
       <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
       ${bodyCells('services', row)}
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio" aria-label="Acciones del servicio">${ico('ellipsis')}</button></td>
@@ -806,6 +854,22 @@
     }).join('')}</ol>`;
   }
 
+  /* Detalle: se recorren los servicios de la tabla en orden (‹ › o flechas del teclado). */
+  function detailNav() {
+    const list = serviceRows();
+    const index = list.findIndex(row => String(row.service_id) === String(S.detailId));
+    return { list, index, prev: index > 0 ? list[index - 1] : null, next: index >= 0 && index < list.length - 1 ? list[index + 1] : null };
+  }
+
+  function detailHeadMarkup(title) {
+    const nav = detailNav();
+    const pos = nav.index >= 0 ? `<span class="ob-detail-pos" aria-live="polite">${nav.index + 1} de ${nav.list.length}</span>` : '';
+    const navButtons = nav.index >= 0 ? `<div class="ob-detail-nav" role="group" aria-label="Recorrer servicios">
+        <button class="ob-button ob-icon-button" type="button" data-ob="detail-prev" ${nav.prev ? '' : 'disabled'} title="Servicio anterior (←)" aria-label="Servicio anterior">${ico('chevron-left')}</button>${pos}<button class="ob-button ob-icon-button" type="button" data-ob="detail-next" ${nav.next ? '' : 'disabled'} title="Servicio siguiente (→)" aria-label="Servicio siguiente">${ico('chevron-right')}</button>
+      </div>` : '';
+    return `<div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
+  }
+
   function detailMarkup() {
     const detail = S.detail;
     const service = detail.service || {};
@@ -815,33 +879,48 @@
     const changed = Math.abs(delta) > .009;
     const separateTolls = quote.toll_billing_mode === 'separate' && num(quote.separate_toll_amount) > 0;
     const km = BD()?.kilometros(quote, service) || {};
+    const kmNum = value => esc(num(value).toLocaleString('es-AR', { maximumFractionDigits: 1 }));
     const kmLine = [
-      km.asfalto ? `Asfalto ${esc(num(km.asfalto).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km` : '',
-      km.ripio ? `Ripio ${esc(num(km.ripio).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km` : '',
+      km.asfalto ? `Asfalto ${kmNum(km.asfalto)} km` : '',
+      km.ripio ? `Ripio ${kmNum(km.ripio)} km` : '',
       km.radio != null ? `Radio cubierto ${esc(km.radio)} km` : '',
-      km.facturable != null ? `<b>Facturable ${esc(num(km.facturable).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</b>` : ''
+      km.facturable != null ? `<b>Facturable ${kmNum(km.facturable)} km</b>` : ''
     ].filter(Boolean).join(' · ');
-    const vehicle = [service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ');
+    const id = String(S.detailId || service.service_id || '');
+    const row = S.rows.find(item => String(item.service_id) === id) || {};
+    const pricingError = row.pricing_error || quote.pricing_error || '';
+    const selected = S.selected.has(id);
+    const canSelect = canInvoice() && row.service_id && !pricingError;
     const remito = service.remito_id && window.RemitoPanel?.open
       ? `<button class="ob-button" type="button" data-ob="open-remito" data-remito-id="${esc(service.remito_id)}">${ico('file-text')}Ver remito</button>` : '';
+    const pick = canSelect
+      ? `<button class="ob-button ${selected ? '' : 'primary'} ob-detail-pick" type="button" data-ob="detail-toggle-select" aria-pressed="${selected}">${ico(selected ? 'check' : 'plus')}${selected ? 'En la factura' : 'Sumar a la factura'}</button>` : '';
+    const fact = (label, value, cls = '') => `<div class="ob-fact${cls}"><small>${label}</small><b>${value}</b></div>`;
+    const placeBlock = (label, value) => { const p = placeParts(value); return `<div><small>${label}</small><b title="${esc(p.raw)}">${esc(p.top || '—')}</b>${p.sub ? `<span>${esc(p.sub)}</span>` : ''}</div>`; };
     const table = componentMarkup(quote);
-    return `<aside class="ob-detail"><div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3>${esc(service.service_order_number || service.service_number || 'Servicio')}</h3></div><div class="ob-detail-actions">${remito}<button class="ob-button" type="button" data-ob="close-detail">${ico('x')}Cerrar</button></div></div><div class="ob-detail-body">
-      <section class="ob-hero${changed ? ' has-change' : ''}"><small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>
-        ${changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre: al cierre era <b>${esc(money(quote.stored_company_amount, cur))}</b> (${delta > 0 ? '+' : '−'}${esc(money(Math.abs(delta), cur))}). Revisá la diferencia antes de facturar.</span></div>` : `<small class="ob-hero-ok">Coincide con el importe al cierre.</small>`}
+    return `<aside class="ob-detail" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio')}<div class="ob-detail-body">
+      <section class="ob-hero${changed ? ' has-change' : ''}${pricingError ? ' has-error' : ''}">
+        <small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>
+        ${pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : ''}
+        ${changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre: al cierre era <b>${esc(money(quote.stored_company_amount, cur))}</b> (${esc(signedMoney(delta, cur))}). Revisá la diferencia antes de facturar.</span></div>` : (pricingError ? '' : '<small class="ob-hero-ok">Coincide con el importe al cierre.</small>')}
         ${separateTolls ? `<small>Más ${esc(money(quote.separate_toll_amount, cur))} de peajes que se facturan por separado.</small>` : ''}
       </section>
       <section class="ob-section ob-ficha"><h4>Servicio</h4>
-        <div class="ob-route"><div><small>Origen</small><b>${esc(service.origin || '—')}</b></div><span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span><div><small>Destino</small><b>${esc(service.destination || '—')}</b></div></div>
+        <div class="ob-route">${placeBlock('Origen', service.origin)}<span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span>${placeBlock('Destino', service.destination)}</div>
         ${kmLine ? `<p class="ob-km-line">${kmLine}</p>` : ''}
-        <div class="ob-grid"><div class="ob-field"><small>Fecha del servicio</small><b>${esc(date(service.scheduled_for))}</b></div><div class="ob-field"><small>Finalizado</small><b>${esc(date(service.completed_at))}</b></div><div class="ob-field"><small>Prestadora</small><b>${esc(service.company_name || '—')}</b></div><div class="ob-field"><small>Base</small><b>${esc(service.billing_base_name || '—')}</b></div><div class="ob-field"><small>Tipo</small><b>${esc(service.service_name || '—')}</b></div><div class="ob-field"><small>Cliente</small><b>${esc(service.customer_name || '—')}</b></div><div class="ob-field"><small>Vehículo</small><b>${esc(vehicle || '—')}</b></div></div>
+        <div class="ob-facts">
+          ${fact('Prestadora', esc(service.company_name || '—'))}${fact('Base', esc(service.billing_base_name || '—'))}${fact('Tipo', esc(service.service_name || '—'))}
+          ${fact('Fecha del servicio', esc(date(service.scheduled_for)))}${fact('Finalizado', esc(date(service.completed_at)))}${fact('Cliente', esc(service.customer_name || '—'))}
+          ${fact('Patente', esc(service.vehicle_plate || '—'))}${fact('Vehículo', esc(service.vehicle_make_model || '—'), ' is-wide')}
+        </div>
         ${service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''}
       </section>
       <section class="ob-section"><h4>Desglose de costos</h4>${table}
         <p class="ob-tariff">${ico('file-check')}<span>${esc(quote.rate_card_name || 'Sin tarifario')}${quote.rate_card_version ? ` · v${esc(quote.rate_card_version)}` : ''}${quote.contract_name ? ` · Contrato ${esc(quote.contract_name)}` : ''}</span></p>
-        ${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${delta > 0 ? '+' : '−'}${esc(money(Math.abs(delta), cur))}</b></div></div>` : ''}
+        ${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${esc(signedMoney(delta, cur))}</b></div></div>` : ''}
       </section>
       <section class="ob-section"><h4>Historial de Facturación</h4>${revisionTimeline(detail.revisions, cur)}</section>
-    </div></aside>`;
+    </div>${remito || pick ? `<footer class="ob-detail-foot"><small>${selected ? esc(joinParts(selectionParts())) + ' en la factura' : '← → para pasar de servicio'}</small><div>${remito}${pick}</div></footer>` : ''}</aside>`;
   }
 
   /* Cada render redibuja la mesa entera: se conserva el scroll de la tabla y el foco del
@@ -904,7 +983,7 @@
       : S.invoiceOpen
         ? invoiceModalMarkup()
         : S.detailLoading
-          ? '<aside class="ob-detail"><div class="ob-empty">Calculando detalle de facturación…</div></aside>'
+          ? `<aside class="ob-detail" aria-busy="true">${detailHeadMarkup(orderCode(rowById(S.detailId)) || 'Servicio')}<div class="ob-empty">Calculando detalle de facturación…</div></aside>`
           : S.detail ? detailMarkup() : '';
     // Centrado para la factura y para el confirmar; el detalle va pegado a la
     // derecha, que es de donde sale.
@@ -973,23 +1052,37 @@
   }
 
   async function openDetail(id) {
-    if (!id || S.detailLoading) return;
+    if (!id) return;
+    const token = (S.detailToken || 0) + 1;
+    S.detailToken = token;
     S.invoiceOpen = false;
     S.detail = null;
+    S.detailId = String(id);
     S.detailLoading = true;
     S.rowAction = null;
     render();
     try {
       const { data, error } = await db().rpc('get_operator_billing_service_detail_v4_km_v1', { p_service_id: id });
+      if (S.detailToken !== token) return;
       if (error) throw error;
       S.detail = data;
     } catch (error) {
+      if (S.detailToken !== token) return;
       notify(error.message || 'No se pudo abrir el detalle', 'error');
       S.detail = null;
     } finally {
-      S.detailLoading = false;
-      render();
+      if (S.detailToken === token) {
+        S.detailLoading = false;
+        render();
+        document.querySelector('#screen-facturacion .ob-detail')?.focus({ preventScroll: true });
+      }
     }
+  }
+
+  function stepDetail(step) {
+    const nav = detailNav();
+    const target = step < 0 ? nav.prev : nav.next;
+    if (target) openDetail(target.service_id);
   }
 
   function openRowAction(id, type) {
@@ -1001,9 +1094,14 @@
   }
 
   function closeDetail() {
+    const id = S.detailId;
+    S.detailToken = (S.detailToken || 0) + 1;
     S.detail = null;
+    S.detailId = null;
     S.detailLoading = false;
     render();
+    // El foco vuelve a la fila que se estaba viendo.
+    if (id) document.querySelector(`#screen-facturacion [data-ob-open="${CSS.escape(String(id))}"]`)?.focus({ preventScroll: false });
   }
 
   function toggleSelection(id, on) {
@@ -1296,7 +1394,13 @@
     if (extraFilter) { S.extraCollector = extraFilter.dataset.obExtraFilter || 'all'; return render(); }
 
     const action = event.target.closest('[data-ob]')?.dataset.ob;
-    if (!action) return;
+    if (!action) {
+      // Click en la fila (fuera del tilde, del menú y de cualquier control) abre el detalle.
+      const openRow = event.target.closest('[data-ob-open]');
+      if (openRow && !event.target.closest('input, button, a, label, select, textarea') && !String(window.getSelection?.() || '').trim()) return openDetail(openRow.dataset.obOpen);
+      if (event.target.id === 'ob-detail-backdrop' && (S.detail || S.detailLoading) && !S.rowAction && !S.invoiceOpen) return closeDetail();
+      return;
+    }
     if (action === 'add-related-excess') return addRelatedExcesses();
     if (action === 'refresh') return clearAndLoad();
     if (action === 'clear-selection') { clearSelection(); return render(); }
@@ -1305,9 +1409,28 @@
     if (action === 'confirm-invoice') return createInvoice();
     if (action === 'columns') return colsFor(S.tab).open(() => render());
     if (action === 'close-detail') return closeDetail();
+    if (action === 'detail-prev') return stepDetail(-1);
+    if (action === 'detail-next') return stepDetail(1);
+    if (action === 'detail-toggle-select') { if (S.detailId) toggleSelection(S.detailId, !S.selected.has(String(S.detailId))); return; }
     if (action === 'open-remito') { const id = Number(event.target.closest('[data-remito-id]')?.dataset.remitoId); if (id && window.RemitoPanel?.open) window.RemitoPanel.open(id); return; }
     if (action === 'cancel-action') { if (S.rowAction?.busy) return; S.rowAction = null; return render(); }
     if (action === 'confirm-action') return confirmAdminAction();
+  }
+
+  /* Teclado: Enter abre la fila enfocada; con el detalle abierto, ← → recorren y Esc cierra. */
+  function onKeydown(event) {
+    const screen = document.getElementById('screen-facturacion');
+    if (!screen?.classList.contains('active')) return;
+    const typing = event.target.closest?.('input, textarea, select, [contenteditable="true"]');
+    if (S.detail || S.detailLoading) {
+      if (S.rowAction || S.invoiceOpen || typing) return;
+      if (event.key === 'Escape') { event.preventDefault(); return closeDetail(); }
+      if (event.key === 'ArrowLeft') { event.preventDefault(); return stepDetail(-1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); return stepDetail(1); }
+      return;
+    }
+    const row = event.target.closest?.('[data-ob-open]');
+    if (row && event.target === row && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openDetail(row.dataset.obOpen); }
   }
 
   function onDocumentClick(event) {
@@ -1326,6 +1449,7 @@
     ensureShell();
     window.addEventListener('auxilios:km-rounding-ready', () => { if (S.rows.length && document.getElementById('screen-facturacion')?.offsetParent) render(); });
     document.addEventListener('click', onDocumentClick);
+    document.addEventListener('keydown', onKeydown);
     document.addEventListener('scroll', closeRowActionMenu, true);
     window.addEventListener('resize', closeRowActionMenu);
     let attempts = 0;
@@ -1340,7 +1464,7 @@
   Object.assign(B, {
     open, load, render, openDetail, clearSelection, canRead, canInvoice, canCorrect,
     openInvoice, createInvoice, selectedRows, selectedTollRows, selectedExcessGroups,
-    _test: { excessGroups, extraBillingState, collectorPill, joinParts, selectionParts }
+    _test: { excessGroups, extraBillingState, collectorPill, joinParts, selectionParts, placeParts, placeCell, rowFlag, servicesFootMarkup, detailNav, COLUMN_DEFS }
   });
   Object.assign(window, { abrirFacturacionOperador: open, cargarFacturacionOperador: load });
   document.readyState === 'loading'
