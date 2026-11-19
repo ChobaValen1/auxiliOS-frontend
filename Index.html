@@ -1001,6 +1001,7 @@
         <div class="dashx-body" id="dashx-sec-operaciones">
           <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
           <div class="rsm opx">
+            <p class="opx-frase" id="dashx-ops-frase" role="status"></p>
             <p class="opx-sub" id="dashx-ops-sub"></p>
             <div class="rsm-kpis" id="dashx-ops-kpis"></div>
 
@@ -1009,7 +1010,7 @@
                 <header class="rsm-card-head opx-head">
                   <div>
                     <h3>Actividad en el tiempo</h3>
-                    <p id="dashx-ops-act-sub">Km por día · línea punteada: promedio</p>
+                    <p id="dashx-ops-act-sub">Km por día · línea: promedio móvil de 7 días</p>
                   </div>
                   <div class="tnd-seg" role="group" aria-label="Qué mostrar">
                     <button type="button" data-opx-metrica="km" aria-pressed="true">Km</button>
@@ -1017,34 +1018,22 @@
                     <button type="button" data-opx-metrica="jornadas" aria-pressed="false">Jornadas</button>
                   </div>
                 </header>
-                <div class="auxch-wrap opx-graf"><canvas id="dashx-ops-tendencia" role="img" aria-label="Actividad del período"></canvas></div>
+                <div class="opx-dia" id="dashx-ops-dia"></div>
+                <div class="auxch-wrap opx-graf"><canvas id="dashx-ops-tendencia" role="img" aria-label="Actividad del período; tocá una barra para ver solo ese día"></canvas></div>
+                <p class="opx-lectura" id="dashx-ops-act-lectura"></p>
               </section>
               <section class="rsm-card">
                 <header class="rsm-card-head">
-                  <h3>Combustible</h3>
-                  <p id="dashx-ops-comb-sub">Gasto por medio de pago</p>
-                </header>
-                <div class="rsm-tipos-dona opx-dona">
-                  <div class="auxch-wrap"><canvas id="dashx-ops-combustible" role="img" aria-label="Gasto de combustible por medio de pago"></canvas></div>
-                  <div class="rsm-tipos-centro" id="dashx-ops-comb-total"></div>
-                </div>
-                <div class="rsm-tipos-lista" id="dashx-ops-comb-lista"></div>
-              </section>
-            </div>
-
-            <div class="rsm-fila opx-fila-par">
-              <section class="rsm-card">
-                <header class="rsm-card-head">
-                  <h3>Rendimiento del combustible</h3>
-                  <p>Promedios del período contra el período anterior</p>
+                  <h3>¿Rinden los móviles y las jornadas?</h3>
+                  <p id="dashx-ops-rinden-sub">Promedios del período contra el período anterior</p>
                 </header>
                 <div id="dashx-ops-comb-metrics"></div>
-              </section>
-              <section class="rsm-card">
-                <header class="rsm-card-head">
-                  <h3>Uso de la jornada</h3>
-                  <p>Cuánto rinde cada jornada de trabajo</p>
-                </header>
+                <div class="opx-pago">
+                  <h4>¿Cómo se paga el combustible?</h4>
+                  <p class="opx-pago-sub" id="dashx-ops-comb-sub">Gasto por medio de pago</p>
+                  <div class="opx-pago-barra" id="dashx-ops-pago-barra" role="img" aria-label="Gasto de combustible por medio de pago"></div>
+                  <div class="opx-pago-lista" id="dashx-ops-comb-lista"></div>
+                </div>
                 <div id="dashx-ops-ratios"></div>
               </section>
             </div>

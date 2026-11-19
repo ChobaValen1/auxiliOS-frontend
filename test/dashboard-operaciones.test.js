@@ -205,10 +205,10 @@ test('el canvas y las dos tablas del markup se llenan', () => {
   // cuatro gráficos de barras que había que cruzar con la vista.
   ['dashx-ops-tendencia', 'dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']
     .forEach(id => assert.ok(ops.includes(id), `no se usa el contenedor ${id}`));
-  ['dashx-ops-filtros', 'dashx-ops-kpis', 'dashx-ops-ratios', 'dashx-ops-sub', 'dashx-ops-comb-metrics', 'dashx-ops-comb-lista']
+  ['dashx-ops-filtros', 'dashx-ops-kpis', 'dashx-ops-ratios', 'dashx-ops-sub', 'dashx-ops-frase', 'dashx-ops-comb-metrics', 'dashx-ops-comb-lista', 'dashx-ops-pago-barra', 'dashx-ops-dia']
     .forEach(id => assert.ok(ops.includes(id) && index.includes(`id="${id}"`), `no se llena el contenedor ${id}`));
   // Mismo lenguaje que Resumen: sus cifras, tarjetas, listas y tablas.
-  ['rsm-kpi', 'rsm-kpi-value', 'rsm-delta', 'rsm-ef-dato', 'rsm-tipo', 'rsm-tabla', 'rsm-part']
+  ['rsm-kpi', 'rsm-kpi-value', 'rsm-delta', 'opx-it', 'rsm-tipo', 'rsm-tabla', 'rsm-part']
     .forEach(c => assert.ok(ops.includes(c), `falta la clase ${c}`));
   assert.match(index, /<div class="rsm opx">/);
 });
@@ -231,8 +231,10 @@ test('no hay gráficos de doble eje Y', () => {
   // y en las mismas unidades, que es justamente lo contrario a un doble eje.
   assert.ok(!/values:\s*serie\.map[\s\S]*values:\s*serie\.map/.test(tendencia),
     'la tendencia grafica dos magnitudes distintas');
+  // Promedio móvil o promedio fijo: siempre en el mismo eje y las mismas unidades.
+  assert.match(tendencia, /linea:/);
   assert.match(tendencia, /referencia:/);
-  assert.ok(!/servicios/.test(tendencia.split('G.barras')[1] || ''),
+  assert.ok(!/servicios/.test((tendencia.split('G.barras')[1] || '').split('alElegir')[0]),
     'la tendencia mezcla km con servicios en el mismo eje');
 });
 
@@ -372,15 +374,17 @@ test('las razones del pie son las de la RPC, no promedios de la columna', () => 
   assert.match(sqlV4, /'jornadas_con_horas', x\.jornadas_con_horas/);
 });
 
-test('el combustible es un anillo con el gasto en el centro y la lista de medios', () => {
-  // Igual que la composición por tipo de Resumen: el total adentro, cada medio
-  // con sus cargas, litros, monto y parte del gasto al lado.
+test('el combustible es una barra 100% apilada con la lista de medios al lado', () => {
+  // Son pocas partes de un total: una barra en línea se lee mejor que un anillo,
+  // y cada medio queda con su monto, cargas y litros en la lista de debajo.
   assert.match(ops, /function pintarCombustible/);
-  assert.match(index, /id="dashx-ops-comb-total"/);
-  assert.match(ops, /'<b>' \+ pesosCorto\(total\) \+ '<\/b><span>Gasto<\/span>'/);
-  assert.match(ops, /leyenda: 'ninguna'/);
-  assert.match(ops, /formato: 'pesos'/);
-  assert.match(charts, /datos\.leyenda\) === 'ninguna' \? \{ display: false \}/);
+  assert.match(index, /id="dashx-ops-pago-barra"/);
+  assert.ok(!index.includes('id="dashx-ops-combustible"'), 'volvió el anillo de combustible');
+  assert.ok(!/G\.donut\(/.test(ops), 'combustible vuelve a dibujarse como anillo');
+  assert.match(ops, /data-w="' \+ p\.toFixed\(2\)/);
+  assert.match(ops, /G\.PALETA\[i\]/);
+  // El reparto es por gasto, no por litros.
+  assert.match(ops, /num\(m\.gasto\) \* 100 \/ total/);
 });
 
 test('el agrupado de medios mantiene el gráfico y la lista en las mismas filas', () => {
@@ -434,4 +438,73 @@ test('las tablas se ordenan tocando el título, sin volver a la base', () => {
   assert.match(ops, /var porKm = filas\.slice\(\)\.sort/);
   // Y en el celular cada fila es una tarjeta con sus rótulos.
   assert.match(ops, /data-label="' \+ esc\(label\)/);
+});
+
+/* ── Resumen del período, día elegido y marcas ─────────────────────────── */
+
+test('la frase arriba resume el período y cambia cuando se elige un día', () => {
+  assert.match(index, /id="dashx-ops-frase"/);
+  assert.match(ops, /function pintarFrase/);
+  assert.match(ops, /los móviles hicieron <b>/);
+  assert.match(ops, /por debajo de la flota/);
+  // Con un día elegido, la frase se compara con el promedio y no con el período anterior.
+  assert.match(ops, /del promedio por ' \+ grano/);
+});
+
+test('Operaciones tiene cuatro cifras, no seis', () => {
+  const kpis = ops.slice(ops.indexOf('function pintarKpis'), ops.indexOf('function pintarSubtitulo'));
+  ['Km recorridos', 'Servicios por jornada', 'Gasto en combustible', 'Costo por km']
+    .forEach(l => assert.ok(kpis.includes(l), `falta la cifra ${l}`));
+  assert.ok(!kpis.includes("tile('Jornadas'"), 'volvió la cifra de jornadas');
+  assert.ok(!kpis.includes("tile('Km por servicio'"), 'volvió la cifra de km por servicio');
+});
+
+test('las cinco razones reemplazan a las dos tarjetas de rendimiento y jornada', () => {
+  assert.match(index, /¿Rinden los móviles y las jornadas\?/);
+  assert.ok(!index.includes('Rendimiento del combustible'));
+  assert.ok(!index.includes('Uso de la jornada'));
+  const razones = ops.slice(ops.indexOf('function pintarRazones'), ops.indexOf('function pintarJornada'));
+  ['Km por litro', 'Precio por litro', 'Km por servicio', 'Horas por jornada', 'Km por jornada']
+    .forEach(l => assert.ok(razones.includes(l), `falta la razón ${l}`));
+});
+
+test('tocar una barra elige un día y todo lo que la serie sabe baja a ese día', () => {
+  // Alcanza con la serie que ya vino: no hay otra ida a la base.
+  assert.match(ops, /function puntoElegido/);
+  assert.match(ops, /function repintarDia/);
+  const repintar = ops.slice(ops.indexOf('function repintarDia'), ops.indexOf('/* ── combustible'));
+  assert.ok(!/rpc\(/.test(repintar), 'elegir un día vuelve a la base');
+  assert.match(ops, /alElegir: function \(idx\)/);
+  assert.match(ops, /estado\.dia = \(f && f !== estado\.dia\) \? f : null/);
+  // Se vuelve con el botón y con Escape.
+  assert.match(ops, /data-opx-reset/);
+  assert.match(ops, /ev\.key === 'Escape' && estado\.dia/);
+  // La barra elegida queda en color pleno; las demás se apagan.
+  assert.match(ops, /k === iSel \? pleno : apagado/);
+  // Repintar destruye el gráfico: no puede hacerse dentro de su propio onClick.
+  assert.match(ops, /global\.setTimeout\(repintarDia, 0\)/);
+  // Un día que ya no existe en la serie nueva no se arrastra.
+  assert.match(ops, /if \(estado\.dia && !puntoElegido\(\)\) estado\.dia = null/);
+});
+
+test('lo que la RPC no corta por día se rotula como del período', () => {
+  // Combustible, móviles y choferes siguen siendo del período aunque haya un día elegido.
+  assert.match(ops, /Del período completo/);
+  assert.match(ops, /function notaDia/);
+  assert.match(ops, /esta tabla sigue mostrando el período completo/);
+});
+
+test('las filas que rinden 20% menos se marcan en ámbar y se cuentan en la frase', () => {
+  assert.match(ops, /function movilAlerta/);
+  assert.match(ops, /kml <= flota \* 0\.8/);
+  assert.match(ops, /sj <= spjFlota \* 0\.8/);
+  assert.equal((ops.match(/class="opx-alerta"/g) || []).length, 2, 'la marca va en las dos tablas');
+  assert.match(ops, /contarAlertas\(datos\)/);
+});
+
+test('el gráfico acepta una línea de tendencia, selección y entrada en cascada', () => {
+  assert.match(charts, /datos\.linea/);
+  assert.match(charts, /getElementsAtEventForMode\(ev, 'index', \{ intersect: false \}/);
+  assert.match(charts, /datos\.animar === false/);
+  assert.match(charts, /datos\.cascada/);
 });

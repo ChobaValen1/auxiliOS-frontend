@@ -341,7 +341,15 @@
     var unidad = (datos && datos.unidad) || '';
     // Mismo eje que las barras: nunca un segundo eje Y.
     var referencia = (datos && datos.referencia) || null;
-    return montar(id, {
+    /* `linea`: una segunda serie en el mismo eje y las mismas unidades (por
+       ejemplo el promedio móvil de las barras). `alElegir(indice)` vuelve
+       tocable la columna entera, no sólo la barra: un día de 137 km es una barra
+       de dos píxeles y no se podría elegir. `animar: false` redibuja sin
+       reanimar (cambio de selección); `cascada` entra de a una barra. */
+    var linea = (!referencia && datos && datos.linea) || null;
+    var extra = referencia || linea;
+    var alElegir = (datos && typeof datos.alElegir === 'function') ? datos.alElegir : null;
+    var cfg = {
       type: 'bar',
       data: {
         labels: labels,
@@ -365,14 +373,26 @@
           pointHoverRadius: 0,
           fill: false,
           order: 1
-        }] : [])
+        }] : (linea ? [{
+          type: 'line',
+          label: linea.label || 'Tendencia',
+          data: linea.values,
+          borderColor: linea.color || TINTA.media,
+          borderWidth: 2.5,
+          borderCapStyle: 'round',
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          order: 1
+        }] : []))
       },
       options: {
         indexAxis: horizontal ? 'y' : 'x',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: referencia
+          legend: extra
             ? Object.assign(leyendaBase(), {
                 labels: Object.assign(leyendaBase().labels, {
                   // Como trazo y no como punto: es una línea de referencia, y el
@@ -388,7 +408,7 @@
             callbacks: {
               label: function (ctx) {
                 if (ctx.datasetIndex === 1) {
-                  return ' ' + (referencia.label || 'Promedio') + ': ' + fmt(referencia.valor);
+                  return ' ' + (extra.label || 'Promedio') + ': ' + fmt(referencia ? referencia.valor : Math.round(ctx.parsed.y));
                 }
                 var v = horizontal ? ctx.parsed.x : ctx.parsed.y;
                 return ' ' + fmt(v) + (unidad ? ' ' + unidad : '');
@@ -401,7 +421,25 @@
           y: Object.assign(ejeBase(!horizontal, !horizontal), { beginAtZero: true })
         }
       }
-    });
+    };
+    if (datos && datos.animar === false) cfg.options.animation = false;
+    else if (datos && datos.cascada) {
+      cfg.options.animation = {
+        duration: 700,
+        delay: function (c) { return c.type === 'data' && c.mode === 'default' ? c.dataIndex * 25 : 0; }
+      };
+    }
+    if (alElegir) {
+      cfg.options.interaction = { mode: 'index', intersect: false };
+      cfg.options.onClick = function (ev, _els, chart) {
+        var pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);
+        if (pts.length) alElegir(pts[0].index);
+      };
+      cfg.options.onHover = function (ev, els, chart) {
+        if (chart && chart.canvas) chart.canvas.style.cursor = els.length ? 'pointer' : 'default';
+      };
+    }
+    return montar(id, cfg);
   }
 
   /* Línea. Un solo eje: dos magnitudes distintas van en dos gráficos. */
