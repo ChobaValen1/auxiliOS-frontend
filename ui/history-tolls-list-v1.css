@@ -11,3 +11,6 @@
 .rmx-mcard .hlt{min-width:0;max-width:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .rmx-col-tolls{min-width:200px}
 @media(max-width:600px){.os-table .col-history_tolls .hlt{min-width:0;max-width:none}}
+.hlt.hlt-compact{min-width:0;max-width:none}
+.hlt-compact .hlt-total{margin-bottom:0}
+.hlt-compact small{display:block;color:var(--muted);font-size:10px}

@@ -1,0 +1,40 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const read = f => fs.readFileSync(f, 'utf8');
+
+test('Historial de Servicios: trae todo el período desde el servidor, no sólo los últimos 500', () => {
+  const sql = read('migrations/20261119120000_historial_servicios_completo_v1.sql');
+  assert.match(sql, /create or replace function public\.list_operator_service_history_v1\(\s*p_from date default null, p_to date default null, p_limit integer default 500, p_offset integer default 0\)/);
+  assert.match(sql, /s\.status in \('completed','cancelled'\)/);
+  assert.match(sql, /at time zone 'America\/Argentina\/Buenos_Aires'\)::date >= p_from/);
+  assert.match(sql, /'has_more',v_offset\+jsonb_array_length\(v_items\)<v_total/);
+  assert.match(sql, /grant execute on function public\.list_operator_service_history_v1\(date,date,integer,integer\) to authenticated/);
+  assert.doesNotMatch(sql, /create or replace function public\.list_operator_services\b/); // la lista general no cambia
+  const js = read('operator-services.js');
+  assert.match(js, /_db\.rpc\('list_operator_service_history_v1',\{p_from:range\.from,p_to:range\.to,p_limit:HISTORY_CHUNK,p_offset:offset\}\)/);
+  assert.match(js, /if\(!data\?\.has_more\|\|!items\.length\)break;/);
+  // Sin la función en la base, cae al tope máximo de la lista general.
+  assert.match(js, /_db\.rpc\('list_operator_services',\{p_limit:1000\}\)/);
+  assert.match(js, /if\(S\.view==='history'\)void loadHistory\(\);/);
+});
+
+test('Historial de Servicios: arranca en el mes en curso y ese período no cuenta como filtro', () => {
+  const js = read('operator-services.js');
+  assert.match(js, /periodSel:defaultHistoryPeriod\(\)/);
+  assert.match(js, /timeZone:'America\/Argentina\/Buenos_Aires',year:'numeric',month:'2-digit'/);
+  assert.match(js, /S\.view==='history'&&!isDefaultPeriod\(S\.periodSel\)\]\.filter\(Boolean\)\.length/);
+  assert.match(js, /onFilterChange\(key,key==='period'\?defaultHistoryPeriod\(\):''\)/);
+});
+
+test('Historial de Servicios: peajes sólo de la página visible y resumen del período', () => {
+  const js = read('operator-services.js');
+  assert.doesNotMatch(js, /enrichServices\?\.\(S\.services,_db\)/);
+  assert.match(js, /if\(S\.view==='history'\)void loadPageTolls\(rows\);/);
+  assert.match(js, /render\(s\.historyTolls,\{compact:true\}\)/);
+  assert.match(js, /function renderHistoryStats\(all\)/);
+  const tolls = read('ui/history-tolls-list-v1.js');
+  assert.match(tolls, /function render\(data,\{heading=false,compact=false\}=\{\}\)/);
+  const css = read('operator-services.css');
+  assert.match(css, /#screen-operaciones\.os-is-history \.os-commandbar \.os-manage\{display:none\}/);
+});

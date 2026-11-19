@@ -8,7 +8,10 @@ const LOCATION_LABELS={address:'Dirección',locality:'Localidad',province:'Provi
 const PAYMENT_METHOD_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir'};
 const DOCUMENT_LABELS={not_started:'Remito pendiente',draft:'Remito pendiente',submitted:'Remito en revisión',observed:'Remito requiere correcciones',approved:'Remito aprobado',exception_requested:'Excepción solicitada',exception_approved:'Excepción aprobada',exception_rejected:'Excepción rechazada'};
 const PERSONAL_VIEW_KEY='operator_services_table_v2';
-const S=O.S={services:[],intakes:[],companies:[],drivers:[],trucks:[],concepts:[],selected:null,selectedIntakeId:null,loading:false,referencesLoaded:false,settingsLoaded:false,moduleConfig:JSON.parse(JSON.stringify(DEFAULT_CONFIG)),timer:null,wizard:null,query:'',status:'all',company:'all',driverFilter:'',truckFilter:'',periodSel:{mode:'all'},view:'active',menuServiceId:null,personalDraft:null,personalPreference:null,personalPreferenceLoaded:false};
+/* El Historial arranca en el mes en curso (hora de Argentina): es lo que se mira a diario y lo que se factura. */
+function defaultHistoryPeriod(){const ym=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);return{mode:'mes',mes:ym};}
+const isDefaultPeriod=p=>JSON.stringify(p||{})===JSON.stringify(defaultHistoryPeriod());
+const S=O.S={services:[],intakes:[],companies:[],drivers:[],trucks:[],concepts:[],selected:null,selectedIntakeId:null,loading:false,referencesLoaded:false,settingsLoaded:false,moduleConfig:JSON.parse(JSON.stringify(DEFAULT_CONFIG)),timer:null,wizard:null,query:'',status:'all',company:'all',driverFilter:'',truckFilter:'',periodSel:defaultHistoryPeriod(),view:'active',historyRows:new Map(),historyKey:null,historyLoading:false,menuServiceId:null,personalDraft:null,personalPreference:null,personalPreferenceLoaded:false};
 /* en_route/loaded/at_destination se leen sólo durante la ventana de compatibilidad con Producción vieja. */
 const ACTIVE=new Set(['pending','assigned','en_route','at_origin','loaded','at_destination']);
 const normalizedStatus=value=>({en_route:'assigned',loaded:'at_origin',at_destination:'at_origin'})[value]||value;
@@ -88,14 +91,14 @@ async function loadReferences(){if(!canRead()||typeof _db==='undefined')return f
    se repinta en #os-filter-slots. El período solo aplica al Historial. */
 const serviceDriverId=s=>s.assigned_driver_id||s.activation_driver_id||s.responsible_driver_id||'';
 const serviceTruckId=s=>s.assigned_truck_id||s.activation_truck_id||s.responsible_truck_id||'';
-function filterCount(){return[S.status!=='all',S.query.trim(),S.company!=='all',S.driverFilter,S.truckFilter,S.view==='history'&&S.periodSel.mode!=='all'].filter(Boolean).length;}
+function filterCount(){return[S.status!=='all',S.query.trim(),S.company!=='all',S.driverFilter,S.truckFilter,S.view==='history'&&!isDefaultPeriod(S.periodSel)].filter(Boolean).length;}
 function renderFilterBar(){const host=document.getElementById('os-filter-slots'),F=window.AuxFilters;if(!host||!F)return;const companies=S.companies.map(x=>({value:String(x.company_id),label:x.trade_name||x.legal_name}));const drivers=S.drivers.map(x=>({value:String(x.user_id),label:x.full_name||x.name||String(x.user_id)}));const trucks=S.trucks.map(x=>({value:String(x.truck_id),label:[x.numero_interno,x.plate].filter(Boolean).join(' · ')||String(x.truck_id)}));host.innerHTML=(S.view==='history'?F.period({id:'period',value:S.periodSel,allLabel:'Todas las fechas'}):'')+F.select({id:'company',label:'Prestadora',icon:ico('building-2'),value:S.company==='all'?'':S.company,options:companies,allLabel:'Todas'})+F.select({id:'driver',label:'Chofer',icon:ico('user'),value:S.driverFilter,options:drivers,allLabel:'Todos'})+F.select({id:'truck',label:'Móvil',icon:ico('truck'),value:S.truckFilter,options:trucks,allLabel:'Todos'})+F.clear({count:filterCount()});F.bind(host.closest('.os-filters')||host,onFilterChange,clearFilters);}
-function onFilterChange(id,value){if(id==='period')S.periodSel=value;if(id==='company')S.company=value||'all';if(id==='driver')S.driverFilter=value||'';if(id==='truck')S.truckFilter=value||'';renderServices();}
-function clearFilters(){Object.assign(S,{status:'all',query:'',company:'all',driverFilter:'',truckFilter:'',periodSel:{mode:'all'}});const q=document.getElementById('os-q');if(q)q.value='';renderServices();}
+function onFilterChange(id,value){if(id==='period'){S.periodSel=value;void loadHistory();}if(id==='company')S.company=value||'all';if(id==='driver')S.driverFilter=value||'';if(id==='truck')S.truckFilter=value||'';renderServices();}
+function clearFilters(){Object.assign(S,{status:'all',query:'',company:'all',driverFilter:'',truckFilter:'',periodSel:defaultHistoryPeriod()});const q=document.getElementById('os-q');if(q)q.value='';renderServices();if(S.view==='history')void loadHistory();}
 /* La consulta administrativa histórica no incluye el nombre del tercerizado.
    Se completa en lote con una proyección que no solicita costos ni importes. */
 async function enrichOutsourcedNames(rows){const missing=rows.filter(s=>s.logistics_type==='third_party'&&!s.outsourced_provider_name);if(!missing.length||role()!=='administracion')return;const ids=[...new Set(missing.map(s=>s.service_id))];try{const {data,error}=await _db.from('outsourced_service_costs').select('service_id,provider:outsourced_providers(display_name)').in('service_id',ids);if(error)throw error;const names=new Map((data||[]).map(row=>[String(row.service_id),(Array.isArray(row.provider)?row.provider[0]:row.provider)?.display_name]));for(const s of missing){const name=names.get(String(s.service_id));if(name)s.outsourced_provider_name=name;}}catch(error){for(const s of missing)s._outsourcedNameUnavailable=true;console.warn('[Servicios] No se pudo cargar el nombre del tercerizado:',error.message||error);}}
-async function loadServices(){if(!canRead()||S.loading||typeof _db==='undefined')return;S.loading=true;window.AuxiliosKmRounding?.load();document.getElementById('os-refresh')?.setAttribute('data-state','loading');try{await Promise.all([loadReferences(),S.settingsLoaded?Promise.resolve():loadModuleConfig(),loadPersonalPreference()]);const intakeRequest=['administracion','operador','supervision'].includes(role())?_db.rpc('list_driver_service_intakes_v2',{p_limit:200}):Promise.resolve({data:[],error:null});const [{data,error},{data:documents,error:documentError},{data:intakes,error:intakeError},{data:activated,error:activatedError}]=await Promise.all([_db.rpc('list_operator_services',{p_limit:500}),_db.rpc('list_operator_service_document_connections_v2'),intakeRequest,_db.rpc('list_driver_activated_services_v1',{p_limit:200})]);if(error)throw error;if(documentError)throw documentError;if(intakeError)throw intakeError;if(activatedError&&!/function.*does not exist|schema cache/i.test(activatedError.message||''))console.warn('[Servicios] No se pudieron cargar ACTIVADO:',activatedError.message);const documentByService=new Map((Array.isArray(documents)?documents:[]).map(x=>[String(x.service_id),x])),serviceById=new Map((Array.isArray(data)?data:[]).map(x=>[String(x.service_id),x]));for(const row of Array.isArray(activated)?activated:[])serviceById.set(String(row.service_id),{...(serviceById.get(String(row.service_id))||{}),...row});S.services=[...serviceById.values()].map(x=>({...x,...(documentByService.get(String(x.service_id))||{}),_documentConnectionLoaded:Array.isArray(documents)}));await enrichOutsourcedNames(S.services);await window.AuxiliosHistoryTolls?.enrichServices?.(S.services,_db);S.intakes=Array.isArray(intakes)?intakes:[];renderServices();applyRole();}catch(error){notify(error.message||'No se pudieron cargar los servicios','error');}finally{S.loading=false;document.getElementById('os-refresh')?.removeAttribute('data-state');}}
+async function loadServices(){if(!canRead()||S.loading||typeof _db==='undefined')return;S.loading=true;window.AuxiliosKmRounding?.load();document.getElementById('os-refresh')?.setAttribute('data-state','loading');try{await Promise.all([loadReferences(),S.settingsLoaded?Promise.resolve():loadModuleConfig(),loadPersonalPreference()]);const intakeRequest=['administracion','operador','supervision'].includes(role())?_db.rpc('list_driver_service_intakes_v2',{p_limit:200}):Promise.resolve({data:[],error:null});const [{data,error},{data:documents,error:documentError},{data:intakes,error:intakeError},{data:activated,error:activatedError}]=await Promise.all([_db.rpc('list_operator_services',{p_limit:500}),_db.rpc('list_operator_service_document_connections_v2'),intakeRequest,_db.rpc('list_driver_activated_services_v1',{p_limit:200})]);if(error)throw error;if(documentError)throw documentError;if(intakeError)throw intakeError;if(activatedError&&!/function.*does not exist|schema cache/i.test(activatedError.message||''))console.warn('[Servicios] No se pudieron cargar ACTIVADO:',activatedError.message);const documentByService=new Map((Array.isArray(documents)?documents:[]).map(x=>[String(x.service_id),x])),serviceById=new Map((Array.isArray(data)?data:[]).map(x=>[String(x.service_id),x]));for(const row of Array.isArray(activated)?activated:[])serviceById.set(String(row.service_id),{...(serviceById.get(String(row.service_id))||{}),...row});S.documentByService=documentByService;S.documentsLoaded=Array.isArray(documents);const previous=new Map(S.services.map(x=>[String(x.service_id),x]));S.services=[...serviceById.values()].map(x=>withHistoryExtras({...x,...(documentByService.get(String(x.service_id))||{}),_documentConnectionLoaded:Array.isArray(documents)},previous));mergeHistoryRows();await enrichOutsourcedNames(S.services);if(S.view==='history')void loadHistory();S.intakes=Array.isArray(intakes)?intakes:[];renderServices();applyRole();}catch(error){notify(error.message||'No se pudieron cargar los servicios','error');}finally{S.loading=false;document.getElementById('os-refresh')?.removeAttribute('data-state');}}
 const loadBase=loadReferences;
 function needsAttention(s){const key=normalizedStatus(s.status),missing=!s.assigned_driver_id||!s.assigned_truck_id,overdue=['pending','assigned'].includes(key)&&s.scheduled_for&&new Date(s.scheduled_for).getTime()<Date.now(),documentAttention=['observed','exception_requested','exception_rejected'].includes(s.document_status)||['pending','correction_required','rejected'].includes(s.administrative_review_status)||(key==='at_origin'&&s.document_status==='submitted');return pendingRemitoReview(s)||missing||overdue||documentAttention;}
 function sourceRows(){return S.view==='history'?historyServices():activeServices();}
@@ -260,7 +263,7 @@ function historyCell(g,s){
 }
 const columnLabel=k=>k==='history_tolls'?'Peajes':k==='maps'?'Recorrido':HISTORY_LABELS[k]||COLUMN_LABELS[k]||k;
 const columnCell=(k,s)=>{
-  if(k==='history_tolls')return window.AuxiliosHistoryTolls?.render(s.historyTolls)||'<span class="os-muted">Peajes no disponibles</span>';
+  if(k==='history_tolls')return s.historyTolls===undefined?'<span class="os-muted os-tolls-loading">Cargando peajes…</span>':window.AuxiliosHistoryTolls?.render(s.historyTolls,{compact:true})||'<span class="os-muted">Peajes no disponibles</span>';
   if(k==='actions')return serviceActionsCell(s);
   if(k==='maps')return routeControl(s);
   if(['driver','mobile'].includes(k)&&s.logistics_type!=='third_party'){const v=crewValue(s,k);return `<b class="${v.missing?'os-unassigned':''}">${esc(v.label)}</b>`+(k==='driver'?driverQueueCount(s):'');}
@@ -283,14 +286,14 @@ function serviceListFilters(){
   if(S.company!=='all')result.push({key:'company',label:'Prestadora: '+(company(S.company)?.trade_name||company(S.company)?.legal_name||'Seleccionada')});
   if(S.driverFilter)result.push({key:'driver',label:'Chofer: '+(driver(S.driverFilter)?.full_name||driver(S.driverFilter)?.name||'Seleccionado')});
   if(S.truckFilter){const t=truck(S.truckFilter);result.push({key:'truck',label:'Móvil: '+([t?.numero_interno,t?.plate].filter(Boolean).join(' · ')||'Seleccionado')});}
-  if(S.view==='history'&&S.periodSel.mode!=='all')result.push({key:'period',label:'Período: '+(document.querySelector('#os-filter-slots [data-auxf="period"] .auxf-txt')?.textContent?.trim()||S.periodSel.mes||'Personalizado')});
+  if(S.view==='history'&&!isDefaultPeriod(S.periodSel))result.push({key:'period',label:'Período: '+(window.AuxFilters?.describePeriod(S.periodSel,'Todas las fechas')?.titulo||S.periodSel.mes||'Personalizado')});
   return result;
 }
 function removeServiceListFilter(key){
   if(key==='all'){S.status='all';clearFilters();}
   else if(key==='status'){S.status='all';renderServices();}
   else if(key==='query'){S.query='';const q=document.getElementById('os-q');if(q)q.value='';renderServices();}
-  else if(['company','driver','truck','period'].includes(key))onFilterChange(key,key==='period'?{mode:'all'}:'');
+  else if(['company','driver','truck','period'].includes(key))onFilterChange(key,key==='period'?defaultHistoryPeriod():'');
   else return;
   const focus=key==='status'?document.querySelector('#os-status-tabs button.active'):document.querySelector('#os-filter-slots [data-auxf="'+key+'"] [data-auxf-open]');
   (focus||document.getElementById('os-q'))?.focus({preventScroll:true});
@@ -307,7 +310,7 @@ function renderServiceResults(total,shown){
   const filters=serviceListFilters(),available=sourceRows().length;
   const first=total?((S.view==='history'?(S.historyPage||1)-1:0)*HISTORY_PAGE_SIZE)+1:0;
   const label=shown<total?`${first}–${first+shown-1} de ${total} resultados`:`${total} ${total===1?'servicio':'servicios'}`;
-  const count=summary.querySelector('.os-results-count'),text=filters.length?`${label} · de ${available} cargado${available===1?'':'s'}`:`${label} en ${S.view==='history'?'Historial':'Activos'}`;
+  const count=summary.querySelector('.os-results-count'),text=filters.length&&S.view!=='history'?`${label} · de ${available} cargado${available===1?'':'s'}`:`${label} en ${S.view==='history'?'Historial':'Activos'}`;
   if(count.textContent!==text)count.textContent=text;
   summary.querySelector('.os-reset-view').hidden=!filters.length;
   const chips=summary.querySelector('.os-filter-chips'),html=filters.map(f=>`<button type="button" class="os-filter-chip" data-os-remove-filter="${f.key}" aria-label="${esc('Quitar filtro '+f.label)}"><span>${esc(f.label)}</span>${ico('x')}</button>`).join('');
@@ -316,12 +319,70 @@ function renderServiceResults(total,shown){
   chips.hidden=!filters.length;
   const empty=document.getElementById('os-empty');
   if(empty&&!total){
-    empty.innerHTML=filters.length?`<div class="os-empty-help">${ico('search')}<h3>No encontramos servicios con estos filtros</h3><p>Probá otra búsqueda o restablecé la vista para ver todos los servicios cargados.</p><button type="button" class="btn btn-ghost" data-os-empty-reset>Restablecer vista</button></div>`:`<div class="os-empty-help">${ico('check')}<h3>${S.view==='history'?'Todavía no hay servicios en el historial':'No hay servicios activos'}</h3><p>${S.view==='history'?'Los servicios finalizados aparecerán acá.':'Los nuevos servicios aparecerán en esta lista.'}</p></div>`;
+    empty.innerHTML=filters.length?`<div class="os-empty-help">${ico('search')}<h3>No encontramos servicios con estos filtros</h3><p>Probá otra búsqueda o restablecé la vista para ver todos los servicios cargados.</p><button type="button" class="btn btn-ghost" data-os-empty-reset>Restablecer vista</button></div>`:S.view==='history'&&S.historyLoading?`<div class="os-empty-help"><h3>Cargando historial…</h3></div>`:`<div class="os-empty-help">${ico('check')}<h3>${S.view==='history'?'No hay servicios cerrados en '+esc(window.AuxFilters?.describePeriod(S.periodSel,'Todas las fechas')?.titulo||'este período'):'No hay servicios activos'}</h3><p>${S.view==='history'?'Elegí otro mes en Período para ver servicios anteriores.':'Los nuevos servicios aparecerán en esta lista.'}</p></div>`;
     empty.querySelector('[data-os-empty-reset]')?.addEventListener('click',()=>removeServiceListFilter('all'));
   }
 }
 function historyPageKey(){return[S.view,S.status,S.query,S.company,S.driverFilter,S.truckFilter,JSON.stringify(S.periodSel||{})].join('|');}
 function renderPager(total){const wrap=document.querySelector('#screen-operaciones .os-table-wrap');if(!wrap)return;let pager=document.getElementById('os-history-pager');if(S.view!=='history'||total<=HISTORY_PAGE_SIZE){if(pager)pager.hidden=true;return;}if(!pager){pager=document.createElement('nav');pager.id='os-history-pager';pager.className='os-pager';pager.setAttribute('aria-label','Páginas del historial');wrap.after(pager);pager.addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b||b.disabled)return;S.historyPage=Number(b.dataset.page);renderServices();document.querySelector('#screen-operaciones .os-table-wrap')?.scrollIntoView({block:'start',behavior:'smooth'});});}const pages=Math.ceil(total/HISTORY_PAGE_SIZE),cur=S.historyPage,from=(cur-1)*HISTORY_PAGE_SIZE+1,to=Math.min(total,cur*HISTORY_PAGE_SIZE);const nums=[...new Set([1,cur-1,cur,cur+1,pages])].filter(n=>n>=1&&n<=pages).sort((a,b)=>a-b);let last=0,btns='';for(const n of nums){if(n-last>1)btns+='<span class="os-pager-gap">…</span>';btns+=`<button type="button" data-page="${n}" class="${n===cur?'is-current':''}" ${n===cur?'aria-current="page"':''}>${n}</button>`;last=n;}pager.hidden=false;pager.innerHTML=`<span class="os-pager-info">${from}–${to} de ${total}</span><div class="os-pager-pages"><button type="button" data-page="${cur-1}" ${cur<=1?'disabled':''} aria-label="Página anterior">${ico('chevron-left')}</button>${btns}<button type="button" data-page="${cur+1}" ${cur>=pages?'disabled':''} aria-label="Página siguiente">${ico('chevron-right')}</button></div>`;}
+/* Historial completo: list_operator_services trae como mucho los últimos 500/1000 servicios para la mesa activa.
+   Los cerrados del período elegido se piden aparte (list_operator_service_history_v1, por tandas de 500) y se suman a
+   S.services, así el detalle, los menús y los filtros siguen funcionando igual. Lo ya traído queda en S.historyRows. */
+const HISTORY_CHUNK=500;
+function withHistoryExtras(x,previous){const old=previous?.get(String(x.service_id));if(old&&old.historyTolls!==undefined&&x.historyTolls===undefined)x.historyTolls=old.historyTolls;return x;}
+function mergeHistoryRows(){if(!S.historyRows.size)return;const ids=new Set(S.services.map(x=>String(x.service_id)));const docs=S.documentByService||new Map();for(const [id,x] of S.historyRows)if(!ids.has(id))S.services.push({...x,...(docs.get(id)||{}),_documentConnectionLoaded:!!S.documentsLoaded});}
+function historyRange(){const b=window.AuxFilters?.periodBounds(S.periodSel)||{start:null,end:null};return{from:b.start||null,to:b.end||null};}
+/* Un rango ya traído cubre a otro si lo contiene ('' = sin límite). */
+function historyCovered(r){return(S.historyRanges||[]).some(x=>(!x.from||(r.from&&r.from>=x.from))&&(!x.to||(r.to&&r.to<=x.to)));}
+async function fetchHistory(range){
+  const rows=[];
+  for(let offset=0;;offset+=HISTORY_CHUNK){
+    const {data,error}=await _db.rpc('list_operator_service_history_v1',{p_from:range.from,p_to:range.to,p_limit:HISTORY_CHUNK,p_offset:offset});
+    if(error){
+      /* Si la función todavía no está en la base, alcanza con el tope máximo de la lista general. */
+      if(offset===0&&/function|schema cache|PGRST202/i.test(String(error.message||error.code||''))){const r=await _db.rpc('list_operator_services',{p_limit:1000});if(r.error)throw r.error;return(Array.isArray(r.data)?r.data:[]).filter(x=>['completed','cancelled'].includes(x.status));}
+      throw error;
+    }
+    const items=Array.isArray(data?.items)?data.items:[];rows.push(...items);
+    if(!data?.has_more||!items.length)break;
+  }
+  return rows;
+}
+async function loadHistory(){
+  if(!canRead()||typeof _db==='undefined'||S.view!=='history')return;
+  const range=historyRange(),key=`${range.from||''}|${range.to||''}`;
+  if(historyCovered(range)||S.historyLoading===key)return;
+  S.historyLoading=key;renderServices();
+  try{
+    const rows=await fetchHistory(range),docs=S.documentByService||new Map(),previous=new Map(S.services.map(x=>[String(x.service_id),x]));
+    for(const r of rows){const id=String(r.service_id),x=withHistoryExtras({...r,...(docs.get(id)||{}),_documentConnectionLoaded:!!S.documentsLoaded},previous);S.historyRows.set(id,x);const i=S.services.findIndex(y=>String(y.service_id)===id);if(i<0)S.services.push(x);else if(S.services[i].status===x.status)S.services[i]={...x,...S.services[i]};}
+    await enrichOutsourcedNames(S.services);
+    S.historyRanges=[...(S.historyRanges||[]),range];
+  }catch(error){notify(error.message||'No se pudo cargar el historial','error');}
+  finally{if(S.historyLoading===key)S.historyLoading=false;renderServices();}
+}
+/* Peajes sólo de la página que se ve (antes se pedían los de todos los servicios cerrados en cada recarga). */
+let tollsJob=null;
+async function loadPageTolls(rows){
+  const missing=rows.filter(x=>x.historyTolls===undefined&&['completed','cancelled'].includes(x.status));
+  if(!missing.length||tollsJob||!window.AuxiliosHistoryTolls?.enrichServices)return;
+  tollsJob=window.AuxiliosHistoryTolls.enrichServices(missing,_db);
+  try{await tollsJob;}finally{tollsJob=null;}
+  if(S.view==='history')renderServices();
+}
+/* Línea de resumen del período: cuántos, cuántos finalizados/anulados y km. */
+function renderHistoryStats(all){
+  const wrap=document.querySelector('#screen-operaciones .os-table-wrap');if(!wrap)return;
+  let el=document.getElementById('os-history-stats');
+  if(S.view!=='history'){if(el)el.hidden=true;return;}
+  if(!el){el=document.createElement('p');el.id='os-history-stats';el.className='os-history-stats';const summary=document.getElementById('os-results-summary');(summary||wrap).before(el);}
+  const period=window.AuxFilters?.describePeriod(S.periodSel,'Todas las fechas')?.titulo||'';
+  if(S.historyLoading){el.hidden=false;el.innerHTML=`<b>${esc(period)}</b><span>Cargando historial…</span>`;return;}
+  const done=all.filter(x=>x.status==='completed').length,annulled=all.filter(x=>x.status==='cancelled').length,km=Math.round(all.reduce((n,x)=>n+(x.status==='completed'?serviceKm(x):0),0));
+  const parts=[`${all.length.toLocaleString('es-AR')} ${all.length===1?'servicio':'servicios'}`,`${done.toLocaleString('es-AR')} finalizado${done===1?'':'s'}`,annulled?`${annulled.toLocaleString('es-AR')} anulado${annulled===1?'':'s'}`:'',km?`${km.toLocaleString('es-AR')} km`:''].filter(Boolean);
+  const html=`<b>${esc(period)}</b>${parts.map(t=>`<span>${esc(t)}</span>`).join('')}`;
+  if(el.innerHTML!==html)el.innerHTML=html;el.hidden=false;
+}
 function renderServices(){
   if(!canRead())return;
   const table=document.querySelector('#screen-operaciones .os-table-wrap'),position=table?{top:table.scrollTop,left:table.scrollLeft}:null;
@@ -329,7 +390,7 @@ function renderServices(){
   const all=filtered(),body=document.getElementById('os-table-body'),empty=document.getElementById('os-empty');if(!body||!empty)return;
   let rows=all;if(S.view==='history'){const key=historyPageKey();if(S.historyPageKey!==key){S.historyPageKey=key;S.historyPage=1;}const pages=Math.max(1,Math.ceil(all.length/HISTORY_PAGE_SIZE));S.historyPage=Math.min(Math.max(1,S.historyPage||1),pages);rows=all.slice((S.historyPage-1)*HISTORY_PAGE_SIZE,S.historyPage*HISTORY_PAGE_SIZE);}
   S.visibleRows=rows;
-  renderPager(all.length);closeRowMenu();body.innerHTML=rows.map(row).join('');empty.hidden=all.length>0;renderServiceResults(all.length,rows.length);
+  renderPager(all.length);closeRowMenu();body.innerHTML=rows.map(row).join('');empty.hidden=all.length>0;renderServiceResults(all.length,rows.length);renderHistoryStats(all);document.getElementById('screen-operaciones')?.classList.toggle('os-is-history',S.view==='history');if(S.view==='history')void loadPageTolls(rows);
   if(table&&position){table.scrollTop=position.top;table.scrollLeft=position.left;}
   body.dispatchEvent(new CustomEvent('auxilios:services-rendered',{bubbles:true}));
 }
@@ -358,7 +419,7 @@ function closeIntakeLink(){const modal=document.getElementById('os-intake-link')
 async function confirmIntakeLink(){const serviceId=document.getElementById('os-intake-service-select')?.value;if(!S.selectedIntakeId)return;if(!serviceId)return notify('Elegí con qué servicio asociar el remito','warning');if(S.intakeLinkReady!==S.selectedIntakeId+'|'+serviceId||S.intakeLinkBusy)return notify('Esperá a que termine la comparación del ingreso','warning');S.intakeLinkBusy=true;try{const {error}=await _db.rpc('link_driver_service_intake_v1',{p_intake_id:S.selectedIntakeId,p_service_id:serviceId});if(error)return notify(error.message||'No se pudo vincular el ingreso','error');closeIntakeLink();notify('Ingreso vinculado al servicio','success');await loadServices();}finally{S.intakeLinkBusy=false;}}
 function createServiceFromIntake(){const intake=S.intakes.find(x=>String(x.intake_id)===String(S.selectedIntakeId));if(!intake)return notify('El ingreso ya no está disponible','warning');const intakeId=String(intake.intake_id);const modal=document.getElementById('os-intake-link');if(modal){modal.hidden=true;modal.classList.remove('open');}window.OperatorServices?.openWizard?.(intakeId);}
 function filterStatus(status){S.status=status||'all';renderServices();}
-function setView(view){const next=view==='history'?'history':'active',changed=next!==S.view;S.view=next;S.status='all';const title=document.getElementById('os-history-heading');if(title)title.hidden=S.view!=='history';document.querySelector('#screen-operaciones .os-view-switch')?.classList.toggle('is-history',S.view==='history');renderServices();if(changed)for(const el of document.querySelectorAll('#screen-operaciones .os-status-tabs,#screen-operaciones .os-table-wrap')){el.classList.remove('os-view-enter');void el.offsetWidth;el.classList.add('os-view-enter');}}
+function setView(view){const next=view==='history'?'history':'active',changed=next!==S.view;S.view=next;S.status='all';if(S.view==='history')void loadHistory();const title=document.getElementById('os-history-heading');if(title)title.hidden=S.view!=='history';document.querySelector('#screen-operaciones .os-view-switch')?.classList.toggle('is-history',S.view==='history');renderServices();if(changed)for(const el of document.querySelectorAll('#screen-operaciones .os-status-tabs,#screen-operaciones .os-table-wrap')){el.classList.remove('os-view-enter');void el.offsetWidth;el.classList.add('os-view-enter');}}
 function openRowMenu(event,id){
   event?.preventDefault?.();event?.stopPropagation?.();
   const s=service(id),menu=document.getElementById('os-row-menu'),button=event?.currentTarget||event?.target;if(!s||!menu||!button||!canRead())return;
@@ -410,7 +471,7 @@ function hookNavigation(){
 }
 function init(){inject();applyRole();let attempts=0;const boot=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){clearInterval(boot);loadServices();}else if(++attempts>120)clearInterval(boot);},100);S.timer=setInterval(()=>{if(canRead()&&document.visibilityState==='visible'&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices();},30000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&canRead()&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()});}
 Object.assign(O,{driverQueue,queueInfo,driverDone,serviceDriverId,serviceTruckId,isProgrammedService,role,canRead,canManage,canEditHistoryService,canTransitionState,canReviewDocuments,hasSignedRemito,openSignedRemito,esc,num,statusMeta,normalizedStatus,activeServices,historyServices,filtered,company,driver,truck,concept,service,loadBase,loadReferences,loadServices,loadModuleConfig,loadPersonalPreference,renderServices,viewService});
-document.addEventListener('click',event=>{if(event.target.closest?.('#os-refresh'))routeContexts.clear();},true);
+document.addEventListener('click',event=>{if(event.target.closest?.('#os-refresh')){routeContexts.clear();/* Actualizar también vuelve a pedir el historial del período. */S.historyRanges=[];S.historyRows.clear();}},true);
 Object.assign(window,{moverColaServicio:moveQueue,abrirHistorialServicios:()=>{if(!canRead())return;goTo('operaciones');setView('history');},cargarServiciosOperador:loadServices,renderServiciosOperador:renderServices,filtrarEstadoServicios:filterStatus,cambiarVistaServicios:setView,abrirMenuServicio:openRowMenu,cambiarDensidadPersonalServicio:personalDensity,cerrarMenuServicio:closeRowMenu,accionMenuServicio:menuAction,verServicioOperador:viewService,abrirRemitoFirmadoOperador:openSignedRemito,abrirVinculoIngresoChofer:openIntakeLink,cerrarVinculoIngresoChofer:closeIntakeLink,confirmarVinculoIngresoChofer:confirmIntakeLink,confirmarModalIngresoChofer:confirmIntakeModal,elegirModoVinculoIngresoChofer:setIntakeLinkMode,crearServicioDesdeIngresoChofer:createServiceFromIntake,abrirAnularIngreso:openIntakeAnnul,cerrarAnularIngreso:closeIntakeAnnul,confirmarAnularIngreso:confirmIntakeAnnul,personalizarVistaServicios:openPersonalizer,cerrarPersonalizacionServicios:closePersonalizer,cambiarColumnaPersonalServicio:personalVisibility,cambiarDetalleUbicacionPersonalServicio:personalLocationDetail,moverColumnaPersonalServicio:movePersonal,guardarVistaServicios:savePersonal,restaurarVistaServicios:resetPersonal});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();

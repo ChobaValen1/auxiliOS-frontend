@@ -119,3 +119,20 @@
 /* Tercerizada en Chofer / Móvil */
 .os-terc-name{display:block}
 .os-terc-tag{display:inline-block;width:max-content;max-width:100%;margin-top:2px;padding:0 7px;border:1px solid color-mix(in srgb,var(--ax-info,#4a90e2) 40%,transparent);border-radius:999px;background:var(--ax-info-soft,rgba(74,144,226,.12));color:var(--ax-info,#4a90e2);font-size:var(--ax-fs-xs,11px);font-weight:600;line-height:1.6}
+
+/* Historial · resumen del período y tarjetas en celular */
+#screen-operaciones .os-history-stats{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0;margin:0 0 8px;color:var(--ax-text-2,var(--muted2));font-size:var(--ax-fs-md,13px);line-height:1.4}
+#screen-operaciones .os-history-stats[hidden]{display:none}
+#screen-operaciones .os-history-stats b{margin-right:12px;color:var(--ax-text,var(--text));font-size:var(--ax-fs-lg,15px);font-weight:var(--ax-fw-bold,700)}
+#screen-operaciones .os-history-stats span+span::before{content:"·";margin:0 8px;color:var(--ax-text-3,var(--muted))}
+#screen-operaciones .os-tolls-loading{color:var(--ax-text-3,var(--muted));font-size:var(--ax-fs-xs,11px)}
+@media(max-width:720px){
+  /* En Historial no se crean servicios: el botón grande deja lugar a la lista. */
+  #screen-operaciones.os-is-history .os-commandbar .os-manage{display:none}
+  /* Sin peajes no ocupa un renglón de la tarjeta. */
+  #screen-operaciones.os-is-history .os-table td.col-history_tolls:has(.hlt-empty){display:none}
+  #screen-operaciones.os-is-history .os-history-stats b{flex-basis:100%}
+  #screen-operaciones.os-is-history .os-history-stats span:first-of-type::before{content:none}
+}
+@media(max-width:720px){#screen-operaciones.os-is-history .os-history-stats{gap:2px 12px}#screen-operaciones.os-is-history .os-history-stats span+span::before{content:none}}
+#screen-operaciones .os-table th.col-history_tolls{width:120px}
