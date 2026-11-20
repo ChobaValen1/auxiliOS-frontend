@@ -773,47 +773,79 @@
 #screen-facturacion .ob-map-note { margin: var(--ax-sp-2) 0 0; padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 @media (max-width: 760px) { #screen-facturacion .ob-map-box { height: 200px; } }
 
-/* ── Detalle: sin franja superior, emoticones y tres versiones (A, B, C) para comparar ── */
+/* ── Detalle (versión C): sin cajas anidadas, una sola superficie, mapa fijo a la derecha ── */
+#screen-facturacion .ob-detail.ob-detail-areas { width: min(1100px, 96vw); }
+#screen-facturacion .ob-detail-areas .ob-detail-head { padding: 14px 20px; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-detail-areas .ob-detail-head h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-xl, 20px) var(--ax-font-mono); letter-spacing: 0; }
+#screen-facturacion .ob-detail-areas .ob-detail-body { display: block; padding: 4px 20px 20px; }
+#screen-facturacion .ob-detail-areas .ob-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 0 var(--ax-sp-5, 28px); align-items: start; }
+#screen-facturacion .ob-detail-areas .ob-col { display: grid; align-content: start; min-width: 0; }
+#screen-facturacion .ob-detail-areas .ob-col:last-child { position: sticky; top: 0; }
+/* áreas: sin caja, separadas por una línea fina */
+#screen-facturacion .ob-area { border: 0; border-bottom: 1px solid var(--ax-border); border-radius: 0; background: transparent; }
+#screen-facturacion .ob-col > .ob-area:last-child, #screen-facturacion .ob-area-history { border-bottom: 0; }
+#screen-facturacion .ob-area > summary { padding: 14px 0 10px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); color: var(--ax-text-2); letter-spacing: .02em; pointer-events: none; }
+#screen-facturacion .ob-area-body { padding: 0 0 16px; gap: 10px; }
 #screen-facturacion .ob-area-title { display: inline-flex; align-items: center; gap: 8px; }
-#screen-facturacion .ob-area-emoji { font-size: 1.1em; line-height: 1; }
-#screen-facturacion .ob-km-split { color: var(--ax-text-2); }
-#screen-facturacion .ob-variant { display: inline-flex; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); overflow: hidden; margin-right: 4px; }
-#screen-facturacion .ob-variant button { min-width: 28px; height: 30px; padding: 0 8px; border: 0; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); cursor: pointer; }
-#screen-facturacion .ob-variant button.is-on { background: var(--ax-accent); color: var(--ax-accent-fg); }
-#screen-facturacion .ob-detail-areas .ob-detail-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-auto-flow: row dense; }
-/* A y C usan dos columnas independientes (sin huecos entre tarjetas) */
-#screen-facturacion .ob-detail-areas .ob-detail-body { display: block; }
-#screen-facturacion .ob-detail-areas .ob-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--ax-sp-3); align-items: start; }
-#screen-facturacion .ob-detail-areas .ob-col { display: grid; gap: var(--ax-sp-3); align-content: start; min-width: 0; }
-#screen-facturacion .ob-detail-areas .ob-area-history { margin-top: var(--ax-sp-3); }
-#screen-facturacion .v-b .ob-detail-body { display: grid; gap: var(--ax-sp-3); }
-/* B · una columna compacta: datos en fila, mapa al lado de la ruta */
-#screen-facturacion .ob-detail.v-b { width: min(760px, 96vw); }
-#screen-facturacion .v-b .ob-detail-body { grid-template-columns: 1fr; }
-#screen-facturacion .v-b .ob-area { grid-column: 1; }
-#screen-facturacion .v-b .ob-facts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-#screen-facturacion .v-b [data-ob-area="cliente"] .ob-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-area-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-route { grid-template-columns: 1fr; }
-#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-route-arrow { display: none; }
-#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-km-line { grid-column: 1; }
-#screen-facturacion .v-b [data-ob-area="recorrido"] .ob-map-slot { grid-column: 2; grid-row: 1 / span 3; }
-#screen-facturacion .v-b .ob-map-box { height: 190px; }
-/* C · mapa grande a la derecha, todo lo demás a la izquierda */
-#screen-facturacion .ob-detail.v-c { width: min(1100px, 96vw); }
-#screen-facturacion .v-c .ob-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
-#screen-facturacion .v-c .ob-col:last-child { position: sticky; top: 0; }
-#screen-facturacion .v-c .ob-map-box { height: 340px; }
-@media (max-width: 760px) {
-  #screen-facturacion .ob-detail-areas.v-a, #screen-facturacion .ob-detail-areas.v-b, #screen-facturacion .ob-detail-areas.v-c { width: 100%; }
-  #screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; grid-template-columns: 1fr; gap: var(--ax-sp-2); }
-  #screen-facturacion .ob-detail-areas .ob-cols { display: contents; }
-  #screen-facturacion .ob-detail-areas .ob-area { grid-column: 1 !important; grid-row: auto !important; position: static !important; }
-  #screen-facturacion .v-b .ob-facts, #screen-facturacion .v-b [data-ob-area="cliente"] .ob-facts { grid-template-columns: 1fr 1fr; }
-  #screen-facturacion .v-b [data-ob-area="recorrido"] .ob-area-body { grid-template-columns: 1fr; }
-  #screen-facturacion .v-b [data-ob-area="recorrido"] .ob-map-slot { grid-column: 1; grid-row: auto; }
-  #screen-facturacion .ob-variant { display: none; }
+#screen-facturacion .ob-area-emoji { font-size: 1.15em; line-height: 1; }
+#screen-facturacion .ob-area-history { margin-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-area-history > summary { pointer-events: auto; cursor: pointer; }
+#screen-facturacion .ob-area-history .ob-area-chev { display: inline-flex; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-area-history[open] .ob-area-chev { transform: rotate(180deg); }
+/* datos: rótulo tenue arriba, valor firme abajo */
+#screen-facturacion .ob-area .ob-facts { padding: 0; border: 0; gap: 12px 16px; }
+#screen-facturacion .ob-fact small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-fact b { font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-note { margin: 0; padding: 8px 12px; }
+/* recorrido sin caja interior */
+#screen-facturacion .ob-area .ob-route { padding: 0; border: 0; background: transparent; }
+#screen-facturacion .ob-km-line { margin: 0; }
+#screen-facturacion .ob-km-line b { display: inline-block; padding: 2px 10px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); border: 1px solid var(--ax-border); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-km-split { margin-left: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+/* alertas: una línea, sin bloque grande */
+#screen-facturacion .ob-area .ob-hero-change { padding: 6px 10px; font-size: var(--ax-fs-sm); }
+/* mapa */
+#screen-facturacion .ob-map-box { height: 340px; border-radius: var(--ax-radius-lg); }
+#screen-facturacion .ob-map-canvas { animation: ob-fade var(--ax-dur-slow) var(--ax-ease-out) both; }
+#screen-facturacion .ob-map-actions .ob-button { height: var(--ax-h-sm, 32px); padding: 0 10px; border-color: transparent; color: var(--ax-text-2); }
+#screen-facturacion .ob-map-actions .ob-button:hover { border-color: var(--ax-border-strong); color: var(--ax-text); }
+/* pie: importe y acción principal */
+#screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-foot-amount b { color: var(--ax-text); font: var(--ax-fw-semibold) 18px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-detail-pick { min-width: 170px; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+
+/* reacciones de botones del detalle */
+#screen-facturacion .ob-detail .ob-button { transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease), opacity var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-detail .ob-button:not(:disabled):hover { background: var(--ax-surface-2); }
+#screen-facturacion .ob-detail .ob-button.primary:not(:disabled):hover { background: var(--ax-accent-hover); }
+#screen-facturacion .ob-detail .ob-button:not(:disabled):active { transform: scale(.97); }
+#screen-facturacion .ob-detail .ob-button:disabled { opacity: .4; cursor: default; }
+#screen-facturacion .ob-detail .ob-button:focus-visible, #screen-facturacion .ob-area-history > summary:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 2px; }
+
+/* transiciones: el panel entra desde la derecha una sola vez; al pasar de servicio sólo se funde el contenido */
+@keyframes ob-slide-in { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ob-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+#screen-facturacion .ob-detail.is-entering { animation: ob-slide-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#screen-facturacion .ob-detail.is-stepping .ob-detail-body { animation: ob-fade var(--ax-dur) var(--ax-ease-out) both; }
+#screen-facturacion .ob-skel { border-radius: var(--ax-radius-lg); background: linear-gradient(90deg, var(--ax-surface-2) 30%, var(--ax-surface) 50%, var(--ax-surface-2) 70%); background-size: 200% 100%; animation: ob-shimmer 1.3s linear infinite; margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  #screen-facturacion .ob-detail.is-entering, #screen-facturacion .ob-detail.is-stepping .ob-detail-body, #screen-facturacion .ob-map-canvas, #screen-facturacion .ob-skel { animation: none; }
+  #screen-facturacion .ob-detail .ob-button { transition: none; }
 }
-#screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
-#screen-facturacion .ob-foot-amount b { color: var(--ax-text); font: var(--ax-fw-semibold) 18px var(--ax-font-mono); }
-@media (max-width: 760px) { #screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: none; } }
+
+/* celular: acordeones, una columna */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-detail.ob-detail-areas { width: 100%; }
+  #screen-facturacion .ob-detail-areas .ob-detail-head { padding: 12px 14px; }
+  #screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; gap: 0; padding: 0 14px 14px; }
+  #screen-facturacion .ob-detail-areas .ob-cols { display: contents; }
+  #screen-facturacion .ob-detail-areas .ob-col { display: contents; }
+  #screen-facturacion .ob-area > summary { pointer-events: auto; cursor: pointer; min-height: 44px; }
+  #screen-facturacion .ob-area-chev { display: inline-flex; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+  #screen-facturacion .ob-area[open] > summary .ob-area-chev { transform: rotate(180deg); }
+  #screen-facturacion .ob-map-box { height: 200px; }
+  #screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: none; }
+  #screen-facturacion .ob-detail-areas [data-ob-area="recorrido"] { order: 3; }
+  #screen-facturacion .ob-detail-areas [data-ob-area="desglose"] { order: 4; }
+  #screen-facturacion .ob-detail-areas .ob-area-history { order: 9; }
+}

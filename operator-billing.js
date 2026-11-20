@@ -867,7 +867,7 @@
     const navButtons = nav.index >= 0 ? `<div class="ob-detail-nav" role="group" aria-label="Recorrer servicios">
         <button class="ob-button ob-icon-button" type="button" data-ob="detail-prev" ${nav.prev ? '' : 'disabled'} title="Servicio anterior (←)" aria-label="Servicio anterior">${ico('chevron-left')}</button>${pos}<button class="ob-button ob-icon-button" type="button" data-ob="detail-next" ${nav.next ? '' : 'disabled'} title="Servicio siguiente (→)" aria-label="Servicio siguiente">${ico('chevron-right')}</button>
       </div>` : '';
-    return `<div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${extra}${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
+    return `<div class="ob-detail-head"><div><h3 id="ob-detail-title">${esc(title)}</h3></div><div class="ob-detail-actions">${extra}${navButtons}<button class="ob-button" type="button" data-ob="close-detail" title="Cerrar (Esc)">${ico('x')}Cerrar</button></div></div>`;
   }
 
   /* Detalle por áreas, en el orden que se lee una factura:
@@ -877,19 +877,6 @@
   function detailArea(key, title, body, open) {
     if (!body) return '';
     return `<details class="ob-area" data-ob-area="${key}"${open ? ' open' : ''}><summary><span class="ob-area-title"><span class="ob-area-emoji" aria-hidden="true">${AREA_EMOJI[key] || ''}</span>${esc(title)}</span><span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${body}</div></details>`;
-  }
-  const VARIANTS = ['a', 'b', 'c'];
-  /* A: datos a la izquierda, recorrido y costos a la derecha. B: una sola columna.
-     C: mapa grande a la derecha, todo lo demás a la izquierda. */
-  function areasLayout(variant, a) {
-    const col = (...items) => `<div class="ob-col">${items.join('')}</div>`;
-    if (variant === 'b') return `${a.facturacion}${a.cliente}${a.recorrido}${a.desglose}`;
-    if (variant === 'c') return `<div class="ob-cols">${col(a.facturacion, a.cliente, a.desglose)}${col(a.recorrido)}</div>`;
-    return `<div class="ob-cols">${col(a.facturacion, a.cliente)}${col(a.recorrido, a.desglose)}</div>`;
-  }
-  function detailVariant() {
-    if (!S.detailVariant) { let saved = ''; try { saved = localStorage.getItem('ob-detail-variant') || ''; } catch { /* sin storage */ } S.detailVariant = VARIANTS.includes(saved) ? saved : 'a'; }
-    return S.detailVariant;
   }
   const isMobileView = () => Boolean(window.matchMedia?.('(max-width: 760px)').matches);
 
@@ -920,10 +907,9 @@
     const placeBlock = (label, value) => { const p = placeParts(value); return `<div><small>${label}</small><b title="${esc(p.raw)}">${esc(p.top || '—')}</b>${p.sub ? `<span>${esc(p.sub)}</span>` : ''}</div>`; };
     const open = !isMobileView();
     const company = service.company_name || '';
-    const variant = detailVariant();
     const alerts = [
       pricingError ? `<div class="ob-hero-change is-error">${ico('circle-alert')}<span><b>Error tarifario:</b> ${esc(pricingError)}. Corregilo antes de facturar.</span></div>` : '',
-      changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre (${esc(signedMoney(delta, cur))}). Revisá la diferencia antes de facturar.</span></div>` : '',
+      changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre (${esc(signedMoney(delta, cur))}).</span></div>` : '',
       !hasRemito ? `<div class="ob-hero-change">${ico('file-x')}<span>Este servicio no tiene remito cargado.</span></div>` : ''
     ].join('');
 
@@ -940,7 +926,7 @@
       fact('Marca y modelo', esc(service.vehicle_make_model || '')), fact('Patente', esc(service.vehicle_plate || '')));
 
     const areaRecorrido = `<div class="ob-route">${placeBlock('Origen', service.origin)}<span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span>${placeBlock('Destino', service.destination)}</div>
-      ${kmLine ? `<p class="ob-km-line"><small>Distancia</small>${kmLine}</p>` : ''}<div class="ob-map-slot" data-ob-map="${esc(id)}"></div>`;
+      ${kmLine ? `<p class="ob-km-line">${kmLine}</p>` : ''}<div class="ob-map-slot" data-ob-map="${esc(id)}"></div>`;
 
     const areaDesglose = `${componentMarkup(quote)}
       ${separateTolls ? `<p class="ob-tariff">${ico('info')}<span>Más ${esc(money(quote.separate_toll_amount, cur))} de peajes que se facturan por separado.</span></p>` : ''}
@@ -950,10 +936,10 @@
     const revisions = Array.isArray(detail.revisions) ? detail.revisions : [];
     const history = `<details class="ob-area ob-area-history" data-ob-area="history"><summary><span class="ob-area-title"><span class="ob-area-emoji" aria-hidden="true">${AREA_EMOJI.history}</span>Historial de Facturación (${revisions.length})</span><span class="ob-area-chev" aria-hidden="true">${ico('chevron-down')}</span></summary><div class="ob-area-body">${revisionTimeline(revisions, cur)}</div></details>`;
 
-    const switcher = `<div class="ob-variant" role="group" aria-label="Versión del detalle">${['a', 'b', 'c'].map(v => `<button type="button" class="${variant === v ? 'is-on' : ''}" data-ob="detail-variant" data-variant="${v}" aria-pressed="${variant === v}">${v.toUpperCase()}</button>`).join('')}</div>`;
 
-    return `<aside class="ob-detail ob-detail-areas v-${variant}" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio', switcher)}<div class="ob-detail-body">
-      ${areasLayout(variant, { facturacion: detailArea('facturacion', 'Info de Facturación', areaFact, true), cliente: detailArea('cliente', 'Cliente y Vehículo', areaCliente, true), recorrido: detailArea('recorrido', 'Recorrido', areaRecorrido, open), desglose: detailArea('desglose', 'Desglose de costos', areaDesglose, open) })}${history}
+    const fade = S.detailFade; S.detailFade = false;
+    return `<aside class="ob-detail ob-detail-areas${fade ? ' is-stepping' : ''}" role="dialog" aria-modal="true" aria-labelledby="ob-detail-title" tabindex="-1">${detailHeadMarkup(service.service_order_number || service.service_number || 'Servicio')}<div class="ob-detail-body">
+      <div class="ob-cols"><div class="ob-col">${detailArea('facturacion', 'Info de Facturación', areaFact, true)}${detailArea('cliente', 'Cliente y Vehículo', areaCliente, true)}${detailArea('desglose', 'Desglose de costos', areaDesglose, open)}</div><div class="ob-col">${detailArea('recorrido', 'Recorrido', areaRecorrido, open)}</div></div>${history}
     </div>${`<footer class="ob-detail-foot"><small class="ob-foot-amount">Importe a facturar <b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>${selected ? ` · ${esc(joinParts(selectionParts()))} en la factura` : ''}</small><div>${remito}${pick}</div></footer>`}</aside>`;
   }
 
@@ -1003,7 +989,7 @@
     const area = slot.closest('details');
     if (area && !area.open) { area.addEventListener('toggle', () => { if (area.open) mountMap(document.getElementById('screen-facturacion') || screen); }, { once: true }); return; }
     const job = ++MAP.job;
-    slot.innerHTML = `<div class="ob-map-box"><div class="ob-map-loading">Cargando mapa…</div></div><div class="ob-map-actions">${mapLinks(service, points)}<button class="ob-button" type="button" data-ob="map-expand" data-service-id="${esc(S.detailId)}">${ico('map')}Ampliar</button></div>${path.length ? '' : '<p class="ob-map-note">Sin trazado guardado: se muestran sólo el origen y el destino.</p>'}`;
+    slot.innerHTML = `<div class="ob-map-box"><div class="ob-map-loading">Cargando mapa…</div></div><div class="ob-map-actions">${mapLinks(service, points)}<button class="ob-button" type="button" data-ob="map-expand" data-service-id="${esc(S.detailId)}">${ico('map')}Ampliar</button></div>`;
     try {
       const maps = await SRM.loadSdk();
       if (job !== MAP.job || !slot.isConnected) return;
@@ -1024,6 +1010,7 @@
         MAP.markers.push(new maps.Marker({ map: MAP.map, position: point, label, title }));
         bounds.extend(point);
       });
+      if (!path.length) slot.insertAdjacentHTML('beforeend', '<p class="ob-map-note">Sin trazado guardado: se muestran sólo el origen y el destino.</p>');
       maps.event.trigger(MAP.map, 'resize');
       MAP.map.fitBounds(bounds, 24);
     } catch (error) {
@@ -1091,7 +1078,7 @@
       : S.invoiceOpen
         ? invoiceModalMarkup()
         : S.detailLoading
-          ? `<aside class="ob-detail" aria-busy="true">${detailHeadMarkup(orderCode(rowById(S.detailId)) || 'Servicio')}<div class="ob-empty">Calculando detalle de facturación…</div></aside>`
+          ? `<aside class="ob-detail ob-detail-areas${S.detailEnter ? ' is-entering' : ''}" aria-busy="true" aria-label="Cargando detalle">${detailHeadMarkup(orderCode(rowById(S.detailId)) || 'Servicio')}<div class="ob-detail-body"><div class="ob-cols"><div class="ob-col"><div class="ob-skel" style="height:150px"></div><div class="ob-skel" style="height:90px"></div><div class="ob-skel" style="height:220px"></div></div><div class="ob-col"><div class="ob-skel" style="height:380px"></div></div></div></div></aside>`
           : S.detail ? detailMarkup() : '';
     // Centrado para la factura y para el confirmar; el detalle va pegado a la
     // derecha, que es de donde sale.
@@ -1103,6 +1090,7 @@
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;
     S.tabChanged = false;
+    if (S.detailEnter && S.detailLoading) S.detailEnter = false;
     restoreView(screen, view);
     tweenAmounts(screen);
     if (S.detail) mountMap(screen);
@@ -1165,6 +1153,7 @@
     const token = (S.detailToken || 0) + 1;
     S.detailToken = token;
     S.invoiceOpen = false;
+    S.detailEnter = !S.detailId;   // el panel se desliza sólo al abrirse, no al pasar de un servicio a otro
     S.detail = null;
     S.detailId = String(id);
     S.detailLoading = true;
@@ -1193,7 +1182,7 @@
   function stepDetail(step) {
     const nav = detailNav();
     const target = step < 0 ? nav.prev : nav.next;
-    if (target) openDetail(target.service_id);
+    if (target) { S.detailFade = true; openDetail(target.service_id); }
   }
 
   function openRowAction(id, type) {
@@ -1521,7 +1510,6 @@
     if (action === 'columns') return colsFor(S.tab).open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'map-expand') { const btn = event.target.closest('[data-service-id]'); if (btn) ensureRouteMap().then(srm => srm?.open?.(btn.dataset.serviceId, btn)); return; }
-    if (action === 'detail-variant') { const v = event.target.closest('[data-variant]')?.dataset.variant; if (VARIANTS.includes(v)) { S.detailVariant = v; try { localStorage.setItem('ob-detail-variant', v); } catch { /* sin storage */ } render(); } return; }
     if (action === 'detail-prev') return stepDetail(-1);
     if (action === 'detail-next') return stepDetail(1);
     if (action === 'detail-toggle-select') { if (S.detailId) toggleSelection(S.detailId, !S.selected.has(String(S.detailId))); return; }

@@ -122,13 +122,14 @@ test('el detalle se ordena en cinco áreas y esconde lo que el servicio no tiene
     revisions: []
   };
   const html = B._test.detailMarkup();
-  const order = ['Info de Facturación', 'Cliente y Vehículo', 'Recorrido', 'Desglose de costos', 'Historial de Facturación'].map(t => html.indexOf(t));
+  const order = ['Info de Facturación', 'Cliente y Vehículo', 'Desglose de costos', 'Recorrido', 'Historial de Facturación'].map(t => html.indexOf(t));
   assert.ok(order.every(i => i > 0), 'faltan áreas: ' + order);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   assert.match(html, /La tarifa cambió/);
   assert.doesNotMatch(html, /ob-detail-summary/);
-  assert.match(html, /🧾[\s\S]*🚗[\s\S]*📍[\s\S]*💰/);
-  assert.match(html, /data-variant="a"[\s\S]*data-variant="b"[\s\S]*data-variant="c"/);
+  assert.match(html, /🧾[\s\S]*🚗[\s\S]*💰[\s\S]*📍/);
+  assert.doesNotMatch(html, /data-variant|Pendiente/);
+  assert.match(html, /class="ob-cols"/);
   assert.match(html, /no tiene remito/);
   assert.match(html, /data-ob-map="s1"/);
   // Sin patente, ni DNI, ni notas: no aparecen rótulos vacíos.
@@ -138,7 +139,8 @@ test('el detalle se ordena en cinco áreas y esconde lo que el servicio no tiene
 
 test('en celular las áreas son acordeones', () => {
   assert.match(css, /\.ob-area > summary \{[^}]*min-height: 44px/);
-  assert.match(css, /\.ob-detail-areas \.ob-detail-body \{ display: grid; grid-template-columns: 1fr;/);
+  assert.match(css, /\.ob-detail-areas \.ob-detail-body \{ display: grid; gap: 0;/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{\s*#screen-facturacion \.ob-detail\.is-entering/);
 });
 
 test('el detalle pide la v5 (con recorrido) y cae a la v4 si la base no la tiene; el mapa reutiliza una sola instancia', () => {
