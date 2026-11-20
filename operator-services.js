@@ -464,7 +464,7 @@ function hookNavigation(){
     if(screen?.classList.contains('active')&&table)position={top:table.scrollTop,left:table.scrollLeft};
     if(name==='operaciones')registerScreenMetadata();
     const result=base(name,...args);
-    if(name==='operaciones'){if(table){table.scrollTop=position.top;table.scrollLeft=position.left;}loadServices();}
+    if(name==='operaciones'){if(table){table.scrollTop=position.top;table.scrollLeft=position.left;}/* Al volver a Servicios (por ejemplo después de corregir un servicio cerrado desde Facturación) el historial se pide de nuevo: así no queda una copia vieja de un servicio fuera de la lista general. */S.historyRanges=[];S.historyRows.clear();loadServices();}
     return result;
   };
   window.__osNavHook=true;return true;
