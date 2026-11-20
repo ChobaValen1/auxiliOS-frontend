@@ -84,41 +84,77 @@
 #screen-operaciones .os-intakes > summary small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #screen-operaciones .os-intakes > summary > span { min-width: 0; }
 #screen-operaciones .os-intakes > summary b, #screen-operaciones .os-intakes > summary small { white-space: normal; }
-#screen-operaciones .os-intakes > summary strong { flex: 0 0 auto; color: var(--ax-warn); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
+#screen-operaciones .os-intakes > summary strong { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 2px 8px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); text-align: right; }
+#screen-operaciones .os-intakes > summary strong i { font-style: normal; color: var(--ax-text-3); }
+#screen-operaciones .os-intakes .osi-sum-ready { color: var(--ax-warn); font-weight: var(--ax-fw-bold); white-space: nowrap; }
+#screen-operaciones .os-intakes .osi-sum-wait, #screen-operaciones .os-intakes .osi-sum-age { white-space: nowrap; }
+#screen-operaciones .os-intakes .osi-sum-age.is-late { color: var(--ax-danger); }
 
-/* Lista: una fila por ingreso que entra completa en 1366 px; en el celular, tarjetas. */
+/* Cola: una fila por ingreso, del que más espera al más nuevo. Entra completa desde 1100 px; más angosto, tarjetas. */
 #screen-operaciones .os-intake-list { overflow: visible; max-height: none; background: var(--ax-surface-2); border-radius: 0 0 var(--ax-radius-lg) var(--ax-radius-lg); }
-#screen-operaciones .osi-head, #screen-operaciones .osi-row { display: grid; grid-template-columns: 128px minmax(0, 2fr) minmax(0, 1.2fr) 112px 104px 160px 142px; gap: var(--ax-sp-3); align-items: center; padding: 10px 14px; }
+#screen-operaciones .osi-head, #screen-operaciones .osi-row { display: grid; grid-template-columns: minmax(112px, .8fr) minmax(0, 1.5fr) minmax(0, 1.15fr) minmax(0, 1fr) 96px minmax(150px, 1.35fr) 144px; gap: var(--ax-sp-3); align-items: center; padding: 10px 14px; }
 #screen-operaciones .osi-head { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
-#screen-operaciones .osi-row { border-bottom: 1px solid var(--ax-border); }
-#screen-operaciones .osi-row:last-child { border-bottom: 0; }
+#screen-operaciones .osi-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#screen-operaciones .osi-row { position: relative; border-bottom: 1px solid var(--ax-border); }
+#screen-operaciones .osi-group:last-child .osi-row:last-child { border-bottom: 0; }
 #screen-operaciones .osi-row:hover { background: var(--ax-surface-3); }
+/* Demorado (más de 24 h): una marca a la izquierda y el tiempo en rojo. */
+#screen-operaciones .osi-row[data-late="true"][data-state="ready"]::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--ax-danger); }
+#screen-operaciones .osi-row[data-late="true"] .osi-age { color: var(--ax-danger); font-weight: var(--ax-fw-semibold); }
 #screen-operaciones .osi-cell { display: grid; gap: 3px; min-width: 0; }
 #screen-operaciones .osi-cell b, #screen-operaciones .osi-cell small, #screen-operaciones .osi-place { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #screen-operaciones .osi-cell b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
 #screen-operaciones .osi-cell small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #screen-operaciones .osi-id b { font-family: var(--ax-font-mono); }
-#screen-operaciones .osi-id small:last-child { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
-#screen-operaciones .osi-place { position: relative; padding-left: 16px; color: var(--ax-text); font-size: var(--ax-fs-md); }
-#screen-operaciones .osi-place i { position: absolute; left: 2px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; border: 2px solid var(--ax-text-2); }
-#screen-operaciones .osi-place i.to { border-radius: 2px; background: var(--ax-text-2); }
+#screen-operaciones .osi-id .osi-age { white-space: normal; }
+#screen-operaciones .osi-id .osi-docs { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-operaciones .osi-trip { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-operaciones .osi-trip .osi-place { flex: 0 1 auto; min-width: 0; }
+#screen-operaciones .osi-arrow { flex: 0 0 auto; color: var(--ax-text-3); font-weight: var(--ax-fw-regular, 400); }
 #screen-operaciones .osi-charges b { font-family: var(--ax-font-mono); }
 #screen-operaciones .osi-state { justify-items: start; }
-#screen-operaciones .osi-kind { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-kind { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
 #screen-operaciones .osi-status { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
 #screen-operaciones .osi-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
 #screen-operaciones .osi-status.ready { color: var(--ax-warn); }
 #screen-operaciones .osi-status.ready::before { background: var(--ax-warn); }
+/* Servicio posible: el mismo criterio que la ventana de asociar (2 o más datos coinciden). */
+#screen-operaciones .osi-row > .osi-action { grid-column: 7; grid-row: 1; }
+#screen-operaciones .osi-match { grid-column: 2 / 7; grid-row: 2; display: flex; gap: 8px; align-items: center; justify-self: start; min-width: 0; max-width: 100%; margin-top: -2px; padding: 5px 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-operaciones .osi-match > .ax-icon { flex: 0 0 auto; width: 14px; height: 14px; color: var(--ax-accent); }
+#screen-operaciones .osi-match > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+#screen-operaciones .osi-match b { font-size: var(--ax-fs-sm) !important; }
+#screen-operaciones .osi-match small { color: var(--ax-text-3) !important; font-size: var(--ax-fs-xs) !important; }
 #screen-operaciones .osi-action { justify-items: end; }
-#screen-operaciones .osi-action .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#screen-operaciones .osi-action .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; white-space: nowrap; }
 #screen-operaciones .osi-action .ax-icon { width: 15px; height: 15px; }
 #screen-operaciones .osi-wait { color: var(--ax-text-3) !important; text-align: right; white-space: normal !important; }
+/* Esperando la firma: abajo y más apagados, porque todavía no hay nada para hacer. */
+#screen-operaciones .osi-subhead { padding: 8px 14px; border-top: 1px solid var(--ax-border); border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-group:first-of-type:empty + .osi-subhead { border-top: 0; }
+#screen-operaciones .osi-group-waiting .osi-cell b, #screen-operaciones .osi-group-waiting .osi-trip { color: var(--ax-text-2); }
 @media (max-width: 1100px) {
   #screen-operaciones .osi-head { display: none; }
-  #screen-operaciones .osi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id state" "route route" "client driver" "charges action"; gap: 10px var(--ax-sp-3); padding: 12px 14px; }
+  #screen-operaciones .osi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id state" "route route" "client driver" "match match" "charges action"; gap: 10px var(--ax-sp-3); padding: 12px 14px; }
+  #screen-operaciones .osi-match { grid-area: match; margin-top: 0; }
   #screen-operaciones .osi-id { grid-area: id; } #screen-operaciones .osi-route { grid-area: route; } #screen-operaciones .osi-client { grid-area: client; }
-  #screen-operaciones .osi-driver { grid-area: driver; } #screen-operaciones .osi-charges { grid-area: charges; } #screen-operaciones .osi-state { grid-area: state; justify-items: end; } #screen-operaciones .osi-action { grid-area: action; align-self: end; }
-  #screen-operaciones .osi-place { white-space: normal; }
+  #screen-operaciones .osi-driver { grid-area: driver; } #screen-operaciones .osi-charges { grid-area: charges; } #screen-operaciones .osi-state { grid-area: state; justify-items: end; text-align: right; } #screen-operaciones .osi-row > .osi-action { grid-area: action; align-self: end; }
+  #screen-operaciones .osi-trip { flex-wrap: wrap; }
+  #screen-operaciones .osi-trip .osi-place { white-space: normal; }
+}
+/* Celular: el servicio posible a todo el ancho y el botón grande abajo, con Anular al costado. */
+@media (max-width: 640px) {
+  #screen-operaciones .os-intakes > summary { flex-wrap: wrap; }
+  #screen-operaciones .os-intakes > summary strong { flex-basis: 100%; justify-content: flex-start; padding-left: 22px; text-align: left; }
+  #screen-operaciones .os-intakes > summary > span > small { display: none; }
+  #screen-operaciones .osi-row { grid-template-areas: "id state" "route route" "client driver" "match match" "charges charges" "action action"; gap: 8px var(--ax-sp-3); }
+  #screen-operaciones .osi-match { grid-area: match; margin-top: 0; }
+  #screen-operaciones .osi-match > span { display: grid; gap: 1px; }
+  #screen-operaciones .osi-charges { grid-area: charges; }
+  #screen-operaciones .osi-action { display: flex !important; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 12px; }
+  #screen-operaciones .osi-action .btn { flex: 1 1 auto; min-height: 44px; }
+  #screen-operaciones .osi-action .osi-wait { text-align: left; }
+  #screen-operaciones .osi-annul { min-height: 44px; }
 }
 #os-intake-link .os-intake-hint { margin: 0 12px; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: 1.45; }
 #os-intake-link .os-intake-summary small + small { color: var(--ax-text-3); }
