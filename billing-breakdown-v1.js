@@ -12,7 +12,9 @@
 (function (global) {
   'use strict';
 
-  var UNIDADES = { fixed: 'Fijo', fijo: 'Fijo', km: 'Por km', hour: 'Por hora', hora: 'Por hora', unit: 'Por unidad', recargo: 'Recargo', peajes: 'Peajes' };
+  var UNIDADES = { service: 'Fijo por servicio', fixed: 'Fijo', fijo: 'Fijo', km: 'Por km', hour: 'Por hora', hora: 'Por hora', unit: 'Por unidad', recargo: 'Recargo', peajes: 'Peajes' };
+  /* De dónde sale el precio, en palabras (el código interno no le dice nada a quien factura). */
+  var FUENTES = { general: 'Tarifa general', linked_primary: 'Según el servicio principal', base: 'Tarifa de la base', company: 'Tarifa de la prestadora', manual: 'Precio manual' };
   var RECARGOS = { holiday: 'Recargo por feriado', night: 'Recargo nocturno', weekend: 'Recargo de fin de semana', waiting: 'Recargo por espera' };
 
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
@@ -35,7 +37,7 @@
       out.push({
         tipo: 'concepto', etiqueta: c.service_name || c.role || 'Concepto',
         codigo: c.instance_code || '',
-        detalle: [c.instance_code ? 'Prestación ' + c.instance_code : '', u, c.price_source].filter(Boolean).join(' · '),
+        detalle: [c.instance_code ? 'Prestación ' + c.instance_code : '', u, FUENTES[c.price_source] || c.price_source].filter(Boolean).join(' · '),
         cantidad: c.quantity == null ? 1 : num(c.quantity), unitario: num(c.unit_price), importe: num(c.subtotal)
       });
     });
