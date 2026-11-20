@@ -98,7 +98,7 @@ function clearFilters(){Object.assign(S,{status:'all',query:'',company:'all',dri
 /* La consulta administrativa histórica no incluye el nombre del tercerizado.
    Se completa en lote con una proyección que no solicita costos ni importes. */
 async function enrichOutsourcedNames(rows){const missing=rows.filter(s=>s.logistics_type==='third_party'&&!s.outsourced_provider_name);if(!missing.length||role()!=='administracion')return;const ids=[...new Set(missing.map(s=>s.service_id))];try{const {data,error}=await _db.from('outsourced_service_costs').select('service_id,provider:outsourced_providers(display_name)').in('service_id',ids);if(error)throw error;const names=new Map((data||[]).map(row=>[String(row.service_id),(Array.isArray(row.provider)?row.provider[0]:row.provider)?.display_name]));for(const s of missing){const name=names.get(String(s.service_id));if(name)s.outsourced_provider_name=name;}}catch(error){for(const s of missing)s._outsourcedNameUnavailable=true;console.warn('[Servicios] No se pudo cargar el nombre del tercerizado:',error.message||error);}}
-async function loadServices(){if(!canRead()||S.loading||typeof _db==='undefined')return;S.loading=true;window.AuxiliosKmRounding?.load();document.getElementById('os-refresh')?.setAttribute('data-state','loading');try{await Promise.all([loadReferences(),S.settingsLoaded?Promise.resolve():loadModuleConfig(),loadPersonalPreference()]);const intakeRequest=['administracion','operador','supervision'].includes(role())?_db.rpc('list_driver_service_intakes_v2',{p_limit:200}):Promise.resolve({data:[],error:null});const [{data,error},{data:documents,error:documentError},{data:intakes,error:intakeError},{data:activated,error:activatedError}]=await Promise.all([_db.rpc('list_operator_services',{p_limit:500}),_db.rpc('list_operator_service_document_connections_v2'),intakeRequest,_db.rpc('list_driver_activated_services_v1',{p_limit:200})]);if(error)throw error;if(documentError)throw documentError;if(intakeError)throw intakeError;if(activatedError&&!/function.*does not exist|schema cache/i.test(activatedError.message||''))console.warn('[Servicios] No se pudieron cargar ACTIVADO:',activatedError.message);const documentByService=new Map((Array.isArray(documents)?documents:[]).map(x=>[String(x.service_id),x])),serviceById=new Map((Array.isArray(data)?data:[]).map(x=>[String(x.service_id),x]));for(const row of Array.isArray(activated)?activated:[])serviceById.set(String(row.service_id),{...(serviceById.get(String(row.service_id))||{}),...row});S.documentByService=documentByService;S.documentsLoaded=Array.isArray(documents);const previous=new Map(S.services.map(x=>[String(x.service_id),x]));S.services=[...serviceById.values()].map(x=>withHistoryExtras({...x,...(documentByService.get(String(x.service_id))||{}),_documentConnectionLoaded:Array.isArray(documents)},previous));mergeHistoryRows();await enrichOutsourcedNames(S.services);if(S.view==='history')void loadHistory();S.intakes=Array.isArray(intakes)?intakes:[];renderServices();applyRole();}catch(error){notify(error.message||'No se pudieron cargar los servicios','error');}finally{S.loading=false;document.getElementById('os-refresh')?.removeAttribute('data-state');}}
+async function loadServices(){if(!canRead()||S.loading||typeof _db==='undefined')return;S.loading=true;window.AuxiliosKmRounding?.load();document.getElementById('os-refresh')?.setAttribute('data-state','loading');try{await Promise.all([loadReferences(),S.settingsLoaded?Promise.resolve():loadModuleConfig(),loadPersonalPreference()]);const intakeRequest=['administracion','operador','supervision'].includes(role())?_db.rpc('list_driver_service_intakes_v2',{p_limit:200}):Promise.resolve({data:[],error:null});const [{data,error},{data:intakes,error:intakeError},{data:activated,error:activatedError}]=await Promise.all([fetchActiveServices(),intakeRequest,_db.rpc('list_driver_activated_services_v1',{p_limit:200})]);if(error)throw error;if(intakeError)throw intakeError;if(activatedError&&!/function.*does not exist|schema cache/i.test(activatedError.message||''))console.warn('[Servicios] No se pudieron cargar ACTIVADO:',activatedError.message);const serviceById=new Map((Array.isArray(data)?data:[]).map(x=>[String(x.service_id),x]));for(const row of Array.isArray(activated)?activated:[])serviceById.set(String(row.service_id),{...(serviceById.get(String(row.service_id))||{}),...row});{const ids=[...serviceById.keys()],res=await fetchDocuments(ids);if(res.error)throw res.error;storeDocuments(ids,Array.isArray(res.data)?res.data:[]);S.documentsLoaded=Array.isArray(res.data);}const documentByService=S.documentByService;const previous=new Map(S.services.map(x=>[String(x.service_id),x]));S.services=[...serviceById.values()].map(x=>withHistoryExtras({...x,...(documentByService.get(String(x.service_id))||{}),_documentConnectionLoaded:!!S.documentsLoaded},previous));mergeHistoryRows();await enrichOutsourcedNames(S.services);if(S.view==='history')void loadHistory();S.intakes=Array.isArray(intakes)?intakes:[];renderServices();applyRole();}catch(error){notify(error.message||'No se pudieron cargar los servicios','error');}finally{S.loading=false;document.getElementById('os-refresh')?.removeAttribute('data-state');}}
 const loadBase=loadReferences;
 function needsAttention(s){const key=normalizedStatus(s.status),missing=!s.assigned_driver_id||!s.assigned_truck_id,overdue=['pending','assigned'].includes(key)&&s.scheduled_for&&new Date(s.scheduled_for).getTime()<Date.now(),documentAttention=['observed','exception_requested','exception_rejected'].includes(s.document_status)||['pending','correction_required','rejected'].includes(s.administrative_review_status)||(key==='at_origin'&&s.document_status==='submitted');return pendingRemitoReview(s)||missing||overdue||documentAttention;}
 function sourceRows(){return S.view==='history'?historyServices():activeServices();}
@@ -334,6 +334,30 @@ function mergeHistoryRows(){if(!S.historyRows.size)return;const ids=new Set(S.se
 function historyRange(){const b=window.AuxFilters?.periodBounds(S.periodSel)||{start:null,end:null};return{from:b.start||null,to:b.end||null};}
 /* Un rango ya traído cubre a otro si lo contiene ('' = sin límite). */
 function historyCovered(r){return(S.historyRanges||[]).some(x=>(!x.from||(r.from&&r.from>=x.from))&&(!x.to||(r.to&&r.to<=x.to)));}
+/* Lista liviana de Activos y remitos por ids: antes cada refresco bajaba 500 servicios y todos los remitos (~6 MB) para mostrar unos pocos.
+   Si las funciones nuevas no están en la base, se usan las anteriores. */
+const missingFn=e=>/function|schema cache|PGRST202/i.test(String(e?.message||e?.code||''));
+async function fetchActiveServices(){
+  const r=await _db.rpc('list_operator_active_services_v1',{p_limit:500});
+  if(r.error&&missingFn(r.error)){S.lightLists=false;return _db.rpc('list_operator_services',{p_limit:500});}
+  S.lightLists=true;return r;
+}
+async function fetchDocuments(ids){
+  if(S.lightLists===false)return _db.rpc('list_operator_service_document_connections_v2');
+  const out=[];
+  for(let i=0;i<ids.length;i+=500){
+    const r=await _db.rpc('list_operator_service_document_connections_v3',{p_service_ids:ids.slice(i,i+500)});
+    if(r.error&&missingFn(r.error)){S.lightLists=false;return _db.rpc('list_operator_service_document_connections_v2');}
+    if(r.error)return r;
+    out.push(...(Array.isArray(r.data)?r.data:[]));
+  }
+  return{data:out,error:null};
+}
+function storeDocuments(ids,docs){
+  const m=S.documentByService instanceof Map?S.documentByService:(S.documentByService=new Map());
+  if(S.lightLists!==false)for(const id of ids)m.delete(String(id));
+  for(const d of docs)m.set(String(d.service_id),d);
+}
 async function fetchHistory(range){
   const rows=[];
   for(let offset=0;;offset+=HISTORY_CHUNK){
@@ -354,7 +378,7 @@ async function loadHistory(){
   if(historyCovered(range)||S.historyLoading===key)return;
   S.historyLoading=key;renderServices();
   try{
-    const rows=await fetchHistory(range),docs=S.documentByService||new Map(),previous=new Map(S.services.map(x=>[String(x.service_id),x]));
+    const rows=await fetchHistory(range);{const ids=rows.map(r=>String(r.service_id)),res=await fetchDocuments(ids);if(res.error)throw res.error;storeDocuments(ids,Array.isArray(res.data)?res.data:[]);S.documentsLoaded=true;}const docs=S.documentByService||new Map(),previous=new Map(S.services.map(x=>[String(x.service_id),x]));
     for(const r of rows){const id=String(r.service_id),x=withHistoryExtras({...r,...(docs.get(id)||{}),_documentConnectionLoaded:!!S.documentsLoaded},previous);S.historyRows.set(id,x);const i=S.services.findIndex(y=>String(y.service_id)===id);if(i<0)S.services.push(x);else if(S.services[i].status===x.status)S.services[i]={...x,...S.services[i]};}
     await enrichOutsourcedNames(S.services);
     S.historyRanges=[...(S.historyRanges||[]),range];

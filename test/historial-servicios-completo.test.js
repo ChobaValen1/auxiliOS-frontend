@@ -38,3 +38,17 @@ test('Historial de Servicios: peajes sólo de la página visible y resumen del p
   const css = read('operator-services.css');
   assert.match(css, /#screen-operaciones\.os-is-history \.os-commandbar \.os-manage\{display:none\}/);
 });
+
+test('Servicios: Activos baja una lista liviana y los remitos sólo de los servicios que se ven', () => {
+  const js = read('operator-services.js');
+  assert.match(js, /_db\.rpc\('list_operator_active_services_v1',\{p_limit:500\}\)/);
+  assert.match(js, /_db\.rpc\('list_operator_service_document_connections_v3',\{p_service_ids:ids\.slice\(i,i\+500\)\}\)/);
+  // Sin las funciones nuevas en la base vuelve a las anteriores.
+  assert.match(js, /_db\.rpc\('list_operator_services',\{p_limit:500\}\)/);
+  assert.match(js, /_db\.rpc\('list_operator_service_document_connections_v2'\)/);
+  // El historial pide los remitos de sus filas, no todos.
+  assert.match(js, /const ids=rows\.map\(r=>String\(r\.service_id\)\),res=await fetchDocuments\(ids\)/);
+  assert.doesNotMatch(js, /Promise\.all\(\[_db\.rpc\('list_operator_services'/);
+  const sql = read('migrations/20261120150000_servicios_activos_liviano_v1.sql');
+  assert.match(sql, /revoke all on function public\.list_operator_active_services_v1\(integer\) from public, anon/);
+});
