@@ -5,7 +5,6 @@ const vm = require('node:vm');
 
 const js = fs.readFileSync('dashboard-zoom-v1.js', 'utf8').replace(/\r\n/g, '\n');
 const index = fs.readFileSync('Index.html', 'utf8').replace(/\r\n/g, '\n');
-const tend = fs.readFileSync('dashboard-tendencia-v1.js', 'utf8').replace(/\r\n/g, '\n');
 const res = fs.readFileSync('dashboard-resumen-v1.js', 'utf8').replace(/\r\n/g, '\n');
 const sql = fs.readFileSync('migrations/20261007170000_dashboard_historia_v1.sql', 'utf8').replace(/\r\n/g, '\n');
 
@@ -18,12 +17,10 @@ function cargar(db) {
   return win.AuxZoom;
 }
 
-test('el zoom se carga antes que Resumen y Tendencia, y Tendencia suma la escala por mes', () => {
+test('el zoom se carga antes que Resumen', () => {
   const i = s => index.indexOf(s);
   assert.ok(i('dashboard-zoom-v1.js') > 0);
   assert.ok(i('dashboard-zoom-v1.js') < i('dashboard-resumen-v1.js'));
-  assert.ok(i('dashboard-zoom-v1.js') < i('dashboard-tendencia-v1.js'));
-  assert.match(index, /data-tnd-escala="mes"/);
   // Arrastrar en la evolución de Resumen no tiene que abrir Tendencia: sólo el botón.
   assert.doesNotMatch(index, /id="rsm-evol-card"[^>]*onclick/);
   assert.match(index, /<button type="button" class="rsm-link" onclick="dashxIrATendencia\(\)">/);
@@ -98,14 +95,13 @@ test('sin la función nueva, el zoom usa el período y su anterior pegados', asy
   eq(h.servicios, [0, 0, 0, 0, 0, 0]);
 });
 
-test('Resumen y Tendencia piden la historia y redibujan sin animar al hacer zoom', () => {
-  for (const [nombre, src] of [['tendencia', tend], ['resumen', res]]) {
+test('Resumen pide la historia y redibujan sin animar al hacer zoom', () => {
+  for (const [nombre, src] of [['resumen', res]]) {
     assert.match(src, /Z \? Z\.historia\(f\) : null/, nombre);
     assert.match(src, /Z\.historiaDePeriodo\(/, nombre);
     assert.match(src, /\.update\('none'\)/, nombre);
     assert.match(src, /cs\[k\]\.a > L\.hoy \? null : v/, nombre + ': la línea termina hoy');
   }
-  assert.match(tend, /navegador: true/);
   assert.match(res, /rangos: \['periodo', 'd90', 'd180', 'd365', 'todo'\]/);
 });
 

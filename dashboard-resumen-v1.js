@@ -280,6 +280,31 @@
     return delta(actual, anterior, rango).replace(/is-up|is-down/g, 'is-neutral');
   }
 
+  /* Una frase que dice cómo viene el período: cuánto, contra qué, quién aporta más y,
+     si el período sigue en marcha, a cuánto cerraría al ritmo de hoy. */
+  function pintarFrase(d) {
+    var n = el('rsm-frase'); if (!n) return;
+    if (!d.hayDatos) { n.textContent = ''; return; }
+    var t = d.tot, a = d.ant, html = 'Facturaste <b>' + esc(pesosCorto(t.facturado).replace('$', '$ ')) + '</b> en <b>' + miles(t.servicios) + '</b> servicios';
+    if (num(a.facturado) > 0) {
+      var v = (t.facturado - a.facturado) * 100 / a.facturado;
+      html += Math.abs(v) < 0.5 ? ', igual que el período anterior'
+        : ', <span class="' + (v > 0 ? 'opx-sube' : 'opx-baja') + '">' + miles(Math.abs(v), Math.abs(v) < 10 ? 1 : 0) + ' % ' + (v > 0 ? 'más' : 'menos') + '</span> que el período anterior';
+    }
+    html += '.';
+    var top = d.empresas.slice().sort(function (x, y) { return y.monto - x.monto; })[0], total = 0;
+    d.empresas.forEach(function (e) { total += e.monto; });
+    if (top && total > 0 && d.empresas.length > 1) html += ' La que más aportó fue <b>' + esc(top.nombre) + '</b> (' + pct(top.monto * 100 / total) + ').';
+    var act = d.porDia.actual, len = Math.max(act.length, d.porDia.anterior.length);
+    var hechos = len ? diasTranscurridos(d, act.length || len) : 0;
+    if (hechos >= 3 && hechos < len) {
+      var hasta = 0;
+      for (var i = 0; i < hechos; i++) hasta += num(act[i]);
+      html += ' Al ritmo actual cerraría en <b>≈ ' + esc(pesosCorto(hasta / hechos * len).replace('$', '$ ')) + '</b>.';
+    }
+    n.innerHTML = html;
+  }
+
   function pintarKpis(d) {
     var n = el(ID_KPIS); if (!n) return;
     var t=d.tot,a=d.ant,r=d.rangoAnterior,has=d.hayDatos;
@@ -288,8 +313,7 @@
       tile('Servicios',has?miles(t.servicios):GUION,has?neutralDelta(t.servicios,a.servicios,r):'','Finalizados en el período')+
       tile('Ticket promedio',has&&t.servicios>0?pesos(t.facturado/t.servicios):GUION,has&&t.servicios>0&&a.servicios>0?neutralDelta(t.facturado/t.servicios,a.facturado/a.servicios,r):'','Facturado por servicio')+
       tile('Peajes',has?pesos(t.peajes):GUION,has?neutralDelta(t.peajes,a.peajes,r):'','Peajes de los servicios del período');
-    var secondary=el('rsm-secondary');
-    if(secondary) secondary.innerHTML='';
+    pintarFrase(d);
     var context=el('rsm-period-context');if(context)n.title=context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
     var quality=el('rsm-data-context');if(quality)quality.textContent=has?'':'No hay servicios finalizados para los filtros seleccionados.';
   }
@@ -1512,6 +1536,7 @@
   if (!registrar()) document.addEventListener('DOMContentLoaded', registrar, { once: true });
 
   global.AuxDashResumen = {
+    pintarFrase: pintarFrase,
     normalizar: normalizar,
     rankingRows: rankingRows,
     pintarRanking: pintarRanking,

@@ -20,8 +20,7 @@
   var GUION = '—';
 
   var CANVAS = {
-    tendencia:   'dashx-ops-tendencia',
-    combustible: 'dashx-ops-combustible'
+    tendencia: 'dashx-ops-tendencia'
   };
 
   // Varias medidas sobre pocas filas: eso es una tabla, no cuatro gráficos de
@@ -39,6 +38,10 @@
   var estado = {
     datos: null, anterior: null, rangoAnterior: '',
     metrica: 'km',
+    // Fecha ISO de la barra elegida en Actividad; null = el período entero.
+    dia: null,
+    // Respuesta de la RPC para el día elegido (rango de un solo día), por clave.
+    diaCache: {}, diaPidiendo: null, base: {},
     orden: { camiones: { clave: 'km', asc: false }, choferes: { clave: 'km', asc: false } }
   };
 
@@ -167,8 +170,9 @@
   /* `alReves`: para costos y consumos subir es malo, así que el verde va con
      la baja. 'neutro': ni bueno ni malo (horas por jornada, km por servicio),
      va en gris. La flecha siempre dice para dónde se movió el número. */
-  function delta(actual, anterior, alReves) {
-    var titulo = estado.rangoAnterior ? ' title="Contra ' + esc(estado.rangoAnterior) + '"' : '';
+  function delta(actual, anterior, alReves, contra) {
+    var titulo = contra ? ' title="' + esc(contra) + '"'
+      : (estado.rangoAnterior ? ' title="Contra ' + esc(estado.rangoAnterior) + '"' : '');
     if (actual == null || anterior == null || anterior <= 0) {
       return '<span class="rsm-delta is-flat"' + titulo + '>sin comparación</span>';
     }
@@ -219,6 +223,11 @@
     if (!sec || sec.dataset.opxListo === '1') return;
     sec.dataset.opxListo = '1';
     sec.addEventListener('click', function (ev) {
+      if (ev.target.closest('[data-opx-reset]')) {
+        estado.dia = null;
+        repintarDia();
+        return;
+      }
       var m = ev.target.closest('[data-opx-metrica]');
       if (m) {
         estado.metrica = m.getAttribute('data-opx-metrica');
@@ -236,6 +245,13 @@
         if (!estado.datos) return;
         if (tabla === 'camiones') pintarTablaCamiones(estado.datos);
         else pintarTablaChoferes(estado.datos);
+      }
+    });
+    // Esc vuelve al período entero, igual que tocar de nuevo la barra.
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && estado.dia && sec.offsetParent !== null) {
+        estado.dia = null;
+        repintarDia();
       }
     });
     pintarSegmentos();
@@ -294,13 +310,157 @@
 
   /* ── cifras de arriba ─────────────────────────────────────────────────── */
 
-  function tile(label, v, deltaHtml, pie, destacado) {
-    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + '">' +
+  function tile(label, v, deltaHtml, pie, destacado, clase) {
+    return '<div class="rsm-kpi' + (destacado ? ' is-main' : '') + (clase ? ' ' + clase : '') + '">' +
       '<div class="rsm-kpi-label">' + esc(label) + '</div>' +
       '<div class="rsm-kpi-value">' + v + '</div>' +
       '<div class="rsm-kpi-delta">' + deltaHtml + '</div>' +
       '<div class="rsm-kpi-foot">' + pie + '</div>' +
       '</div>';
+  }
+
+  /* ── un día elegido ───────────────────────────────────────────────────────
+     Tocar una barra de Actividad deja iluminada sólo esa y baja a ese día lo que
+     la serie diaria sabe: km, jornadas y servicios (y las razones que salen de
+     ahí). Lo que la RPC no corta por día —combustible, móviles, choferes— sigue
+     siendo del período y se rotula así, para no pasar un dato por otro. */
+  var DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+  function mayus(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+
+  function puntoElegido() {
+    if (!estado.dia || !estado.datos) return null;
+    var serie = estado.datos.serie_temporal || [];
+    for (var i = 0; i < serie.length; i++) if (serie[i].fecha === estado.dia) return serie[i];
+    return null;
+  }
+
+  /* Lo que la serie diaria no trae —combustible, medios de pago, móviles y
+     choferes— se pide a la misma RPC con el día como rango: un día es un rango
+     más. Mientras llega (o si falla) se sigue mostrando el período, rotulado. */
+  function claveDia() { return estado.dia + '|' + JSON.stringify(estado.base); }
+
+  function diaListo() {
+    return estado.dia ? (estado.diaCache[claveDia()] || null) : null;
+  }
+
+  function pedirDia() {
+    var db = (typeof _db !== 'undefined') ? _db : null;
+    if (!estado.dia || diaListo() || !db || typeof db.rpc !== 'function') return;
+    var clave = claveDia(), dia = estado.dia;
+    if (estado.diaPidiendo === clave) return;
+    estado.diaPidiendo = clave;
+    Promise.resolve(db.rpc('dashboard_operaciones_v1', Object.assign({ p_desde: dia, p_hasta: dia }, estado.base)))
+      .then(function (r) {
+        if (estado.diaPidiendo === clave) estado.diaPidiendo = null;
+        if (!r || r.error || !r.data) return;
+        estado.diaCache[clave] = r.data;
+        if (estado.dia === dia) repintarDia();
+      })
+      .catch(function () { if (estado.diaPidiendo === clave) estado.diaPidiendo = null; });
+  }
+
+  function nombreGrano(datos) {
+    return { dia: 'día', semana: 'semana', mes: 'mes' }[(datos && datos.granularidad) || 'dia'] || 'día';
+  }
+
+  function etiquetaPunto(fecha, grano) {
+    var d = new Date(fecha + 'T12:00:00');
+    if (grano === 'mes') return mayus(MESES[d.getMonth()]) + ' ' + d.getFullYear();
+    if (grano === 'semana') return 'Semana del ' + diaMes(fecha);
+    return mayus(DIAS[d.getDay()]) + ' ' + diaMes(fecha);
+  }
+
+  /* Promedio por día (o semana, o mes) de lo que pasó: sólo cuentan los tramos
+     con actividad, igual que la línea de referencia del gráfico. */
+  function promediosSerie(datos) {
+    var serie = (datos && datos.serie_temporal) || [];
+    var km = 0, jor = 0, serv = 0, n = 0;
+    for (var i = 0; i < serie.length; i++) {
+      var p = serie[i];
+      if (num(p.km) > 0 || num(p.jornadas) > 0 || num(p.servicios) > 0) {
+        km += num(p.km); jor += num(p.jornadas); serv += num(p.servicios); n++;
+      }
+    }
+    return n ? { km: km / n, jornadas: jor / n, servicios: serv / n } : null;
+  }
+
+  /* Las cifras de arriba: las del período o las del tramo elegido. */
+  function cifras(datos) {
+    var t = datos.totales || {}, e = datos.eficiencia || {}, p = puntoElegido();
+    if (!p) {
+      return {
+        dia: false, km: num(t.km), jornadas: num(t.jornadas), servicios: num(t.servicios),
+        spj: valor(e.servicios_por_jornada), kmServ: valor(e.km_por_servicio),
+        kmJor: num(t.jornadas) > 0 ? num(t.km) / num(t.jornadas) : null
+      };
+    }
+    var k = num(p.km), j = num(p.jornadas), sv = num(p.servicios);
+    return {
+      dia: true, km: k, jornadas: j, servicios: sv,
+      spj: j > 0 ? sv / j : null, kmServ: sv > 0 ? k / sv : null, kmJor: j > 0 ? k / j : null
+    };
+  }
+
+  /* Un móvil rinde por debajo cuando está 20% abajo de la flota en km por litro
+     o en servicios por jornada. Es el criterio de la marca en la tabla y del
+     conteo de la frase: tienen que decir lo mismo. */
+  function movilAlerta(c, flota, spjFlota) {
+    var kml = valor(c.km_por_litro);
+    var sj = num(c.jornadas) > 0 ? num(c.servicios) / num(c.jornadas) : null;
+    return (kml != null && flota > 0 && kml <= flota * 0.8) ||
+           (sj != null && spjFlota > 0 && sj <= spjFlota * 0.8);
+  }
+
+  function contarAlertas(datos) {
+    var e = datos.eficiencia || {}, flota = valor(e.km_por_litro), spj = valor(e.servicios_por_jornada);
+    var n = 0, lista = datos.por_camion || [];
+    for (var i = 0; i < lista.length; i++) if (movilAlerta(lista[i], flota, spj)) n++;
+    return n;
+  }
+
+  function pctTexto(actual, ref, enc, deb) {
+    if (!(ref > 0)) return '';
+    var v = Math.round((actual - ref) * 100 / ref);
+    if (v === 0) return '<b>' + esc(enc.igual) + '</b>';
+    return '<span class="opx-' + (v > 0 ? 'sube' : 'baja') + '">' + Math.abs(v) + ' % ' + (v > 0 ? enc.mas : enc.menos) + '</span>';
+  }
+
+  function pintarFrase(datos) {
+    var n = document.getElementById('dashx-ops-frase');
+    if (!n) return;
+    var t = datos.totales || {}, c = datos.combustible || {}, ca = (estado.anterior && estado.anterior.combustible) || null;
+    var cf = cifras(datos), grano = nombreGrano(datos);
+    if (!(num(t.km) > 0) && !(num(t.servicios) > 0)) { n.textContent = ''; return; }
+    var jor = cf.jornadas + (cf.jornadas === 1 ? ' jornada' : ' jornadas');
+    var h;
+    if (cf.dia) {
+      var prom = promediosSerie(datos);
+      h = '<b>' + esc(etiquetaPunto(estado.dia, datos.granularidad)) + '</b>: los móviles hicieron <b>' + miles(cf.km) + ' km</b> en ' + jor +
+        (cf.spj != null ? ', <b>' + decimales(cf.spj, 1) + ' servicios por jornada</b>' : '') + '.';
+      var cmp = prom ? pctTexto(cf.km, prom.km, { mas: 'por encima', menos: 'por debajo', igual: 'En el promedio' }) : '';
+      if (cmp) h += ' ' + cmp + ' del promedio por ' + grano + ' del período.';
+      var dd = diaListo();
+      if (dd && valor((dd.combustible || {}).costo_por_km) != null) {
+        h += ' El combustible costó <b>' + pesosFinos(dd.combustible.costo_por_km) + ' por km</b>.';
+      }
+    } else {
+      h = 'Los móviles hicieron <b>' + miles(cf.km) + ' km</b> en ' + jor +
+        (cf.spj != null ? ', <b>' + decimales(cf.spj, 1) + ' servicios por jornada</b>' : '') + '.';
+      if (valor(c.costo_por_km) != null) {
+        h += ' El combustible costó <b>' + pesosFinos(c.costo_por_km) + ' por km</b>';
+        var ant = ca && valor(ca.costo_por_km);
+        if (ant > 0) {
+          var v = Math.round((num(c.costo_por_km) - ant) * 100 / ant);
+          h += v === 0 ? ', igual que en el período anterior' :
+            ', <span class="opx-' + (v > 0 ? 'baja' : 'sube') + '">' + Math.abs(v) + ' % ' + (v > 0 ? 'más' : 'menos') + '</span> que en el período anterior';
+        }
+        h += '.';
+      }
+      var malos = contarAlertas(datos);
+      if (malos > 0) h += ' <b>' + malos + (malos === 1 ? ' móvil rinde' : ' móviles rinden') + '</b> por debajo de la flota.';
+    }
+    n.innerHTML = h;
   }
 
   function pintarKpis(datos) {
@@ -309,21 +469,43 @@
     var t = datos.totales || {}, e = datos.eficiencia || {}, c = datos.combustible || {};
     var ant = estado.anterior || {};
     var ta = ant.totales || null, ea = ant.eficiencia || null, ca = ant.combustible || null;
+    var cf = cifras(datos), prom = promediosSerie(datos), grano = nombreGrano(datos);
     var moviles = (datos.por_camion || []).filter(function (x) { return num(x.km) > 0; }).length;
-    n.innerHTML =
-      tile('Km recorridos', num(t.km) > 0 ? miles(t.km) + ' km' : GUION,
+    var contraProm = 'Contra el promedio por ' + grano + ' del período';
+    var kmTile, spjTile;
+    if (cf.dia) {
+      kmTile = tile('Km recorridos', cf.km > 0 ? miles(cf.km) + ' km' : GUION,
+        prom ? delta(cf.km, prom.km, false, contraProm) : '',
+        cf.jornadas + (cf.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ese ' + grano, true);
+      spjTile = tile('Servicios por jornada', cf.spj != null ? decimales(cf.spj, 1) : GUION,
+        delta(cf.spj, valor(e.servicios_por_jornada), false, 'Contra el promedio del período'),
+        miles(cf.servicios) + (cf.servicios === 1 ? ' servicio' : ' servicios'));
+    } else {
+      kmTile = tile('Km recorridos', num(t.km) > 0 ? miles(t.km) + ' km' : GUION,
         delta(valor(t.km), ta && valor(ta.km)),
-        'en ' + miles(t.jornadas) + ' jornadas' + (moviles ? ' · ' + moviles + (moviles === 1 ? ' móvil' : ' móviles') : ''), true) +
-      tile('Servicios', miles(t.servicios), delta(valor(t.servicios), ta && valor(ta.servicios)),
-        decimales(e.servicios_por_jornada, 1) + ' por jornada') +
-      tile('Jornadas', miles(t.jornadas), delta(valor(t.jornadas), ta && valor(ta.jornadas)),
-        decimales(e.horas_por_jornada, 1) + ' h en promedio') +
-      tile('Km por servicio', decimales(e.km_por_servicio, 1) + ' km',
-        delta(valor(e.km_por_servicio), ea && valor(ea.km_por_servicio), 'neutro'), 'Promedio del período') +
-      tile('Combustible', pesos(c.gasto), delta(valor(c.gasto), ca && valor(ca.gasto), true),
-        miles(c.cargas) + ' cargas · ' + miles(c.litros) + ' L') +
+        'en ' + miles(t.jornadas) + ' jornadas' + (moviles ? ' · ' + moviles + (moviles === 1 ? ' móvil' : ' móviles') : ''), true);
+      spjTile = tile('Servicios por jornada', decimales(e.servicios_por_jornada, 1),
+        delta(valor(e.servicios_por_jornada), ea && valor(ea.servicios_por_jornada)),
+        miles(t.servicios) + ' servicios');
+    }
+    // Con un día elegido, el combustible es el de ese día (se pide aparte) y se
+    // compara contra el período. Mientras llega se muestra el del período,
+    // atenuado y rotulado.
+    var dd = cf.dia ? diaListo() : null, cd = dd ? (dd.combustible || {}) : null;
+    var clase = cf.dia && !dd ? 'is-periodo' : '';
+    var delPeriodo = cf.dia && !dd ? 'Del período completo · ' : '';
+    if (cd) {
+      n.innerHTML = kmTile + spjTile +
+        tile('Gasto en combustible', pesos(cd.gasto), '', 'ese día · ' + miles(cd.cargas) + (num(cd.cargas) === 1 ? ' carga' : ' cargas') + ' · ' + miles(cd.litros) + ' L', false) +
+        tile('Costo por km', pesosFinos(cd.costo_por_km), delta(valor(cd.costo_por_km), valor(c.costo_por_km), true, 'Contra el período'),
+          'ese día · combustible sobre los km', false);
+      return;
+    }
+    n.innerHTML = kmTile + spjTile +
+      tile('Gasto en combustible', pesos(c.gasto), delta(valor(c.gasto), ca && valor(ca.gasto), true),
+        delPeriodo + miles(c.cargas) + ' cargas · ' + miles(c.litros) + ' L', false, clase) +
       tile('Costo por km', pesosFinos(c.costo_por_km), delta(valor(c.costo_por_km), ca && valor(ca.costo_por_km), true),
-        'Combustible sobre los km recorridos');
+        delPeriodo + 'combustible sobre los km', false, clase);
   }
 
   function pintarSubtitulo(datos) {
@@ -369,49 +551,66 @@
       '<em>' + (deltaHtml || '') + (pie ? '<i>' + pie + '</i>' : '') + '</em></div>';
   }
 
-  function pintarRazonesCombustible(datos) {
+  function fila(label, v, deltaHtml, pie) {
+    return '<div class="opx-it"><span>' + esc(label) + (pie ? '<i>' + esc(pie) + '</i>' : '') + '</span>' +
+      '<div><b>' + v + '</b>' + (deltaHtml || '') + '</div></div>';
+  }
+
+  /* Cinco razones, no doce: las que dicen si los móviles y las jornadas rinden.
+     Servicios por jornada y costo por km ya están arriba, y litros por carga o
+     el ticket de una carga no cambian ninguna decisión. */
+  function pintarRazones(datos) {
     var cont = document.getElementById('dashx-ops-comb-metrics');
     if (!cont) return;
-    var c = datos.combustible || {};
-    var ca = (estado.anterior && estado.anterior.combustible) || null;
-    var antes = function (v, f) { return v == null ? '' : 'antes ' + f(v); };
-    if (!num(c.cargas)) {
-      cont.innerHTML = '<div class="rsm-vacio">Sin cargas de combustible en el período.</div>';
-      return;
+    var t = datos.totales || {}, e = datos.eficiencia || {}, c = datos.combustible || {};
+    var ant = estado.anterior || {};
+    var ea = ant.eficiencia || null, ca = ant.combustible || null, at = ant.totales || null;
+    var kmJorAnt = at && num(at.jornadas) > 0 ? num(at.km) / num(at.jornadas) : null;
+    var kmJorPer = num(t.jornadas) > 0 ? num(t.km) / num(t.jornadas) : null;
+    var cf = cifras(datos);
+    var sub = document.getElementById('dashx-ops-rinden-sub');
+    var dd = cf.dia ? diaListo() : null;
+    var delPeriodo = cf.dia && !dd ? 'del período' : '';
+    var contra = 'Contra el promedio del período';
+    // Con el día listo: combustible y horas son los de ese día, contra el período.
+    var cd = dd ? (dd.combustible || {}) : c, ed = dd ? (dd.eficiencia || {}) : e;
+    var kmServ, kmJor;
+    if (cf.dia) {
+      kmServ = fila('Km por servicio', cf.kmServ != null ? decimales(cf.kmServ, 1) + ' km' : GUION,
+        delta(cf.kmServ, valor(e.km_por_servicio), 'neutro', contra));
+      kmJor = fila('Km por jornada', cf.kmJor != null ? decimales(cf.kmJor, 0) + ' km' : GUION,
+        delta(cf.kmJor, kmJorPer, false, contra));
+    } else {
+      kmServ = fila('Km por servicio', decimales(e.km_por_servicio, 1) + ' km',
+        delta(valor(e.km_por_servicio), ea && valor(ea.km_por_servicio), 'neutro'));
+      kmJor = fila('Km por jornada', kmJorPer == null ? GUION : decimales(kmJorPer, 0) + ' km',
+        delta(kmJorPer, kmJorAnt));
     }
-    cont.innerHTML = '<div class="rsm-ef-grid opx-grid">' +
-      dato('Km por litro', decimales(c.km_por_litro, 2), delta(valor(c.km_por_litro), ca && valor(ca.km_por_litro)),
-        antes(ca && valor(ca.km_por_litro), function (v) { return decimales(v, 2); })) +
-      dato('Litros cada 100 km', decimales(c.litros_por_100km, 1) + ' L', delta(valor(c.litros_por_100km), ca && valor(ca.litros_por_100km), true),
-        antes(ca && valor(ca.litros_por_100km), function (v) { return decimales(v, 1) + ' L'; })) +
-      dato('Costo por km', pesosFinos(c.costo_por_km), delta(valor(c.costo_por_km), ca && valor(ca.costo_por_km), true),
-        antes(ca && valor(ca.costo_por_km), pesosFinos)) +
-      dato('Precio por litro', pesosFinos(c.precio_litro), delta(valor(c.precio_litro), ca && valor(ca.precio_litro), true),
-        antes(ca && valor(ca.precio_litro), pesosFinos)) +
-      dato('Ticket promedio', pesos(c.ticket_promedio), delta(valor(c.ticket_promedio), ca && valor(ca.ticket_promedio), true),
-        'lo que sale una carga') +
-      dato('Litros por carga', decimales(c.litros_por_carga, 1) + ' L', '', miles(c.cargas) + ' cargas en el período') +
+    texto(sub, cf.dia
+      ? (dd ? 'Del día contra el período' : 'Km por servicio y por jornada: del día contra el promedio del período · el resto es del período')
+      : 'Promedios del período contra el período anterior');
+    cont.innerHTML = '<div class="opx-lista">' +
+      fila('Km por litro', decimales(cd.km_por_litro, 2),
+        delta(valor(cd.km_por_litro), dd ? valor(c.km_por_litro) : ca && valor(ca.km_por_litro), false, dd ? 'Contra el período' : null), delPeriodo) +
+      fila('Precio por litro', pesosFinos(cd.precio_litro),
+        delta(valor(cd.precio_litro), dd ? valor(c.precio_litro) : ca && valor(ca.precio_litro), true, dd ? 'Contra el período' : null), delPeriodo) +
+      kmServ +
+      fila('Horas por jornada', decimales(ed.horas_por_jornada, 1) + ' h',
+        delta(valor(ed.horas_por_jornada), dd ? valor(e.horas_por_jornada) : ea && valor(ea.horas_por_jornada), 'neutro', dd ? 'Contra el período' : null),
+        cf.dia && !dd ? 'del período' : 'con horario cargado') +
+      kmJor +
       '</div>';
   }
 
+  /* Debajo de las razones, lo que no se pudo usar: un total silenciosamente
+     incompleto es peor que un total con la advertencia al lado. */
   function pintarJornada(datos) {
     var cont = document.getElementById('dashx-ops-ratios');
     if (!cont) return;
-    var t = datos.totales || {}, e = datos.eficiencia || {};
-    var ea = (estado.anterior && estado.anterior.eficiencia) || null;
-    var kmJornada = num(t.jornadas) > 0 ? num(t.km) / num(t.jornadas) : null;
-    var at = (estado.anterior && estado.anterior.totales) || null;
-    var kmJornadaAnt = at && num(at.jornadas) > 0 ? num(at.km) / num(at.jornadas) : null;
-    var notas = avisos(datos);
-    cont.innerHTML = '<div class="rsm-ef-grid opx-grid opx-grid-2">' +
-      dato('Servicios por jornada', decimales(e.servicios_por_jornada, 2), delta(valor(e.servicios_por_jornada), ea && valor(ea.servicios_por_jornada)), '') +
-      dato('Km por servicio', decimales(e.km_por_servicio, 1) + ' km', delta(valor(e.km_por_servicio), ea && valor(ea.km_por_servicio), 'neutro'), '') +
-      dato('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h', delta(valor(e.horas_por_jornada), ea && valor(ea.horas_por_jornada), 'neutro'), 'con horario cargado') +
-      dato('Km por jornada', kmJornada == null ? GUION : decimales(kmJornada, 0) + ' km', delta(kmJornada, kmJornadaAnt), '') +
-      '</div>' +
-      '<div class="opx-notas">' + (notas.length
-        ? notas.map(function (x) { return '<span class="opx-nota is-aviso">' + esc(x) + '</span>'; }).join('')
-        : '<span class="opx-nota is-ok">Todas las jornadas tienen km y horario utilizables</span>') + '</div>';
+    var notas = avisos(diaListo() || datos);
+    cont.innerHTML = '<div class="opx-notas">' + (notas.length
+      ? notas.map(function (x) { return '<span class="opx-nota is-aviso">' + esc(x) + '</span>'; }).join('')
+      : '<span class="opx-nota is-ok">Todas las jornadas tienen km y horario utilizables</span>') + '</div>';
   }
 
   /* ── tablas ───────────────────────────────────────────────────────────── */
@@ -459,9 +658,16 @@
     return '';
   }
 
+  /* La RPC no corta móviles ni choferes por día: con un día elegido las tablas
+     siguen siendo del período y lo dicen. */
+  function notaDia() {
+    return puntoElegido() && !diaListo() ? ' Con un día elegido, esta tabla sigue mostrando el período completo.' : '';
+  }
+
   function pintarTablaCamiones(datos) {
     var n = document.getElementById(TABLAS.camiones);
     if (!n) return;
+    datos = diaListo() || datos;
     var filas = (datos.por_camion || []).map(function (c) {
       return Object.assign({}, c, {
         km_por_servicio: num(c.servicios) > 0 ? num(c.km) / num(c.servicios) : null,
@@ -479,10 +685,11 @@
     var porKm = filas.slice().sort(function (a, b) { return num(b.km) - num(a.km); });
     var colorDe = {};
     porKm.forEach(function (c, i) { colorDe[c.truck_id] = i < G.PALETA.length ? G.PALETA[i] : 'var(--ax-text-3)'; });
+    var spjFlota = valor(e.servicios_por_jornada);
     var cuerpo = ordenar(filas, estado.orden.camiones).map(function (c) {
       var color = colorDe[c.truck_id];
       var kml = valor(c.km_por_litro);
-      return '<tr>' +
+      return '<tr' + (movilAlerta(c, flota, spjFlota) ? ' class="opx-alerta"' : '') + '>' +
         '<td class="opx-td-nombre"><span class="rsm-emp-nombre"><i style="background:' + color + '"></i><b>' + esc(c.etiqueta) + '</b></span></td>' +
         part(c.km, num(t.km), color) +
         td('Km', num(c.km) > 0 ? miles(c.km) + ' km' : GUION) +
@@ -516,12 +723,14 @@
         td('Km/L', '<b>' + decimales(e.km_por_litro, 2) + '</b>') +
       '</tr></tfoot></table></div>' +
       '<p class="rsm-nota">Km/L en verde: rinde más de 5% arriba de la flota (' + decimales(flota, 2) + ' km/L); en rojo, más de 5% abajo. ' +
-        'Tocá un título para ordenar.' + (sinCamion > 0 ? ' El total incluye ' + sinCamion + (sinCamion === 1 ? ' servicio' : ' servicios') + ' sin camión.' : '') + '</p>';
+        'Fila en ámbar: 20% abajo de la flota en km por litro o en servicios por jornada. ' +
+        'Tocá un título para ordenar.' + notaDia() + (sinCamion > 0 ? ' El total incluye ' + sinCamion + (sinCamion === 1 ? ' servicio' : ' servicios') + ' sin camión.' : '') + '</p>';
   }
 
   function pintarTablaChoferes(datos) {
     var n = document.getElementById(TABLAS.choferes);
     if (!n) return;
+    datos = diaListo() || datos;
     var filas = (datos.por_chofer || []).map(function (c) {
       return Object.assign({}, c, {
         servicios_por_jornada: num(c.jornadas) > 0 ? num(c.servicios) / num(c.jornadas) : null,
@@ -534,8 +743,10 @@
     }
     var t = datos.totales || {}, e = datos.eficiencia || {};
     var color = colorAcento();
+    var spjChofer = valor(e.servicios_por_jornada);
     var cuerpo = ordenar(filas, estado.orden.choferes).map(function (c) {
-      return '<tr>' +
+      var sj = valor(c.servicios_por_jornada);
+      return '<tr' + (sj != null && spjChofer > 0 && sj <= spjChofer * 0.8 ? ' class="opx-alerta"' : '') + '>' +
         '<td class="opx-td-nombre"><span class="opx-chofer"><i aria-hidden="true">' + esc(iniciales(c.nombre)) + '</i><b>' + esc(c.nombre) + '</b></span></td>' +
         part(c.km, num(t.km), color) +
         td('Km', num(c.km) > 0 ? miles(c.km) + ' km' : GUION) +
@@ -565,7 +776,7 @@
         td('Serv./jornada', decimales(e.servicios_por_jornada, 1), 'rsm-muted') +
         td('Km/serv.', decimales(e.km_por_servicio, 1), 'rsm-muted') +
       '</tr></tfoot></table></div>' +
-      '<p class="rsm-nota">H/jornada cuenta sólo las jornadas con horario cargado. Tocá un título para ordenar.' +
+      '<p class="rsm-nota">H/jornada cuenta sólo las jornadas con horario cargado. Fila en ámbar: 20% abajo del promedio en servicios por jornada. Tocá un título para ordenar.' + notaDia() +
         (sinChofer > 0 ? ' El total incluye ' + sinChofer + (sinChofer === 1 ? ' servicio' : ' servicios') + ' sin chofer con jornada.' : '') + '</p>';
   }
 
@@ -579,31 +790,58 @@
 
   /* Barras, no línea: son valores de días sueltos, no una magnitud continua, y
      la línea sugería una transición entre un día y el siguiente que no existe.
-     La referencia de promedio es lo que hace legible el zigzag: sin ella no se
-     sabe qué día estuvo bien y cuál mal. Una métrica por vez: km, servicios y
-     jornadas tienen escalas distintas y no comparten eje. */
-  function pintarTendencia(datos) {
+     Lo que sí es continuo es el ritmo: el promedio móvil de 7 días lo muestra
+     sin el zigzag de los fines de semana, y es lo que se compara de un vistazo.
+     Una métrica por vez: km, servicios y jornadas tienen escalas distintas y no
+     comparten eje.
+     Tocar una barra elige ese día (ver «un día elegido»): se ilumina sólo esa
+     y el resto de la pantalla baja a ese día. `sinAnimar` redibuja sin
+     reanimar cuando sólo cambió la selección. */
+  function pintarTendencia(datos, sinAnimar) {
     var serie = datos.serie_temporal || [];
     var m = METRICAS[estado.metrica] ? estado.metrica : 'km';
     var grano = datos.granularidad || 'dia';
-    var nombreGrano = { dia: 'día', semana: 'semana', mes: 'mes' }[grano] || 'día';
+    var nombre = nombreGrano(datos);
     texto(document.getElementById('dashx-ops-act-sub'),
-      METRICAS[m].nombre + ' por ' + nombreGrano + ' · línea punteada: promedio · fines de semana más claros');
-    if (!serie.length) return G.vacio(CANVAS.tendencia, METRICAS[m].vacio);
+      METRICAS[m].nombre + ' por ' + nombre + (grano === 'dia'
+        ? ' · línea: promedio móvil de 7 días · fines de semana en tono más tenue'
+        : ' · línea punteada: promedio'));
+    if (!serie.length) { pintarDiaElegido(datos, -1); texto(document.getElementById('dashx-ops-act-lectura'), ''); return G.vacio(CANVAS.tendencia, METRICAS[m].vacio); }
     var vals = serie.map(function (p) { return num(p[m]); });
     var conDatos = vals.filter(function (v) { return v > 0; });
     var promedio = conDatos.length
       ? conDatos.reduce(function (a, b) { return a + b; }, 0) / conDatos.length
       : 0;
 
+    var iSel = -1;
+    for (var i = 0; i < serie.length; i++) if (serie[i].fecha === estado.dia) iSel = i;
+
     // Sábados y domingos en tono más tenue: la operación baja el fin de semana
-    // y sin distinguirlos los valles parecen caídas de productividad.
-    var pleno = colorAcento(), tenue = colorAcento(0.4);
-    var colores = serie.map(function (p) {
+    // y sin distinguirlos los valles parecen caídas de productividad. Con una
+    // barra elegida, las demás se apagan y la elegida queda en el color pleno.
+    var pleno = colorAcento(), tenue = colorAcento(0.4), apagado = colorAcento(0.2);
+    var colores = serie.map(function (p, k) {
+      if (iSel >= 0) return k === iSel ? pleno : apagado;
       var d = new Date(p.fecha + 'T12:00:00');
       var finde = grano === 'dia' && (d.getDay() === 0 || d.getDay() === 6);
       return finde ? tenue : pleno;
     });
+
+    var linea = null, referencia = null;
+    if (grano === 'dia' && vals.length >= 3) {
+      var movil = [];
+      for (var k = 0; k < vals.length; k++) {
+        var acc = 0, cuenta = 0;
+        for (var j = Math.max(0, k - 6); j <= k; j++) { acc += vals[j]; cuenta++; }
+        movil.push(acc / cuenta);
+      }
+      linea = { values: movil, label: 'Promedio móvil 7 días', color: G.PALETA[0] };
+    } else if (promedio > 0) {
+      referencia = { valor: m === 'km' ? Math.round(promedio) : Math.round(promedio * 10) / 10, label: 'Promedio por ' + nombre };
+    }
+
+    pintarDiaElegido(datos, iSel);
+    pintarLectura(datos, serie, vals, m, iSel, promedio);
 
     G.barras(CANVAS.tendencia, {
       labels: serie.map(function (p) { return etiquetaEje(p.fecha, grano); }),
@@ -611,10 +849,72 @@
       colores: colores,
       unidad: METRICAS[m].unidad,
       maxEtiquetas: 12,
-      referencia: promedio > 0
-        ? { valor: m === 'km' ? Math.round(promedio) : Math.round(promedio * 10) / 10, label: 'Promedio por ' + nombreGrano }
-        : null
+      linea: linea,
+      referencia: referencia,
+      cascada: !sinAnimar,
+      animar: sinAnimar ? false : undefined,
+      alElegir: function (idx) {
+        var f = serie[idx] && serie[idx].fecha;
+        estado.dia = (f && f !== estado.dia) ? f : null;
+        // Fuera del manejador: repintar destruye este mismo gráfico, y Chart.js
+        // sigue procesando el evento sobre una instancia que ya no existe.
+        global.setTimeout(repintarDia, 0);
+      }
     });
+  }
+
+  /* La fila de arriba del gráfico: qué día está elegido y cómo volver. */
+  function pintarDiaElegido(datos, iSel) {
+    var n = document.getElementById('dashx-ops-dia');
+    if (!n) return;
+    var nombre = nombreGrano(datos);
+    if (iSel < 0) {
+      n.innerHTML = '<span class="opx-dia-ayuda">Tocá una barra para ver solo ese ' + esc(nombre) + '</span>';
+      return;
+    }
+    n.innerHTML = '<b class="opx-dia-chip">Mostrando: ' + esc(etiquetaPunto(estado.dia, datos.granularidad)) + '</b>' +
+      '<button type="button" class="opx-dia-volver" data-opx-reset="1">Ver todo el período</button>' +
+      '<span class="opx-dia-ayuda">Tocá la misma barra otra vez para volver</span>';
+  }
+
+  /* Una línea de lectura debajo del gráfico, como en Resumen: en días hábiles
+     contra fines de semana, o el día elegido contra el promedio. */
+  function pintarLectura(datos, serie, vals, m, iSel, promedio) {
+    var n = document.getElementById('dashx-ops-act-lectura');
+    if (!n) return;
+    var u = METRICAS[m].unidad, grano = datos.granularidad || 'dia';
+    var fmt = function (v) { return (m === 'km' ? miles(v) : decimales(v, 1)) + ' ' + u; };
+    if (iSel >= 0) {
+      var v = vals[iSel];
+      var cmp = promedio > 0 ? ' · ' + Math.abs(Math.round((v - promedio) * 100 / promedio)) + ' % ' + (v >= promedio ? 'por encima' : 'por debajo') + ' del promedio' : '';
+      texto(n, etiquetaPunto(serie[iSel].fecha, grano) + ': ' + fmt(v) + cmp + '.');
+      return;
+    }
+    if (grano !== 'dia') { texto(n, ''); return; }
+    var hab = 0, nh = 0, fin = 0, nf = 0;
+    for (var i = 0; i < serie.length; i++) {
+      var d = new Date(serie[i].fecha + 'T12:00:00').getDay(), x = vals[i];
+      if (!(x > 0)) continue;
+      if (d === 0 || d === 6) { fin += x; nf++; } else { hab += x; nh++; }
+    }
+    texto(n, nh && nf
+      ? 'Días hábiles: ' + fmt(hab / nh) + ' por día · fines de semana: ' + fmt(fin / nf) + ' por día.'
+      : '');
+  }
+
+  /* Un cambio de selección no vuelve a la base: se repinta con lo que ya vino. */
+  function repintarDia() {
+    var d = estado.datos;
+    if (!d) return;
+    pedirDia();
+    pintarFrase(d);
+    pintarKpis(d);
+    pintarCombustible(d);
+    pintarRazones(d);
+    pintarJornada(d);
+    pintarTendencia(d, true);
+    pintarTablaCamiones(d);
+    pintarTablaChoferes(d);
   }
 
   /* ── combustible ──────────────────────────────────────────────────────────
@@ -640,15 +940,29 @@
   }
 
   function pintarCombustible(datos) {
-    var c = (datos && datos.combustible) || {};
+    var dd = diaListo();
+    var c = ((dd || datos) && (dd || datos).combustible) || {};
     var medios = agruparMedios(c.por_medio);
     var total = num(c.gasto);
-    var centro = document.getElementById('dashx-ops-comb-total');
-    if (centro) centro.innerHTML = medios.length
-      ? '<b>' + pesosCorto(total) + '</b><span>Gasto</span>' : '';
     texto(document.getElementById('dashx-ops-comb-sub'), medios.length
       ? miles(c.cargas) + ' cargas · ' + miles(c.litros) + ' L · ' + pesosFinos(c.precio_litro) + ' por litro'
       : 'Gasto por medio de pago');
+    var barra = document.getElementById('dashx-ops-pago-barra');
+    if (barra) {
+      // El reparto es por gasto, no por litros: la pregunta es por dónde se va la
+      // plata. Un solo bloque 100% apilado y cada medio con su monto en la lista:
+      // son pocas partes y se leen mejor en línea que en un anillo.
+      barra.innerHTML = medios.map(function (m, i) {
+        var p = total > 0 ? num(m.gasto) * 100 / total : 0;
+        return '<i data-w="' + p.toFixed(2) + '" style="background:' + G.PALETA[i] + '" title="' + esc(m.medio) + '"></i>';
+      }).join('');
+      // Entran desde cero: sin esto la barra aparece ya llena.
+      var llenar = function () {
+        barra.querySelectorAll('i').forEach(function (b) { b.style.width = b.getAttribute('data-w') + '%'; });
+      };
+      if (global.requestAnimationFrame) global.requestAnimationFrame(function () { global.requestAnimationFrame(llenar); });
+      else llenar();
+    }
     var ls = document.getElementById('dashx-ops-comb-lista');
     if (ls) {
       ls.innerHTML = medios.length ? medios.map(function (m, i) {
@@ -661,15 +975,6 @@
           '</div>';
       }).join('') : '<div class="rsm-vacio">Sin cargas en el período.</div>';
     }
-    if (!medios.length) return G.vacio(CANVAS.combustible, 'Sin cargas en el período');
-    // El reparto es por gasto, no por litros: la pregunta es por dónde se va la
-    // plata. Los litros y las cargas quedan en la lista de al lado.
-    G.donut(CANVAS.combustible, {
-      labels: medios.map(function (m) { return m.medio; }),
-      values: medios.map(function (m) { return num(m.gasto); }),
-      formato: 'pesos',
-      leyenda: 'ninguna'
-    });
   }
 
   /* ── ciclo de vida ────────────────────────────────────────────────────── */
@@ -680,11 +985,15 @@
 
   function pintar(datos, filtros) {
     pintarFiltros(datos, filtros);
+    // Si el día elegido ya no está en la serie (otro período, otro filtro), se
+    // vuelve al período entero en vez de mostrar números de un día que no existe.
+    if (estado.dia && !puntoElegido()) estado.dia = null;
     pintarSubtitulo(datos);
+    pintarFrase(datos);
     pintarKpis(datos);
     pintarTendencia(datos);
     pintarCombustible(datos);
-    pintarRazonesCombustible(datos);
+    pintarRazones(datos);
     pintarJornada(datos);
     pintarTablaCamiones(datos);
     pintarTablaChoferes(datos);
@@ -720,6 +1029,10 @@
 
     estado.datos = datos;
     estado.anterior = anterior;
+    estado.base = base;
+    estado.diaCache = {};
+    estado.diaPidiendo = null;
+    // El día elegido se valida contra la serie nueva dentro de pintar().
     estado.rangoAnterior = prev && anterior ? diaMesAnio(prev.desde) + ' al ' + diaMesAnio(prev.hasta) : '';
     pintar(datos, filtros);
   }
@@ -730,13 +1043,14 @@
     estado.datos = null;
     // Se vacían: dejar las tarjetas de la carga anterior haría pasar números
     // viejos por números del filtro nuevo.
+    estado.dia = null;
     ['dashx-ops-kpis', 'dashx-ops-ratios', 'dashx-ops-comb-metrics', 'dashx-ops-comb-lista',
-     TABLAS.camiones, TABLAS.choferes].forEach(function (id) {
+     'dashx-ops-pago-barra', 'dashx-ops-dia', TABLAS.camiones, TABLAS.choferes].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.innerHTML = '';
     });
-    var centro = document.getElementById('dashx-ops-comb-total');
-    if (centro) centro.innerHTML = '';
+    texto(document.getElementById('dashx-ops-frase'), '');
+    texto(document.getElementById('dashx-ops-act-lectura'), '');
     texto(document.getElementById('dashx-ops-comb-sub'), '');
     texto(document.getElementById('dashx-ops-sub'), 'No se pudieron cargar las métricas');
   }

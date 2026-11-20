@@ -584,6 +584,16 @@
 #obx-picker-backdrop .obx2-presets .obx2-chip .obx2-chip-del{width:26px;padding:0;display:inline-grid;place-items:center;color:var(--ax-text-3)}
 #obx-picker-backdrop .obx2-chip-del .ax-icon{width:13px;height:13px}
 #obx-picker-backdrop .obx2-presets .obx2-chip .obx2-chip-del:hover{color:var(--ax-danger)}
+#obx-picker-backdrop .obx2-presets .obx2-chip .obx2-chip-edit{width:24px;padding:0;display:inline-grid;place-items:center;color:var(--ax-text-3)}
+#obx-picker-backdrop .obx2-chip-edit .ax-icon{width:13px;height:13px}
+#obx-picker-backdrop .obx2-presets .obx2-chip .obx2-chip-edit:hover{color:var(--ax-accent)}
+#obx-picker-backdrop .obx2-presets .obx2-add.obx2-update{border-style:solid;border-color:var(--ax-accent);color:var(--ax-accent)}
+#obx-picker-backdrop .obx2-presets .obx2-update .ax-icon{width:14px;height:14px}
+#obx-picker-backdrop .obx2-presets.obx2-mine:has(.obx2-edit){padding:8px 10px;border:1px solid var(--ax-accent);border-radius:var(--ax-radius);background:var(--ax-accent-soft)}
+#obx-picker-backdrop .obx2-presets.obx2-mine small.obx2-edit-hint{flex-basis:100%;color:var(--ax-text-2)}
+#obx-picker-backdrop .obx2-edit{flex-wrap:wrap}
+#obx-picker-backdrop .obx2-edit input{flex:1 1 180px}
+#obx-picker-backdrop .obx2-presets .obx2-edit button{white-space:nowrap}
 #obx-picker-backdrop .obx2-chip:has([aria-pressed="true"]){border-color:var(--ax-accent);background:var(--ax-accent-soft)}
 #obx-picker-backdrop .obx2-chip.is-confirm{padding-left:10px;gap:2px;border-color:var(--ax-danger);color:var(--ax-text)}
 #obx-picker-backdrop .obx2-presets .obx2-add{display:inline-flex;align-items:center;gap:6px;border-style:dashed}
@@ -599,3 +609,243 @@
 
 #obx-picker-backdrop .obx2-sheet .ax-seg>button{flex:1 1 0}
 #obx-picker-backdrop .obx2-sheet>div:first-child{flex:1 1 0}
+
+/* ── Tabla de Servicios v2: filas de dos renglones, alertas sólo donde hay algo y total al pie ──
+   El recorrido muestra la localidad (lo que se mira para facturar) y la calle debajo, en una
+   línea cada una; la dirección completa queda en el título. */
+#screen-facturacion .ob-services-table td.ob-place { max-width: 210px; white-space: nowrap; }
+#screen-facturacion .ob-place-text { display: block; min-width: 0; }
+#screen-facturacion .ob-place-text b, #screen-facturacion .ob-place-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-facturacion .ob-place-text b { color: var(--ax-text); }
+#screen-facturacion .ob-services-table td[data-col="order"] b { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--ax-fw-medium); white-space: nowrap; }
+#screen-facturacion .ob-services-table td[data-col="company"] small, #screen-facturacion .ob-services-table td[data-col="type"] small { white-space: nowrap; }
+#screen-facturacion .ob-services-table tbody tr[data-ob-open] { cursor: pointer; }
+#screen-facturacion .ob-services-table tbody tr[data-ob-open]:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ax-accent); }
+#screen-facturacion .ob-services-table tbody tr.is-open { background: var(--ax-surface-3); }
+/* Fila con algo para revisar: filete a la izquierda del color de la alerta. */
+#screen-facturacion .ob-services-table tbody tr.is-error td:first-child { box-shadow: inset 3px 0 0 var(--ax-danger); }
+#screen-facturacion .ob-services-table tbody tr.is-changed td:first-child { box-shadow: inset 3px 0 0 var(--ax-warn); }
+#screen-facturacion .ob-flag { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#screen-facturacion .ob-table td small.ob-flag { display: inline-flex; }
+#screen-facturacion .ob-flag .ax-icon { width: 12px; height: 12px; flex: 0 0 auto; }
+#screen-facturacion .ob-flag.is-error, #screen-facturacion .ob-table td small.ob-flag.is-error { color: var(--ax-danger); }
+#screen-facturacion .ob-flag.is-changed, #screen-facturacion .ob-table td small.ob-flag.is-changed { color: var(--ax-warn); }
+#screen-facturacion .ob-services-table td.ob-money-cell { text-align: right; }
+/* Total al pie, siempre a la vista mientras se recorre la tabla. */
+#screen-facturacion .ob-services-table tfoot td { position: sticky; bottom: 0; z-index: 2; height: 44px; padding-top: 0; padding-bottom: 0; border-top: 1px solid var(--ax-border-strong); border-bottom: 0; background: var(--ax-surface); vertical-align: middle; }
+#screen-facturacion .ob-services-table tfoot .ob-foot-label { white-space: nowrap; }
+#screen-facturacion .ob-services-table tfoot .ob-foot-label > b { display: inline; margin-right: 14px; }
+#screen-facturacion .ob-foot-notes { display: inline-flex; gap: 14px; vertical-align: middle; }
+#screen-facturacion .ob-foot-notes .ob-flag { margin: 0; }
+#screen-facturacion .ob-services-table tfoot .ob-money { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-services-table tfoot td.ob-actions { background: var(--ax-surface); box-shadow: none; }
+#screen-facturacion .ob-foot-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* ── Detalle v2: encabezado con ‹ ›, datos en tres columnas y acciones al pie ── */
+#screen-facturacion .ob-detail { display: flex; flex-direction: column; overflow: hidden; outline: none; }
+#screen-facturacion .ob-detail-head { flex: none; align-items: center; }
+#screen-facturacion .ob-detail-body { flex: 1; min-height: 0; overflow-y: auto; }
+#screen-facturacion .ob-detail-nav { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+#screen-facturacion .ob-detail-pos { min-width: 64px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+#screen-facturacion .ob-icon-button { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm, 32px); min-width: 0; height: var(--ax-h-sm, 32px); padding: 0; }
+#screen-facturacion .ob-icon-button .ax-icon { width: 16px; height: 16px; margin: 0; }
+#screen-facturacion .ob-detail .ob-button { display: inline-flex; align-items: center; gap: 6px; }
+#screen-facturacion .ob-detail .ob-button .ax-icon { width: 15px; height: 15px; }
+#screen-facturacion .ob-hero.has-error { border-left: 3px solid var(--ax-danger); }
+#screen-facturacion .ob-hero-change.is-error { background: var(--ax-danger-soft); }
+#screen-facturacion .ob-hero-change.is-error .ax-icon { color: var(--ax-danger); }
+#screen-facturacion .ob-route { padding: 10px 14px; }
+#screen-facturacion .ob-route > div { min-width: 0; }
+#screen-facturacion .ob-route b { font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-route span:not(.ob-route-arrow) { display: block; margin-top: 1px; color: var(--ax-text-2); font-size: var(--ax-fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-facturacion .ob-km-line { margin: var(--ax-sp-2) 0; }
+#screen-facturacion .ob-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-fact { min-width: 0; }
+#screen-facturacion .ob-fact.is-wide { grid-column: span 2; }
+#screen-facturacion .ob-fact small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-fact b { display: block; margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); overflow-wrap: anywhere; }
+#screen-facturacion .ob-detail-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-foot > small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-detail-foot > div { display: flex; gap: var(--ax-sp-2); }
+#screen-facturacion .ob-detail-foot .ob-button { height: var(--ax-h, 36px); padding: 0 14px; font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-detail-pick[aria-pressed="true"] { border-color: var(--ax-accent); color: var(--ax-text); }
+#screen-facturacion .ob-detail-pick[aria-pressed="true"] .ax-icon { color: var(--ax-accent); }
+:is(#screen-facturacion, #screen-facturas) .bd-rounding-note { margin: 0 0 var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+
+/* ── Celular: tarjeta compacta de cuatro renglones ──
+   N° de orden y fecha | importe · prestadora y base | tipo y patente · origen → destino · cliente y km.
+   Las columnas opcionales que se agreguen siguen apareciendo debajo, con su etiqueta. */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-services-table tbody tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px 12px; grid-auto-flow: row dense; }
+  #screen-facturacion .ob-services-table td[data-label]:not([data-col="datetime"])::before { display: none; }
+  #screen-facturacion .ob-services-table td { grid-column: 1 / -1; }
+  #screen-facturacion .ob-services-table td.ob-check { top: 10px; left: 12px; }
+  #screen-facturacion .ob-services-table td[data-col="order"] { grid-row: 1; grid-column: 1 / span 2; padding-left: 34px; }
+  #screen-facturacion .ob-services-table td[data-col="datetime"] { grid-row: 4; grid-column: 1; padding: 0; border: 0; color: var(--ax-text-2); }
+  #screen-facturacion .ob-services-table td[data-col="datetime"] b, #screen-facturacion .ob-services-table td[data-col="datetime"] small { display: inline; margin: 0 4px 0 0; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); color: var(--ax-text-2); }
+  #screen-facturacion .ob-services-table td[data-col="amount"] { grid-row: 1 / span 2; grid-column: 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 0; border: 0; text-align: right; }
+  #screen-facturacion .ob-services-table td[data-col="amount"] .ob-money { font-size: var(--ax-fs-md); }
+  #screen-facturacion .ob-services-table td[data-col="company"] { grid-row: 2; grid-column: 1; }
+  #screen-facturacion .ob-services-table td[data-col="type"] { grid-row: 2; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="origin"] { grid-row: 3; grid-column: 1; }
+  #screen-facturacion .ob-services-table td[data-col="destination"] { grid-row: 3; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="destination"] .ob-place-text b::before { content: "→ "; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+  #screen-facturacion .ob-services-table td.ob-place { max-width: none; }
+  #screen-facturacion .ob-services-table td.ob-place small { display: none; }
+  #screen-facturacion .ob-services-table td[data-col="client"] { grid-row: 4; grid-column: 2; }
+  #screen-facturacion .ob-services-table td[data-col="km"] { grid-row: 3; grid-column: 3; justify-self: end; align-self: center; }
+  #screen-facturacion .ob-services-table td[data-col="client"] b, #screen-facturacion .ob-services-table td[data-col="km"] { color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+  #screen-facturacion .ob-services-table td.ob-actions { position: static; grid-row: 4; grid-column: 3; justify-self: end; align-self: center; margin: -6px -6px -6px 0; }
+  #screen-facturacion .ob-services-table td :is(b, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Opcionales: debajo, con su etiqueta. */
+  #screen-facturacion .ob-services-table td:is([data-col="completed"], [data-col="base"], [data-col="plate"], [data-col="vehicle"], [data-col="kmsplit"], [data-col="remito"]) { display: flex; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: 1px solid var(--ax-border); font-size: var(--ax-fs-xs); }
+  #screen-facturacion .ob-services-table td:is([data-col="completed"], [data-col="base"], [data-col="plate"], [data-col="vehicle"], [data-col="kmsplit"], [data-col="remito"]):not([data-col="datetime"])::before { display: block; content: attr(data-label); margin: 0; color: var(--ax-text-3); }
+  #screen-facturacion .ob-services-table tbody tr.is-error, #screen-facturacion .ob-services-table tbody tr.is-changed { box-shadow: none; }
+  #screen-facturacion .ob-services-table tbody tr.is-error { border-left: 3px solid var(--ax-danger); }
+  #screen-facturacion .ob-services-table tbody tr.is-changed { border-left: 3px solid var(--ax-warn); }
+  #screen-facturacion .ob-services-table tbody tr.is-error td:first-child, #screen-facturacion .ob-services-table tbody tr.is-changed td:first-child { box-shadow: none; }
+  /* Total: barra fija arriba de la navegación (la tarjeta no puede recortar, si no el pie no se pega). */
+  #screen-facturacion .ob-table-card:has(.ob-services-table) { overflow: visible; }
+  #screen-facturacion .ob-services-table tfoot { position: sticky; bottom: 8px; z-index: 3; }
+  #screen-facturacion .ob-services-table tfoot tr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); box-shadow: var(--ax-shadow-pop); }
+  #screen-facturacion .ob-services-table tfoot td { position: static; height: auto; padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-services-table tfoot td.ob-foot-label { flex: 1; min-width: 0; white-space: normal; }
+  #screen-facturacion .ob-services-table tfoot td:not(.ob-foot-label):not([data-col="amount"]) { display: none; }
+  #screen-facturacion .ob-foot-notes { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
+  #screen-facturacion .ob-facts { grid-template-columns: 1fr 1fr; }
+  #screen-facturacion .ob-detail-head { flex-wrap: nowrap; padding: 12px 14px; }
+  #screen-facturacion .ob-detail-head h3 { font-size: var(--ax-fs-lg); }
+  #screen-facturacion .ob-detail-actions .ob-button[data-ob="close-detail"] { width: var(--ax-h-sm, 32px); padding: 0; justify-content: center; font-size: 0; gap: 0; }
+  #screen-facturacion .ob-detail-pos { min-width: 0; padding: 0 2px; }
+  #screen-facturacion .ob-detail-body { padding: 12px 14px; }
+  #screen-facturacion .ob-hero > b { font-size: 26px; }
+  #screen-facturacion .ob-detail-foot { padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #screen-facturacion .ob-detail-foot > small { display: none; }
+  #screen-facturacion .ob-detail-foot > div { flex: 1; }
+  #screen-facturacion .ob-detail-foot .ob-button { flex: 1; justify-content: center; height: 44px; }
+}
+
+/* ── Detalle por áreas: cabecera fija, dos columnas en escritorio, acordeones en celular ── */
+#screen-facturacion .ob-detail.ob-detail-areas { width: min(960px, 96vw); }
+#screen-facturacion .ob-detail-summary { flex: none; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding: 10px 20px 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-summary.has-change { box-shadow: inset 3px 0 0 var(--ax-warn); }
+#screen-facturacion .ob-detail-summary.has-error { box-shadow: inset 3px 0 0 var(--ax-danger); }
+#screen-facturacion .ob-detail-summary small { display: block; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-detail-amount { text-align: right; flex: none; }
+#screen-facturacion .ob-detail-amount b { display: block; font: var(--ax-fw-semibold) 24px var(--ax-font-mono); font-variant-numeric: tabular-nums; line-height: 1.15; }
+#screen-facturacion .ob-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+#screen-facturacion .ob-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); background: var(--ax-warn-soft); color: var(--ax-text); }
+#screen-facturacion .ob-chip.is-error { background: var(--ax-danger-soft); }
+#screen-facturacion .ob-chip .ax-icon { width: 13px; height: 13px; }
+#screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--ax-sp-3); align-items: start; }
+#screen-facturacion .ob-detail-areas .ob-col { display: grid; gap: var(--ax-sp-3); align-content: start; min-width: 0; }
+#screen-facturacion .ob-detail-areas .ob-col-wide { grid-column: 1 / -1; }
+#screen-facturacion .ob-area { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-area > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; padding: 10px 14px; cursor: default; font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); color: var(--ax-text); }
+#screen-facturacion .ob-area > summary::-webkit-details-marker { display: none; }
+#screen-facturacion .ob-area-chev { display: none; }
+#screen-facturacion .ob-area-body { display: grid; gap: var(--ax-sp-2); padding: 0 14px 14px; }
+#screen-facturacion .ob-area .ob-facts { border-top: 0; padding-top: 0; }
+#screen-facturacion .ob-area .ob-hero-change { margin-top: 0; }
+#screen-facturacion .ob-area-history > summary { cursor: pointer; }
+#screen-facturacion .ob-area-history .ob-area-chev { display: inline-flex; }
+#screen-facturacion .ob-km-line small { display: block; color: var(--ax-text-3); }
+#screen-facturacion .ob-map-slot:empty { display: none; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-detail.ob-detail-areas { width: 100%; }
+  #screen-facturacion .ob-detail-summary { padding: 8px 14px 10px; }
+  #screen-facturacion .ob-detail-amount b { font-size: 20px; }
+  #screen-facturacion .ob-detail-areas .ob-detail-body { grid-template-columns: 1fr; gap: var(--ax-sp-2); }
+  #screen-facturacion .ob-detail-areas .ob-col { display: contents; }
+  #screen-facturacion .ob-area > summary { cursor: pointer; min-height: 44px; }
+  #screen-facturacion .ob-area-chev { display: inline-flex; transition: transform .15s; }
+  #screen-facturacion .ob-area[open] > summary .ob-area-chev { transform: rotate(180deg); }
+  #screen-facturacion .ob-detail-areas .ob-col-wide { order: 9; }
+}
+#screen-facturacion .ob-fact-note { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular, 400); }
+
+/* Mapa del recorrido dentro del detalle */
+#screen-facturacion .ob-map-box { height: 220px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); overflow: hidden; background: var(--ax-surface); }
+#screen-facturacion .ob-map-canvas { width: 100%; height: 100%; }
+#screen-facturacion .ob-map-loading { display: grid; place-items: center; height: 100%; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-map-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: var(--ax-sp-2); }
+#screen-facturacion .ob-map-actions .ob-button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+#screen-facturacion .ob-map-note { margin: var(--ax-sp-2) 0 0; padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+@media (max-width: 760px) { #screen-facturacion .ob-map-box { height: 200px; } }
+
+/* ── Detalle (versión C): sin cajas anidadas, una sola superficie, mapa fijo a la derecha ── */
+#screen-facturacion .ob-detail.ob-detail-areas { width: min(1100px, 96vw); }
+#screen-facturacion .ob-detail-areas .ob-detail-head { padding: 14px 20px; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-detail-areas .ob-detail-head h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-xl, 20px) var(--ax-font-mono); letter-spacing: 0; }
+#screen-facturacion .ob-detail-areas .ob-detail-body { display: block; padding: 4px 20px 20px; }
+#screen-facturacion .ob-detail-areas .ob-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 0 var(--ax-sp-5, 28px); align-items: start; }
+#screen-facturacion .ob-detail-areas .ob-col { display: grid; align-content: start; min-width: 0; }
+#screen-facturacion .ob-detail-areas .ob-col:last-child { position: sticky; top: 0; }
+/* áreas: sin caja, separadas por una línea fina */
+#screen-facturacion .ob-area { border: 0; border-bottom: 1px solid var(--ax-border); border-radius: 0; background: transparent; }
+#screen-facturacion .ob-col > .ob-area:last-child, #screen-facturacion .ob-area-history { border-bottom: 0; }
+#screen-facturacion .ob-area > summary { padding: 14px 0 10px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); color: var(--ax-text-2); letter-spacing: .02em; pointer-events: none; }
+#screen-facturacion .ob-area-body { padding: 0 0 16px; gap: 10px; }
+#screen-facturacion .ob-area-title { display: inline-flex; align-items: center; gap: 8px; }
+#screen-facturacion .ob-area-emoji { font-size: 1.15em; line-height: 1; }
+#screen-facturacion .ob-area-history { margin-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-area-history > summary { pointer-events: auto; cursor: pointer; }
+#screen-facturacion .ob-area-history .ob-area-chev { display: inline-flex; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-area-history[open] .ob-area-chev { transform: rotate(180deg); }
+/* datos: rótulo tenue arriba, valor firme abajo */
+#screen-facturacion .ob-area .ob-facts { padding: 0; border: 0; gap: 12px 16px; }
+#screen-facturacion .ob-fact small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-fact b { font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-note { margin: 0; padding: 8px 12px; }
+/* recorrido sin caja interior */
+#screen-facturacion .ob-area .ob-route { padding: 0; border: 0; background: transparent; }
+#screen-facturacion .ob-km-line { margin: 0; }
+#screen-facturacion .ob-km-line b { display: inline-block; padding: 2px 10px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); border: 1px solid var(--ax-border); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-km-split { margin-left: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+/* alertas: una línea, sin bloque grande */
+#screen-facturacion .ob-area .ob-hero-change { padding: 6px 10px; font-size: var(--ax-fs-sm); }
+/* mapa */
+#screen-facturacion .ob-map-box { height: 340px; border-radius: var(--ax-radius-lg); }
+#screen-facturacion .ob-map-canvas { animation: ob-fade var(--ax-dur-slow) var(--ax-ease-out) both; }
+#screen-facturacion .ob-map-actions .ob-button { height: var(--ax-h-sm, 32px); padding: 0 10px; border-color: transparent; color: var(--ax-text-2); }
+#screen-facturacion .ob-map-actions .ob-button:hover { border-color: var(--ax-border-strong); color: var(--ax-text); }
+/* pie: importe y acción principal */
+#screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-foot-amount b { color: var(--ax-text); font: var(--ax-fw-semibold) 18px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-detail-pick { min-width: 170px; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+
+/* reacciones de botones del detalle */
+#screen-facturacion .ob-detail .ob-button { transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease), opacity var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-detail .ob-button:not(:disabled):hover { background: var(--ax-surface-2); }
+#screen-facturacion .ob-detail .ob-button.primary:not(:disabled):hover { background: var(--ax-accent-hover); }
+#screen-facturacion .ob-detail .ob-button:not(:disabled):active { transform: scale(.97); }
+#screen-facturacion .ob-detail .ob-button:disabled { opacity: .4; cursor: default; }
+#screen-facturacion .ob-detail .ob-button:focus-visible, #screen-facturacion .ob-area-history > summary:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 2px; }
+
+/* transiciones: el panel entra desde la derecha una sola vez; al pasar de servicio sólo se funde el contenido */
+@keyframes ob-slide-in { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ob-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+#screen-facturacion .ob-detail.is-entering { animation: ob-slide-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#screen-facturacion .ob-detail.is-stepping .ob-detail-body { animation: ob-fade var(--ax-dur) var(--ax-ease-out) both; }
+#screen-facturacion .ob-skel { border-radius: var(--ax-radius-lg); background: linear-gradient(90deg, var(--ax-surface-2) 30%, var(--ax-surface) 50%, var(--ax-surface-2) 70%); background-size: 200% 100%; animation: ob-shimmer 1.3s linear infinite; margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  #screen-facturacion .ob-detail.is-entering, #screen-facturacion .ob-detail.is-stepping .ob-detail-body, #screen-facturacion .ob-map-canvas, #screen-facturacion .ob-skel { animation: none; }
+  #screen-facturacion .ob-detail .ob-button { transition: none; }
+}
+
+/* celular: acordeones, una columna */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-detail.ob-detail-areas { width: 100%; }
+  #screen-facturacion .ob-detail-areas .ob-detail-head { padding: 12px 14px; }
+  #screen-facturacion .ob-detail-areas .ob-detail-body { display: grid; gap: 0; padding: 0 14px 14px; }
+  #screen-facturacion .ob-detail-areas .ob-cols { display: contents; }
+  #screen-facturacion .ob-detail-areas .ob-col { display: contents; }
+  #screen-facturacion .ob-area > summary { pointer-events: auto; cursor: pointer; min-height: 44px; }
+  #screen-facturacion .ob-area-chev { display: inline-flex; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+  #screen-facturacion .ob-area[open] > summary .ob-area-chev { transform: rotate(180deg); }
+  #screen-facturacion .ob-map-box { height: 200px; }
+  #screen-facturacion .ob-detail-foot > small.ob-foot-amount { display: none; }
+  #screen-facturacion .ob-detail-areas [data-ob-area="recorrido"] { order: 3; }
+  #screen-facturacion .ob-detail-areas [data-ob-area="desglose"] { order: 4; }
+  #screen-facturacion .ob-detail-areas .ob-area-history { order: 9; }
+}
