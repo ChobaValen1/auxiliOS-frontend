@@ -92,7 +92,7 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
   ['rsm-ranking', 'rsm-evol-canvas', 'dashx-fact-mapa',
-   'dashx-ops-tendencia', 'dashx-ops-combustible',
+   'dashx-ops-tendencia',
    'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
   /* Resumen tiene una sola tabla de prestadoras, que se abre en sus bases. */
@@ -222,21 +222,22 @@ test('la leyenda de los anillos puede ir al costado o no ir', () => {
   assert.match(charts, /datos\.leyenda\) === 'derecha' \? 'right' : 'bottom'/);
   // Operaciones lleva su propia lista de medios al lado, como Resumen.
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
-  assert.equal((ops.match(/leyenda: 'ninguna'/g) || []).length, 1);
+  // Operaciones ya no dibuja anillos: sus medios de pago son una barra apilada.
+  assert.equal((ops.match(/leyenda: 'ninguna'/g) || []).length, 0);
 });
 
 test('Operaciones tiene el bloque de combustible con sus razones', () => {
-  assert.ok(index.includes('id="dashx-ops-combustible"'), 'falta el gráfico de medios de pago');
-  assert.ok(index.includes('id="dashx-ops-comb-metrics"'), 'faltan las razones de combustible');
+  assert.ok(index.includes('id="dashx-ops-pago-barra"'), 'falta la barra de medios de pago');
+  assert.ok(index.includes('id="dashx-ops-comb-metrics"'), 'faltan las razones de rendimiento');
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /function pintarCombustible/);
-  ['Km por litro', 'Litros cada 100 km', 'Costo por km', 'Precio por litro', 'Ticket promedio', 'Litros por carga']
+  ['Km por litro', 'Precio por litro', 'Km por servicio', 'Horas por jornada', 'Km por jornada', 'Costo por km']
     .forEach(m => assert.ok(ops.includes(m), `falta la métrica ${m}`));
   // Los importes por unidad no se redondean a pesos enteros.
   assert.match(ops, /function pesosFinos/);
   assert.match(ops, /pesosFinos\(c\.costo_por_km\)/);
   // Cada razón trae con qué se compara: "12,81" solo no dice si está bien o mal.
-  assert.match(ops, /antes\(ca && valor\(ca\.km_por_litro\)/);
+  assert.match(ops, /delta\(valor\(cd\.km_por_litro\), dd \? valor\(c\.km_por_litro\) : ca && valor\(ca\.km_por_litro\)/);
 });
 
 test('la RPC de operaciones devuelve el bloque de combustible', () => {
