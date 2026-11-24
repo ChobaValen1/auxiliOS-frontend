@@ -1,13 +1,13 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v693-flota-v608-solo-v625';
+const CACHE_NAME='auxilios-v694-flota-v608-solo-v625';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
   '/dashboard-inicio-v1.js','/dashboard-inicio-v1.css',
   '/ui/completed-journey-services-v1.js',
   '/ui/efficiency-loader-v1.js','/ui/motion/efficiency-v1.js','/ui/motion/efficiency-v1.css',
-  '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css',
+  '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css','/ui/history-detail-panel-v1.js','/ui/history-detail-panel-v1.css',
   '/runtime-config.js','/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/ui/tooltip-v1.js','/ui/tooltip-v1.css','/ui/count-v1.js','/ui/scroll-fab-v1.js','/ui/scroll-fab-v1.css','/ui/sort-flip-v1.js','/solo.html','/solo/solo-ui.js','/solo/solo.js','/solo/solo-ops.js','/solo/solo-pwa.js','/solo/solo-facturacion.js','/solo/solo-numeros.js','/solo/solo-offline.js','/solo/solo-config.js','/solo/solo.css','/solo-manifest.json','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/d3-shape-3.2.1.min.js','/dashboard-compact-v1.js','/dashboard-compact-v1.css','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',

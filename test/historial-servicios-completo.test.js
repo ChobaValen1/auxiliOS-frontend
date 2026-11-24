@@ -52,3 +52,21 @@ test('Servicios: Activos baja una lista liviana y los remitos sólo de los servi
   const sql = read('migrations/20261120150000_servicios_activos_liviano_v1.sql');
   assert.match(sql, /revoke all on function public\.list_operator_active_services_v1\(integer\) from public, anon/);
 });
+
+test('Historial: tocar una fila abre un panel de solo lectura; importes y facturación sólo para Administración', () => {
+  const js = read('operator-services.js');
+  assert.match(js, /abrirDetalleHistorial\('\$\{s\.service_id\}'\)/);
+  assert.match(js, /verServicioOperador\('\$\{s\.service_id\}'\)/);
+  assert.match(js, /const canSeeBilling=\(\)=>\['administracion','facturacion'\]\.includes\(role\(\)\)/);
+  assert.match(js, /billingRows=canSeeBilling\(\)\?/);
+  assert.match(js, /canEdit:canEditHistoryService\(s\)/);
+  assert.match(js, /window\.AuxiliosHistoryDetail\?\.refresh\(\)/);
+  const panel = read('ui/history-detail-panel-v1.js');
+  assert.match(panel, /window\.AuxiliosHistoryDetail=\{init/);
+  assert.match(panel, /e\.key==='Escape'/);
+  assert.match(panel, /Abrir completo/);
+  const html = read('Index.html');
+  assert.match(html, /history-detail-panel-v1\.js/);
+  assert.match(read('sw.js'), /history-detail-panel-v1\.css/);
+  assert.match(read('ui/history-detail-panel-v1.css'), /@media\(max-width:720px\)/);
+});
