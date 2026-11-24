@@ -84,11 +84,18 @@ function loadChanges(id,force){
   changesCache.set(key,{state:'loading'});
   host.changes(key).then(items=>{changesCache.set(key,{state:'ready',items});},()=>{changesCache.set(key,{state:'error'});}).finally(()=>{if(String(cur)===key&&view==='cambios')paintChanges(key);});
 }
+function initials(n){const w=String(n||'').trim().split(/\s+/).filter(Boolean);return(w.length>1?w[0][0]+w[1][0]:(w[0]||'?').slice(0,2)).toUpperCase();}
+function avatar(name){
+  if(!name||name==='Sistema')return`<span class="hd-av hd-av-sys" title="Sistema" aria-hidden="true">⚙</span>`;
+  let h=0;for(const c of String(name))h=(h*31+c.charCodeAt(0))%360;
+  return`<span class="hd-av" style="--h:${h}" title="${esc(name)}" aria-hidden="true">${esc(initials(name))}</span>`;
+}
 function changesMarkup(entry){
   if(!entry||entry.state==='loading')return'<p class="hd-muted">Cargando los cambios…</p>';
   if(entry.state==='error')return`<p class="hd-muted">No se pudieron cargar los cambios. <button type="button" class="hd-linkbtn" data-hd="retry-changes">Reintentar</button></p>`;
   if(!entry.items.length)return'<p class="hd-muted">Todavía no hay cambios registrados para este servicio.</p>';
-  return`<ol class="hd-log">${entry.items.map(e=>`<li><div class="hd-log-main"><b>${esc(e.label)}</b>${e.note?`<span>${esc(e.note)}</span>`:''}</div><div class="hd-log-meta">${e.who?`<span class="hd-log-who">${esc(e.who)}</span>`:''}<time>${esc(e.time)}</time></div></li>`).join('')}</ol>`;
+  let day='';
+  return`<ol class="hd-log">${entry.items.map(e=>{const sep=e.day!==day?(day=e.day,`<li class="hd-log-day" aria-hidden="true">${esc(e.day)}</li>`):'';return sep+`<li class="hd-log-item hd-k-${esc(e.kind)}">${avatar(e.who)}<div class="hd-log-main"><div class="hd-log-line"><b>${esc(e.label)}</b><time>${esc(e.clock)}</time></div>${e.note?`<span class="hd-log-note">${esc(e.note)}</span>`:''}<span class="hd-log-who">${esc(e.who||'Sistema')}</span></div></li>`;}).join('')}</ol>`;
 }
 function paintChanges(id){const slot=el?.querySelector('[data-hd-changes]');if(slot)slot.innerHTML=changesMarkup(changesCache.get(String(id)));}
 
@@ -106,7 +113,7 @@ function ficha(m){
   const links=[m.coords.mapsUrl?`<a class="hd-pill" href="${esc(m.coords.mapsUrl)}" target="_blank" rel="noopener">Abrir en Google Maps</a>`:'',m.coords.origin&&m.coords.destination?'<button type="button" class="hd-pill hd-pill-main" data-hd="expand" title="Base, origen, destino y regreso a base, con los km de cada tramo">Ver ruta con bases</button>':''].join('');
   return`<div class="hd-map" data-hd-map>${schematic(m)}</div><div class="hd-maplinks">${links}<span class="hd-map-note" data-hd-map-note${m.coords.polyline?' hidden':''}>Recorrido aproximado</span></div><div class="hd-kpis" style="--n:${m.kpis.length}">${kpis}</div><div class="hd-body">${body}</div>`;
 }
-function cambios(){return`<div class="hd-body"><section class="hd-sec"><h3>Quién modificó este servicio</h3><div data-hd-changes></div></section></div>`;}
+function cambios(){return`<div class="hd-body"><section class="hd-sec"><h3>Historial de cambios</h3><p class="hd-muted hd-sub">Del inicio al final, con quién hizo cada cosa.</p><div data-hd-changes></div></section></div>`;}
 function render(m){
   const chips=[`<span class="hd-chip hd-${esc(m.statusTone)}">${esc(m.statusLabel)}</span>`].concat(m.chips.map(c=>`<span class="hd-chip hd-${esc(c.tone||'soft')}">${esc(c.label)}</span>`)).join('');
   const pos=m.position?`<span class="hd-pos" aria-live="polite">${m.position.index} de ${m.position.total}</span>`:'';
