@@ -523,3 +523,20 @@
 #os-intake-link .os-il-note { margin: 10px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.45; }
 #os-intake-link .os-il-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) { #os-intake-link .os-il-panel { padding-left: 14px; } }
+
+/* Barra compacta: Activos es la vista de entrada; Historial es un ícono con contador y, estando adentro, un botón para volver. */
+#screen-operaciones .os-history-btn { position: relative; }
+#screen-operaciones .os-history-btn[hidden], #screen-operaciones .os-back-btn[hidden] { display: none; }
+#screen-operaciones .os-history-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--ax-accent); color: var(--ax-accent-fg); font: 700 11px/18px var(--ax-font); text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--ax-bg); }
+#screen-operaciones .os-history-badge[hidden] { display: none; }
+#screen-operaciones .os-back-btn { display: inline-flex; align-items: center; gap: 8px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; transition: background var(--ax-dur) var(--ax-ease); }
+#screen-operaciones .os-back-btn:hover { background: var(--ax-surface-3); }
+#screen-operaciones .os-back-btn .ax-icon { width: 16px; height: 16px; }
+#screen-operaciones .os-back-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+@media (min-width: 901px) {
+  #screen-operaciones .os-commandbar .os-filters { order: 0; flex: 1 1 560px; }
+}
+/* Acciones (a la derecha, con su propia marca) separadas de los filtros (a la izquierda). */
+#screen-operaciones .os-actions { display: flex; align-items: center; gap: var(--ax-sp-2); flex: 0 0 auto; margin-left: auto; padding-left: var(--ax-sp-3); border-left: 1px solid var(--ax-border-strong); align-self: stretch; }
+#screen-operaciones .os-actions .os-manage { order: 0; margin-left: 0; }
+@media (max-width: 900px) { #screen-operaciones .os-actions { flex: 1 1 100%; margin-left: 0; padding-left: 0; border-left: 0; justify-content: flex-end; order: 9; } #screen-operaciones .os-actions .os-manage { flex: 1 1 auto; } }
