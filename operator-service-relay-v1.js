@@ -11,6 +11,10 @@
   const db = () => (typeof _db !== 'undefined' ? _db : null);
   const O = () => window.OperatorServices || null;
   const W = () => O()?.S?.wizard || null;
+  /* El formulario de Particulares usa este mismo módulo con su propio objeto (standalone) y su propio
+     contenedor (relayRoot): no se mezcla con el asistente de prestadoras aunque haya uno abierto. */
+  const cur = w => (w?.standalone ? w : (cur(w)));
+  const $ = (c, id) => { const r = c?.owner?.relayRoot; return r?.isConnected ? r.querySelector('#' + id) : document.getElementById(id); };
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => (v === null || v === undefined || String(v).trim() === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
   const missingFn = e => /could not find the function|PGRST202|does not exist|schema cache/i.test(String(e?.message || e?.code || e || ''));
@@ -27,14 +31,19 @@
       w.relay = { key, loaded: false, loading: false, on: false, original: null, address: '', placeId: '', lat: null, lng: null, toDriver: '', handedOver: false, truck: null, truckFor: '',
         search: { timer: null, seq: 0, focused: false, suggestions: [], loading: false, error: '', token: '' } };
     }
+    if (w.relay.owner !== w) Object.defineProperty(w.relay, 'owner', { value: w, configurable: true, writable: true, enumerable: false });
     return w.relay;
   }
   const located = c => Boolean(c.address && num(c.lat) !== null && num(c.lng) !== null);
   const missing = c => [!located(c) && 'el punto de intercambio ubicado en el mapa', !c.toDriver && 'el chofer que recibe'].filter(Boolean);
 
-  async function load(w) {
+  function load(w) {
     const c = state(w);
-    if (c.loaded || c.loading) return;
+    if (c.loaded) return Promise.resolve();
+    if (!c.loadingPromise) c.loadingPromise = loadNow(w, c);
+    return c.loadingPromise;
+  }
+  async function loadNow(w, c) {
     c.loading = true;
     if (w.serviceId && db()) {
       try {
@@ -89,7 +98,7 @@
     const c = state(w), s = c.search, pick = s.suggestions[index];
     if (!pick || !db()) return;
     s.focused = false; s.suggestions = []; paintSuggestions(c);
-    const input = document.getElementById('osv4-relay-address');
+    const input = $(c, 'osv4-relay-address');
     if (input) input.value = pick.text || pick.mainText || '';
     c.checking = true; paintStatus(c);
     try {
@@ -107,7 +116,7 @@
 
   /* ── Pintado: el panel se arma una vez y después sólo se actualiza (sin perder el foco al escribir) ── */
   function paintSuggestions(c) {
-    const box = document.getElementById('osv4-relay-suggestions'); if (!box) return;
+    const box = $(c, 'osv4-relay-suggestions'); if (!box) return;
     const s = c.search;
     if (!s.focused) { box.hidden = true; return; }
     box.hidden = false;
@@ -116,7 +125,7 @@
       : '<li class="is-note">Escribí al menos tres letras de la dirección.</li>';
   }
   function paintStatus(c) {
-    const el = document.getElementById('osv4-relay-status'); if (!el) return;
+    const el = $(c, 'osv4-relay-status'); if (!el) return;
     const s = c.search;
     el.className = 'osv4-relay-status' + (c.checking ? '' : located(c) ? ' is-ok' : c.address || s.error ? ' is-warn' : '');
     el.textContent = c.checking ? 'Ubicando en el mapa…' : located(c) ? '✓ Ubicado en el mapa' : s.error && !s.focused ? s.error : 'Elegí una dirección de la lista para ubicarla en el mapa';
@@ -125,12 +134,12 @@
     `<option value="">${esc(placeholder)}</option>${rows.map(x => `<option value="${esc(x[valueKey])}" ${String(x[valueKey]) === String(selected) ? 'selected' : ''}>${esc(label(x))}</option>`).join('')}`;
 
   function ensureMarkup(w) {
-    const box = document.getElementById('osv4-relay'), slot = document.getElementById('osv4-relay-switch');
+    const c0 = state(w), box = $(c0, 'osv4-relay'), slot = $(c0, 'osv4-relay-switch');
     if (!box || !slot) return null;
     if (!slot.firstElementChild) {
       slot.innerHTML = '<label class="ax-switch osv4-toggle-row osv4-relay-toggle"><span>Servicio con relevo</span><input type="checkbox" id="osv4-relay-on"></label>';
       slot.querySelector('#osv4-relay-on').addEventListener('change', e => {
-        const cw = W() || w, c = state(cw);
+        const cw = cur(w), c = state(cw);
         c.on = e.target.checked; cw.dirty = true; update(cw);
       });
     }
@@ -144,10 +153,10 @@
           <div class="osv4-relay-field"><span>Móvil que recibe</span><div id="osv4-relay-truck" class="osv4-relay-truck" role="status"></div></div></div>
         <p class="osv4-relay-note">Es <b>un solo servicio y un solo remito</b>: lo cierra el chofer que recibe. Los dos choferes ven el servicio desde que lo guardás y los dos lo cuentan completo para el sueldo.</p>`;
       const input = box.querySelector('#osv4-relay-address');
-      input.addEventListener('focus', () => { const c = state(W() || w); c.search.focused = true; paintSuggestions(c); });
-      input.addEventListener('blur', () => setTimeout(() => { const c = state(W() || w); c.search.focused = false; paintSuggestions(c); paintStatus(c); }, 160));
+      input.addEventListener('focus', () => { const c = state(cur(w)); c.search.focused = true; paintSuggestions(c); });
+      input.addEventListener('blur', () => setTimeout(() => { const c = state(cur(w)); c.search.focused = false; paintSuggestions(c); paintStatus(c); }, 160));
       input.addEventListener('input', e => {
-        const cw = W() || w, c = state(cw), s = c.search, text = e.target.value;
+        const cw = cur(w), c = state(cw), s = c.search, text = e.target.value;
         c.lat = null; c.lng = null; c.address = text.trim(); c.placeId = ''; cw.dirty = true;
         if (s.timer) clearTimeout(s.timer);
         s.seq++; s.suggestions = []; s.error = ''; s.focused = true;
@@ -157,8 +166,8 @@
       });
       /* mousedown evita que el blur cierre la lista antes del clic. */
       box.addEventListener('mousedown', e => { if (e.target.closest('[data-relay-pick]')) e.preventDefault(); });
-      box.addEventListener('click', e => { const b = e.target.closest('[data-relay-pick]'); if (b) void choose(W() || w, Number(b.dataset.relayPick)); });
-      box.querySelector('#osv4-relay-driver').addEventListener('change', e => { const cw = W() || w, c = state(cw); c.toDriver = e.target.value; c.truck = null; c.truckFor = ''; cw.dirty = true; update(cw); void lookupTruck(cw); });
+      box.addEventListener('click', e => { const b = e.target.closest('[data-relay-pick]'); if (b) void choose(cur(w), Number(b.dataset.relayPick)); });
+      box.querySelector('#osv4-relay-driver').addEventListener('change', e => { const cw = cur(w), c = state(cw); c.toDriver = e.target.value; c.truck = null; c.truckFor = ''; cw.dirty = true; update(cw); void lookupTruck(cw); });
     }
     return { box, slot };
   }
@@ -166,7 +175,7 @@
   function update(w) {
     const els = ensureMarkup(w); if (!els) return;
     const { box, slot } = els;
-    const card = document.getElementById('osv4-toggles');
+    const card = w.standalone ? null : document.getElementById('osv4-toggles');
     if (!shown(w)) { box.hidden = true; slot.hidden = true; return; }
     slot.hidden = false;
     if (card) card.hidden = false;
@@ -193,7 +202,7 @@
   }
 
   function paintTruck(c) {
-    const el = document.getElementById('osv4-relay-truck'); if (!el) return;
+    const el = $(c, 'osv4-relay-truck'); if (!el) return;
     const t = c.truck;
     let html, cls = 'osv4-relay-truck';
     if (!c.toDriver) html = 'Se toma de la jornada activa del chofer que elijas';
@@ -247,5 +256,13 @@
     }
   }
 
-  window.AuxRelevoServicio = { sync, update, persist, lookupTruck, visible: shown, _state: state, _missing: missing };
+  /* Resumen para el «Confirmar cambios» de una edición (null si no hay relevo). */
+  function summary(w) {
+    const c = w?.relay;
+    if (!c || !c.on) return null;
+    const driver = (O()?.S?.drivers || []).find(x => String(x.user_id) === String(c.toDriver));
+    return [c.address || 'Sin punto de intercambio', driver ? `recibe ${driver.full_name}` : (c.toDriver ? 'recibe otro chofer' : 'sin chofer que recibe')].join(' · ');
+  }
+
+  window.AuxRelevoServicio = { sync, update, persist, lookupTruck, load, summary, visible: shown, _state: state, _missing: missing };
 })();
