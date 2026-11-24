@@ -540,3 +540,12 @@
 #screen-operaciones .os-actions { display: flex; align-items: center; gap: var(--ax-sp-2); flex: 0 0 auto; margin-left: auto; padding-left: var(--ax-sp-3); border-left: 1px solid var(--ax-border-strong); align-self: stretch; }
 #screen-operaciones .os-actions .os-manage { order: 0; margin-left: 0; }
 @media (max-width: 900px) { #screen-operaciones .os-actions { flex: 1 1 100%; margin-left: 0; padding-left: 0; border-left: 0; justify-content: flex-end; order: 9; } #screen-operaciones .os-actions .os-manage { flex: 1 1 auto; } }
+/* El tema de movimiento (body.ax-motion) arma la barra como grilla con áreas; con el grupo de acciones eso se rompía. */
+body.ax-motion #screen-operaciones .os-commandbar.os-commandbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2); grid-template-areas: none; grid-template-columns: none; margin: 0 0 var(--ax-sp-3); }
+body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-filters { order: 0; flex: 1 1 560px; width: auto; min-width: 0; }
+body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-manage { width: auto; min-height: 0; height: var(--ax-h); padding: 0 14px; white-space: nowrap; justify-self: auto; }
+body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-icon-btn { grid-area: auto; }
+@media (max-width: 900px) {
+  body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-filters { order: 0; flex-basis: 100%; }
+  body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-manage { flex: 1 1 auto; }
+}
