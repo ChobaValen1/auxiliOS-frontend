@@ -76,3 +76,17 @@ test('Historial: tocar una fila abre un panel de solo lectura; importes y factur
   assert.match(read('sw.js'), /history-detail-panel-v1\.css/);
   assert.match(read('ui/history-detail-panel-v1.css'), /@media\(max-width:720px\)/);
 });
+
+test('Historial: la ficha desliza, muestra base, km facturables y quién cambió el servicio', () => {
+  const panel = read('ui/history-detail-panel-v1.js');
+  const css = read('ui/history-detail-panel-v1.css');
+  const host = read('operator-services.js');
+  assert.match(panel, /classList\.add\('is-open'\)/);
+  assert.match(css, /transform:translateX\(100%\)/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(panel, /bd\.kilometros\(q/);
+  assert.match(panel, /view-cambios/);
+  assert.match(host, /get_operator_service_history_v2/);
+  assert.match(host, /billing_base_name,s\.branch_name/);
+  assert.doesNotMatch(panel, /hd-when/);
+});
