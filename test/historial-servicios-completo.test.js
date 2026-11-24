@@ -58,13 +58,19 @@ test('Historial: tocar una fila abre un panel de solo lectura; importes y factur
   assert.match(js, /abrirDetalleHistorial\('\$\{s\.service_id\}'\)/);
   assert.match(js, /verServicioOperador\('\$\{s\.service_id\}'\)/);
   assert.match(js, /const canSeeBilling=\(\)=>\['administracion','facturacion'\]\.includes\(role\(\)\)/);
-  assert.match(js, /billingRows=canSeeBilling\(\)\?/);
+  assert.match(js, /showBilling:billing&&done/);
+  assert.match(js, /get_operator_billing_service_detail_v5_km_v1/);
   assert.match(js, /canEdit:canEditHistoryService\(s\)/);
   assert.match(js, /window\.AuxiliosHistoryDetail\?\.refresh\(\)/);
   const panel = read('ui/history-detail-panel-v1.js');
   assert.match(panel, /window\.AuxiliosHistoryDetail=\{init/);
   assert.match(panel, /e\.key==='Escape'/);
   assert.match(panel, /Abrir completo/);
+  // Mapa compartido: un solo google.maps.Map para todo el panel.
+  assert.match(panel, /if\(!MAP\.map\)MAP\.map=new maps\.Map/);
+  assert.match(panel, /ServiceRouteMap/);
+  // El desglose sólo se pide si el modelo lo habilita (Administración/Facturación).
+  assert.match(panel, /if\(m\.showBilling\)\{loadBilling/);
   const html = read('Index.html');
   assert.match(html, /history-detail-panel-v1\.js/);
   assert.match(read('sw.js'), /history-detail-panel-v1\.css/);

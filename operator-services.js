@@ -465,37 +465,68 @@ async function resolveDocument(action,id){if(!canReviewDocuments()||typeof _db==
 /* Sin remito ni viaje, el servicio se pega a la jornada del chofer de ese día; si no hay una sola, se avisa ahora. */
 async function warnJourneyMatch(id){try{const {data,error}=await _db.rpc('service_journey_match_v1',{p_service_id:id});if(error||!data)return;const day=data.fecha?String(data.fecha).split('-').reverse().join('/'):'ese día';if(data.match==='none')notify(`Ojo: el chofer no tuvo jornada el ${day}. El servicio cuenta para el sueldo, pero va a aparecer como «sin jornada» en el detalle.`,'warning',9000);else if(data.match==='ambiguous')notify(`Ojo: el chofer tuvo ${data.jornadas} jornadas el ${day}. El servicio va a aparecer como «sin jornada» en el detalle.`,'warning',9000);}catch(_){}}
 async function menuAction(action,id){closeRowMenu();if(action==='view')return window.verServicioOperador?.(id);if(action==='edit')return window.editarServicioOperador?.(id);if(action==='edit-closed')return window.editarServicioFacturacion?.(id);if(action==='assign')return window.asignarServicioRapido?.(id);if(action==='review-document')return openSignedRemito(id);if(action==='approve-document-exception')return resolveDocument(action,id);if(action==='arrive')return window.marcarArribadoManual?.(id);if(action==='finalize')return window.finalizarServicioOperador?.(id);if(action==='annul')return window.anularServicioOperador?.(id);}
-/* Detalle de solo lectura del Historial (ui/history-detail-panel-v1.js). Los importes y el estado de facturación sólo los ve Administración/Facturación. */
+/* Ficha de solo lectura del Historial (ui/history-detail-panel-v1.js). Importes y estado de facturación: sólo Administración/Facturación. */
 const canSeeBilling=()=>['administracion','facturacion'].includes(role());
 const BILLING_LABELS={not_ready:'Sin preparar',pending:'Pendiente de facturar',reviewed:'Revisado',invoiced:'Facturado',excluded:'Excluido'};
+const PAY_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'};
+function durationLabel(a,b,suffix=''){const m=Math.round((new Date(b)-new Date(a))/60000);if(!(m>0))return'';const h=Math.floor(m/60);return(h?`${h} h ${String(m%60).padStart(2,'0')} min`:`${m} min`)+suffix;}
+const money0=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0,maximumFractionDigits:Number.isInteger(num(v))?0:2}).format(num(v));
 function historyDetailModel(id){
   const s=service(id);if(!s)return null;
   if(s.historyTolls===undefined&&['completed','cancelled'].includes(s.status))void loadPageTolls([s]);
   const meta=statusMeta[normalizedStatus(s.status)]||{label:s.status,tone:'amber'},fmt=v=>v?`${fmtDay(v)} ${fmtTime(v)}`:'',ev=[];
-  const add=(at,label,note)=>{if(at)ev.push({at:new Date(at).getTime(),time:`${fmtDay(at)} ${fmtTime(at)}`,label,note});};
-  add(s.created_at,'Creado');add(s.scheduled_for,'Programado');add(s.arrived_at,'Arribo al origen');
-  if(s.status==='cancelled')add(s.cancelled_at,'Anulado');else add(s.completed_at,'Finalizado',s.arrived_at&&s.completed_at?durationLabel(s.arrived_at,s.completed_at):'');
+  const add=(at,label,note,tone)=>{if(at)ev.push({at:new Date(at).getTime(),time:fmt(at),label,note,tone});};
+  const done=['completed','cancelled'].includes(s.status),billing=canSeeBilling();
+  add(s.created_at,'Creado');add(s.scheduled_for,'Programado');
+  const eta=s.estimated_arrival_at,arr=s.arrived_at||s.driver_arrived_at;
+  if(arr){const late=eta?Math.round((new Date(arr)-new Date(eta))/60000):null;add(arr,'Arribo al origen',late==null?'':late>5?`${late} min después de lo estimado`:late<-5?`${-late} min antes de lo estimado`:'a horario',late>5?'warn':'');}
+  else add(eta,'Arribo estimado');
+  if(s.remito_signed_at)add(s.remito_signed_at,'Remito firmado');
+  if(s.status==='cancelled')add(s.cancelled_at,'Anulado','', 'bad');else add(s.completed_at,'Finalizado',arr&&s.completed_at?durationLabel(arr,s.completed_at,' en el lugar'):'');
   ev.sort((a,b)=>a.at-b.at);
   const o=locationParts(s,'origin'),d=locationParts(s,'destination'),km=serviceKm(s),ll=(a,b)=>a!=null&&b!=null&&a!==''&&b!==''?`${a},${b}`:'';
-  const from=ll(s.origin_lat,s.origin_lng),to=ll(s.destination_lat,s.destination_lng);
+  const SRM=window.ServiceRouteMap,pt=(a,b)=>{const p=SRM?.coordinate?SRM.coordinate(a,b):(a!=null&&b!=null&&a!==''&&b!==''&&isFinite(a)&&isFinite(b)?{lat:Number(a),lng:Number(b)}:null);return p||null;};
+  const origin=pt(s.origin_lat,s.origin_lng),dest=pt(s.destination_lat,s.destination_lng),from=ll(s.origin_lat,s.origin_lng),to=ll(s.destination_lat,s.destination_lng);
   const place=p=>[p.address!=='—'&&p.address,p.locality!=='—'&&p.locality].filter(Boolean).join(' · ')||p.raw||'—';
-  const done=['completed','cancelled'].includes(s.status),docs=[];
-  if(s.remito_id){docs.push(['Remito',s.remito_number?`N° ${s.remito_number}`:'Cargado']);docs.push(['Estado',s.remito_status==='firmado'?'Firmado':s.remito_status==='borrador'?'Borrador':String(s.remito_status||'—')]);if(s.remito_signed_at)docs.push(['Firmado',fmt(s.remito_signed_at)]);docs.push(['Revisión',DOCUMENT_LABELS[s.document_status]||'—']);if(s.remito_evidence_count)docs.push(['Fotos',String(s.remito_evidence_count)]);}
+  const asph=num(s.estimated_asphalt_km),grav=num(s.estimated_gravel_km);
+  const docs=[];
+  if(s.remito_id){docs.push(['Remito',s.remito_number?`N° ${s.remito_number}`:'Cargado']);docs.push(['Estado',s.remito_status==='firmado'?'Firmado':s.remito_status==='borrador'?'Borrador':String(s.remito_status||'—')]);if(s.remito_signed_at)docs.push(['Firmado',fmt(s.remito_signed_at)]);docs.push(['Revisión',DOCUMENT_LABELS[s.document_status]||'—']);if(s.remito_evidence_count)docs.push(['Fotos',`${s.remito_evidence_count}`]);}
   if(s.service_order_number)docs.push(['N° de orden',String(s.service_order_number)]);
+  if(s.purchase_order_number)docs.push(['Orden de compra',String(s.purchase_order_number)]);
+  const pay=[];
+  if(s.customer_payment_primary)pay.push(['Medio de pago',PAY_LABELS[s.customer_payment_primary]||String(s.customer_payment_primary)]);
+  if(num(s.customer_amount_due)>0)pay.push(['Excedente a cargo',fmtMoney(s.customer_amount_due)]);
+  const notes=[['Notas del operador',s.operator_notes],['Indicaciones al chofer',s.driver_instructions],['Notas del chofer',s.driver_notes]].filter(([,v])=>v&&String(v).trim()).map(([label,text])=>({label,text:String(text).trim()}));
+  const tolls=s.historyTolls&&!s.historyTolls.load_error?s.historyTolls:null,tollTotal=tolls?num(tolls.accepted_toll_total)||(Array.isArray(tolls.history_tolls)?tolls.history_tolls.reduce((n,x)=>n+num(x.total_amount),0):0):null;
+  const inPlace=arr&&s.completed_at?durationLabel(arr,s.completed_at):'';
+  const chips=[];
+  if(billing)chips.push({label:BILLING_LABELS[s.billing_status||'pending']||String(s.billing_status||'—'),tone:'bill'});
+  if(s.remito_id&&s.document_status&&DOCUMENT_LABELS[s.document_status])chips.push({label:DOCUMENT_LABELS[s.document_status],tone:s.document_status==='approved'?'soft':'warn'});
+  if(s.driver_activated)chips.push({label:'Activado',tone:'soft'});
+  if(s.chained_to_service_id)chips.push({label:'Enganchado',tone:'soft'});
+  const kpis=[{label:'Distancia',value:km>0?`${km.toLocaleString('es-AR',{maximumFractionDigits:1})} km`:'—',hint:asph||grav?`${asph.toLocaleString('es-AR')} asfalto · ${grav.toLocaleString('es-AR')} ripio`:''},{label:'En el lugar',value:inPlace||'—'},{label:'Peajes',value:tollTotal==null?'…':tollTotal>0?money0(tollTotal):'Sin peajes'}];
+  if(billing)kpis.push({label:'Total a facturar',value:s.quoted_total!=null&&num(s.quoted_total)?money0(s.quoted_total):'…',id:'kpi-total'});
   const ids=S.historyIds||[],pos=ids.indexOf(String(id));
-  const billingRows=canSeeBilling()?[['Estado',BILLING_LABELS[s.billing_status||'pending']||String(s.billing_status||'—')]]:null;
-  return{id:String(id),number:String(s.service_number||'—'),provider:String(svcFirst(s.company_name,'—')),type:s.concept_name||'',statusLabel:meta.label,statusTone:meta.tone,billing:billingRows?billingRows[0][1]:'',docChip:'',
-    when:fmt(s.scheduled_for),timeline:ev,route:{origin:place(o),destination:place(d),km:km>0?`${km.toLocaleString('es-AR',{maximumFractionDigits:1})} km`:'',mapsUrl:from&&to?`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`:''},
-    crew:{driver:crewValue(s,'driver').label,truck:crewValue(s,'truck').label,plate:svcFirst(s.vehicle_plate,s.remito_vehicle_plate,'—'),vehicle:svcFirst(s.vehicle_make_model,s.remito_vehicle_make_model,'')},
+  return{id:String(id),number:String(s.service_number||'—'),provider:String(svcFirst(s.company_name,'—')),type:s.concept_name||'',statusLabel:meta.label,statusTone:meta.tone,chips,
+    when:fmt(s.scheduled_for),timeline:ev,kpis,
+    coords:{origin,destination:dest,polyline:s.route_polyline||'',mapsUrl:from&&to?`https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`:''},
+    route:{origin:place(o),destination:place(d),km:km>0?`${km.toLocaleString('es-AR',{maximumFractionDigits:1})} km`:'',surface:asph||grav?`${asph.toLocaleString('es-AR')} km asfalto · ${grav.toLocaleString('es-AR')} km ripio`:''},
+    customer:{name:String(svcFirst(s.customer_name,s.remito_customer_name,'')),phone:String(svcFirst(s.customer_phone,s.remito_customer_phone,'')),document:String(svcFirst(s.customer_document,s.remito_customer_document,''))},
+    vehicle:{plate:String(svcFirst(s.vehicle_plate,s.remito_vehicle_plate,'')),model:String(svcFirst(s.vehicle_make_model,s.remito_vehicle_make_model,''))},
+    crew:{driver:crewValue(s,'driver').label,truck:crewValue(s,'truck').label,logistics:s.logistics_type==='third_party'?`Tercerizado${s.outsourced_provider_name?` · ${s.outsourced_provider_name}`:''}`:''},
     tollsHtml:s.historyTolls===undefined?'<span class="hd-muted">Cargando peajes…</span>':window.AuxiliosHistoryTolls?.render(s.historyTolls)||'<span class="hd-muted">Peajes no disponibles</span>',
-    docs,billingRows:billingRows&&done?billingRows:null,cancelReason:s.status==='cancelled'?String(svcFirst(s.cancellation_reason_detail,s.cancellation_reason,'')):'',
+    docs,payment:pay,notes,showBilling:billing&&done,cancelReason:s.status==='cancelled'?String(svcFirst(s.cancellation_reason_detail,s.cancellation_reason,'')):'',
     canEdit:canEditHistoryService(s),position:pos>=0?{index:pos+1,total:ids.length}:null};
 }
-function durationLabel(a,b){const m=Math.round((new Date(b)-new Date(a))/60000);if(!(m>0))return'';return m<60?`${m} min en el lugar`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,'0')} min en el lugar`;}
-function historyDetailSummary(id){const m=historyDetailModel(id);if(!m)return'';return[`Servicio ${m.number} · ${m.provider}${m.type?` · ${m.type}`:''}`,`${m.statusLabel} · ${m.when}`,`Origen: ${m.route.origin}`,`Destino: ${m.route.destination}`,m.route.km&&`Distancia: ${m.route.km}`,`Chofer: ${m.crew.driver} · Móvil: ${m.crew.truck}`,`Patente: ${m.crew.plate}`].filter(Boolean).join('\n');}
+function historyDetailSummary(id){const m=historyDetailModel(id);if(!m)return'';return[`Servicio ${m.number} · ${m.provider}${m.type?` · ${m.type}`:''}`,`${m.statusLabel} · ${m.when}`,`Origen: ${m.route.origin}`,`Destino: ${m.route.destination}`,m.route.km&&`Distancia: ${m.route.km}`,m.customer.name&&`Cliente: ${m.customer.name}`,`Chofer: ${m.crew.driver} · Móvil: ${m.crew.truck}`,m.vehicle.plate&&`Patente: ${m.vehicle.plate}`].filter(Boolean).join('\n');}
+async function historyDetailBilling(id){
+  let r=await _db.rpc('get_operator_billing_service_detail_v5_km_v1',{p_service_id:id});
+  if(r.error&&/does not exist|Could not find|schema cache/i.test(r.error.message||''))r=await _db.rpc('get_operator_billing_service_detail_v4_km_v1',{p_service_id:id});
+  if(r.error)throw r.error;return r.data;
+}
 let historyDetailReady=false;
 function openHistoryDetail(id){const D=window.AuxiliosHistoryDetail;if(!D)return viewService(id);if(!historyDetailReady){historyDetailReady=true;D.init(historyDetailHost);}D.open(String(id));}
-const historyDetailHost={model:historyDetailModel,ids:()=>S.historyIds||[],summary:historyDetailSummary,notify,openFull:viewService,edit:id=>window.editarServicioFacturacion?.(id),onNav:id=>{const i=(S.historyIds||[]).indexOf(String(id));if(i<0)return;const page=Math.floor(i/HISTORY_PAGE_SIZE)+1;if(page!==S.historyPage){S.historyPage=page;renderServices();}}};
+const historyDetailHost={model:historyDetailModel,ids:()=>S.historyIds||[],summary:historyDetailSummary,notify,openFull:viewService,edit:id=>window.editarServicioFacturacion?.(id),billing:historyDetailBilling,openRoute:id=>window.ServiceRouteMap?.open?window.ServiceRouteMap.open(id):notify('El mapa todavía se está cargando','warning'),onNav:id=>{const i=(S.historyIds||[]).indexOf(String(id));if(i<0)return;const page=Math.floor(i/HISTORY_PAGE_SIZE)+1;if(page!==S.historyPage){S.historyPage=page;renderServices();}}};
 function viewService(id){S.selected=id;if(typeof window.verServicioWorkspace==='function')return window.verServicioWorkspace(id);notify('El workspace de Servicios todavía se está cargando','warning');}
 function openPersonalizer(){if(S.moduleConfig.workflow.allow_personal_column_overrides===false)return notify('La personalización individual está deshabilitada por Administración','warning');const current=effectiveColumns();S.personalDraft={column_order:current.column_order.slice(),column_visibility:{...current.column_visibility},location_detail:{...current.location_detail},density:current.density};renderPersonalizer();const modal=document.getElementById('os-view-settings');if(modal){modal.hidden=false;modal.classList.add('open');}}
 function renderPersonalizer(){const root=document.getElementById('os-view-settings-body');if(!root||!S.personalDraft)return;const cols=S.personalDraft.column_order.map((key,i)=>`<div class="os-view-row" data-drag-key="${key}">${window.AxDragSort?window.AxDragSort.grip:''}<div><b>${esc(COLUMN_LABELS[key])}</b><small>${S.personalDraft.column_visibility[key]?'Visible':'Oculta'}</small></div><label class="ax-switch" aria-label="Mostrar ${esc(COLUMN_LABELS[key])}"><input type="checkbox" ${S.personalDraft.column_visibility[key]?'checked':''} onchange="cambiarColumnaPersonalServicio('${key}',this.checked)"></label><span><button type="button" class="os-move os-move-up" aria-label="Subir ${esc(COLUMN_LABELS[key])}" ${i===0?'disabled':''} onclick="moverColumnaPersonalServicio('${key}',-1)">${ico('chevron-down')}</button><button type="button" class="os-move" aria-label="Bajar ${esc(COLUMN_LABELS[key])}" ${i===S.personalDraft.column_order.length-1?'disabled':''} onclick="moverColumnaPersonalServicio('${key}',1)">${ico('chevron-down')}</button></span></div>`).join('');const location=`<section class="os-location-settings"><div><b>Detalle de Origen / Destino</b><small>Se muestra en orden descendente dentro de cada celda.</small></div>${Object.keys(LOCATION_LABELS).map(key=>`<label class="ax-switch"><input type="checkbox" ${S.personalDraft.location_detail[key]?'checked':''} onchange="cambiarDetalleUbicacionPersonalServicio('${key}',this.checked)"><span>${LOCATION_LABELS[key]}</span></label>`).join('')}</section>`;const density=`<section class="os-density-settings"><div><b>Vista</b><small>${S.personalDraft.density==='wide'?'Amplia: una columna por dato.':'Compacta: Fecha con arribo y fin, Prestadora con base, Recorrido con km y Chofer con móvil.'}</small></div><div class="ax-seg" role="radiogroup" aria-label="Vista">${[['compact','Compacta'],['wide','Amplia']].map(([v,l])=>`<button type="button" role="radio" aria-checked="${S.personalDraft.density===v}" aria-pressed="${S.personalDraft.density===v}" class="${S.personalDraft.density===v?'active is-active':''}" onclick="cambiarDensidadPersonalServicio('${v}')">${l}</button>`).join('')}</div></section>`;root.innerHTML=density+location+cols;/* Arrastrar para ordenar, además de las flechas. */window.AxDragSort?.attach(root,{onMove:(key,to)=>{if(!S.personalDraft)return;window.AxDragSort.reorder(S.personalDraft.column_order,key,to);renderPersonalizer();}});}
