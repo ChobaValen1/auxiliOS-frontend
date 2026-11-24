@@ -196,6 +196,45 @@
     }).join('') + '</section>';
   }
 
+  /* Servicio con relevo: mismo módulo que el alta de prestadoras (operator-service-relay-v1), con un
+     objeto propio que lee el formulario del particular. Dos choferes hacen el mismo servicio: el 1º lleva
+     el vehículo hasta el punto de intercambio y el 2º, con su móvil, hasta el destino. Un solo remito. */
+  function relevo() { return global.AuxRelevoServicio || null; }
+  function choferDelMovil(d) {
+    if (d.assigned_driver_id || !d.assigned_truck_id) return d.assigned_driver_id || '';
+    var truck = (OS().trucks || []).find(function (x) { return String(x.truck_id) === String(d.assigned_truck_id); });
+    return truck && truck.active_driver_id ? String(truck.active_driver_id) : '';
+  }
+  function hostRelevo() {
+    if (!st) return null;
+    if (st.relayW) return st.relayW;
+    var s = st;
+    s.relayW = {
+      standalone: true, dirty: false,
+      get relayRoot() { return el('psv-form'); },
+      get serviceId() { return s.edit && s.edit.id || null; },
+      get serviceStatus() { return s.edit ? s.edit.status || '' : 'pending'; },
+      get intakeActivated() { return !!s.intake; },
+      get mode() { return s.edit && s.edit.cerrado ? 'view' : s.edit ? 'edit' : 'create'; },
+      get data() {
+        var d = s.d;
+        return { assigned_driver_id: choferDelMovil(d), origin_lat: d.origin_lat, origin_lng: d.origin_lng,
+          logistics_type: d.logistica === 'third' ? 'third_party' : 'own' };
+      }
+    };
+    return s.relayW;
+  }
+  function relevoHtml() {
+    if (!relevo() || st.intake || st.d.logistica === 'third' || (st.edit && st.edit.cerrado)) return '';
+    return '<div class="psv-relay"><div id="osv4-relay-switch" class="osv4-relay-switch"></div><div id="osv4-relay" class="osv4-relay" hidden></div></div>';
+  }
+  function pintarRelevo() { var w = hostRelevo(); if (w && relevo()) relevo().sync(w); }
+  async function guardarRelevo(serviceId) {
+    var w = st && st.relayW;
+    if (!w || !relevo() || !serviceId) return;
+    await relevo().persist(w, serviceId);
+  }
+
   /* Tercerizado: quién hace el servicio cuando no es un móvil propio. Sólo nombres y localidades: el operador no ve tarifas. */
   function fechaServicio() {
     var w = new Date(payload().scheduled_for);
@@ -302,7 +341,7 @@
       d.condicion = e.customer_tax_condition || 'consumidor_final';
       d.captado = !!e.referred_by_driver_id;
       d.referred_by_driver_id = e.referred_by_driver_id || '';
-      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: ['completed','cancelled'].includes(e.status), pagos: [] };
+      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: ['completed','cancelled'].includes(e.status), status: e.status || '', pagos: [] };
       d.medios = {};
       try {
         var pr = await db().rpc('get_service_payments_v1', { p_service_id: id });
@@ -318,6 +357,7 @@
           await cargarTercerizados();
         }
       } catch (e3) { /* sin datos del tercerizado: queda como Propio */ }
+      if (relevo() && !st.edit.cerrado) { try { await relevo().load(hostRelevo()); } catch (e4) { console.warn('[particular] relevo', e4); } }
       st.edit.original = editSnapshot();
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
@@ -415,6 +455,12 @@
       else if (tm && tm.calc_mode === 'locality' && !d.terc_locality) e.push('Elegí la localidad.');
     } else if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
     if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
+    // Relevo: se valida antes de guardar para no dejar el servicio creado sin su relevo.
+    var rw = st.relayW, rc = rw && rw.relay, R = relevo();
+    if (R && rc && rc.on && relevoHtml() && R.visible(rw) && !rc.handedOver) {
+      R._missing(rc).forEach(function (falta) { e.push('Servicio con relevo: falta ' + falta + '.'); });
+      if (rc.toDriver && String(rc.toDriver) === String(choferDelMovil(d))) e.push('Servicio con relevo: el chofer que recibe tiene que ser distinto del que lo retira.');
+    }
     // Crear y finalizar: un particular no se finaliza sin el cobro del total.
     if (st.intake && num(d.presupuesto) > 0 && d.pago !== 'total') e.push('Para crear y finalizar, el cobro tiene que cubrir el presupuesto. Marcá Todo si ya se cobró el total.');
     delete e.push;
@@ -580,7 +626,7 @@
           (d.logistica === 'third' ? tercerizadoHtml() : '<div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
-        '</div>')) +
+        '</div>') + relevoHtml()) +
         '<div class="psv-grid psv-captado">' +
           '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
@@ -624,6 +670,7 @@
       if (global.AxUI.seg) m.querySelectorAll('.psv-seg').forEach(function (x) { global.AxUI.seg(x); });
     }
     pintarRecursos(false);
+    pintarRelevo();
     var calculator = m.querySelector('[data-price-calculator]');
     if (calculator) global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
     // Con remito firmado, cliente, vehículo y asignación vienen del remito.
@@ -778,6 +825,7 @@
           return pintar();
         }
         pintarRecursos(true);
+        pintarRelevo();
       }
       return;
     }
@@ -952,7 +1000,8 @@
       presupuesto: num(st.d.presupuesto), factura: !!st.d.factura,
       condicion: st.d.factura ? st.d.condicion : '', medios: medios,
       terc_provider_id: st.d.logistica === 'third' ? st.d.terc_provider_id : '', terc_locality: st.d.logistica === 'third' ? st.d.terc_locality : '',
-      toggle_ids: Object.keys(st.toggles?.selected || {}).filter(function (k) { return st.toggles.selected[k]; }).sort()
+      toggle_ids: Object.keys(st.toggles?.selected || {}).filter(function (k) { return st.toggles.selected[k]; }).sort(),
+      relay: relevo() && st.relayW ? relevo().summary(st.relayW) : null
     });
   }
   function editLabel(key, value) {
@@ -1011,6 +1060,7 @@
         if (ru.error) throw ru.error;
         if (!st.edit.cerrado) await guardarInterruptores(eid);
         await guardarTercerizado(eid);
+        if (!st.edit.cerrado) await guardarRelevo(eid);
         var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
         for (var ci = 0; ci < cambios.length; ci++) {
           var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });
@@ -1038,6 +1088,7 @@
       var res = r.data || {};
       await guardarInterruptores(res.service_id);
       await guardarTercerizado(res.service_id);
+      if (!intake) await guardarRelevo(res.service_id);
       cerrarForm(true);
       if (intake) {
         var nro = res.service_order_number || res.service_number;
@@ -1211,6 +1262,8 @@
     _test: { estadoInicial: estadoInicial, desdeIngreso: function (s, ctx) { var prev = st; st = s; try { desdeIngreso(ctx); return st; } finally { st = prev; } }, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
              saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } },
              lineasCobro: lineasCobro,
+             relevo: function (s) { var prev = st; st = s; try { return hostRelevo(); } finally { st = prev; } },
+             snapshot: function (s) { var prev = st; st = s; try { return editSnapshot(); } finally { st = prev; } },
              payload: function (s) { var prev = st; st = s; try { return payload(); } finally { st = prev; } },
              deposito: function (s) { var prev = st; st = s; try { return deposito(); } finally { st = prev; } } }
   };

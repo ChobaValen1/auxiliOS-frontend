@@ -15,7 +15,7 @@
     secondary_items: 'Conceptos adicionales', item_codes: 'Códigos de conceptos',
     commercial_addons: 'Peajes y excedentes', presupuesto: 'Presupuesto', no_charge: 'Sin costo (gentileza)', factura: 'Solicita factura',
     condicion: 'Condición frente al IVA', referred_by_driver_id: 'Chofer que lo consiguió',
-    medios: 'Medios de cobros registrados', toggle_ids: 'Conceptos sin importe'
+    medios: 'Medios de cobros registrados', toggle_ids: 'Conceptos sin importe', relay: 'Servicio con relevo'
   };
   const names = { normal: 'Normal', urgent: 'Urgente', high: 'Alta', own: 'Propia', outsourced: 'Tercerizada', assigned:'Asignado', pending:'Sin asignar',
     cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', mercado_pago: 'Mercado Pago',
