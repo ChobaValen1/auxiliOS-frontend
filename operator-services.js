@@ -530,13 +530,34 @@ async function historyDetailBilling(id){
   if(r.error&&/does not exist|Could not find|schema cache/i.test(r.error.message||''))r=await _db.rpc('get_operator_billing_service_detail_v4_km_v1',{p_service_id:id});
   if(r.error)throw r.error;return r.data;
 }
-const CHANGE_LABELS={created:'Servicio creado',assignment:'Asignación',reassigned:'Reasignación',arrived:'Arribado',finalized:'Finalizado',annulled:'Anulado',service_edit:'Edición del servicio',remito_replacement_requested:'Remito reemplazado',status_change:'Cambio de estado'};
+const CHANGE_EVENTS={created:['Servicio creado','add'],arrived:['Llegó al origen','pin'],finalized:['Servicio finalizado','ok'],finish_time_set:['Hora de fin registrada','clock'],remito_approved_and_service_finalized:['Remito aprobado y servicio finalizado','ok'],driver_completion:['El chofer completó los datos del servicio','doc'],remito_submitted:['Remito firmado enviado a revisión','doc'],service_edit:['Se editó el servicio','edit'],remito_review_pending:['Revisión del remito guardada','doc'],administrative_remito_correction:['Corrección administrativa del remito','edit'],status_change:['Cambio de estado','state'],remito_addons_reconciled:['Adicionales del remito conciliados','doc'],billing_service_edit:['Corrección administrativa posterior a finalizar','edit'],service_activated:['Servicio activado','state'],activation_finalized:['Activación finalizada','ok'],unassign:['Asignación retirada','user'],queue_order:['Cambió el orden en la cola del chofer','state'],driver_intake_linked:['Ingreso del chofer vinculado al servicio','doc'],driver_intake_unlinked:['Vínculo con el ingreso del chofer deshecho','doc'],manual_document_exception:['Cierre manual sin remito firmado','warn'],annulled:['Servicio anulado','bad'],billing_invoiced:['Incorporado a una factura','bill'],billing_toll_invoiced:['Peaje incorporado a una factura','bill'],unarrive:['Arribo revertido','state'],outsourced_assigned:['Asignado a un tercerizado','user'],relay_set:['Relevo agregado','pin'],relay_removed:['Relevo quitado','pin'],remito_replacement_requested:['Remito reemplazado, se pidió uno nuevo','doc'],activation_reverted:['Activación revertida','state'],chain_linked:['Enganchado al servicio anterior','state'],chain_unlinked:['Desenganchado del servicio anterior','state'],chain_next_linked:['Se le enganchó otro servicio','state'],chain_next_unlinked:['Se le desenganchó un servicio','state'],remito_linked:['Remito vinculado al servicio','doc']};
+const FIELD_LABELS={vehicle_plate:'patente',operator_notes:'notas del operador',driver_instructions:'indicaciones al chofer',estimated_asphalt_km:'km de asfalto',estimated_gravel_km:'km de ripio',items:'conceptos y adicionales',assigned_driver_id:'chofer',assigned_truck_id:'móvil',tolls:'peajes',customer_phone:'teléfono del cliente',customer_name:'nombre del cliente',vehicle_make_model:'marca y modelo',origin:'origen',destination:'destino',primary_concept_id:'tipo de servicio',scheduled_for:'fecha y hora',service_order_number:'N° de orden',purchase_order_number:'orden de compra',customer_document:'documento del cliente',company_id:'prestadora',billing_base_id:'base'};
+/* Las notas de auditoría vienen en lenguaje de sistema («Campos: assigned_driver_id · Motivo: …»): se traducen. */
+function changeNote(e,fmt){
+  const raw=String(e.notes||'').trim(),type=e.event_type;
+  if(type==='finish_time_set')return e.details?.completed_at?`Fin: ${fmt(e.details.completed_at)}`:'';
+  if(type==='service_edit'||type==='billing_service_edit'){
+    const m=raw.match(/^Campos:\s*(.*?)(?:\s*·\s*Motivo:\s*(.*))?$/);
+    if(m){const f=m[1].split(',').map(x=>x.trim()).filter(Boolean).map(x=>FIELD_LABELS[x]||x.replace(/_/g,' '));const motivo=/^Cambios revisados y confirmados por el operador/i.test(m[2]||'')?'':(m[2]||'');return[f.length?`Cambió: ${f.join(', ')}`:'',motivo&&`Motivo: ${motivo}`].filter(Boolean).join(' · ');}
+    return type==='billing_service_edit'?'':raw;
+  }
+  if(['created','arrived','finalized','driver_completion','remito_submitted','remito_review_pending','remito_approved_and_service_finalized','status_change','queue_order','remito_addons_reconciled','administrative_remito_correction','remito_linked'].includes(type))return'';
+  return raw.replace(/^Anulación administrativa:\s*/i,'Motivo: ').replace(/^ACTIVADO · /,'');
+}
 async function historyDetailChanges(id){
   const {data,error}=await _db.rpc('get_operator_service_history_v2',{p_service_id:id});if(error)throw error;
   const fmt=v=>v?`${fmtDay(v)} ${fmtTime(v)}`:'',st=k=>k?(statusMeta[normalizedStatus(k)]||{}).label||k:'',items=[];
-  for(const e of Array.isArray(data?.events)?data.events:[]){const sc=e.event_type==='status_change'&&e.from_status&&e.to_status;items.push({at:new Date(e.created_at).getTime(),time:fmt(e.created_at),who:e.created_by_name||'Sistema',label:sc?`Estado: ${st(e.from_status)} → ${st(e.to_status)}`:CHANGE_LABELS[e.event_type]||String(e.event_type||'Cambio'),note:sc?'':String(e.notes||'')});}
-  for(const a of Array.isArray(data?.assignments)?data.assignments:[])items.push({at:new Date(a.assigned_at).getTime(),time:fmt(a.assigned_at),who:a.assigned_by_name||'',label:`Asignado a ${a.driver_name||'chofer'} · ${a.truck_label||'móvil'}`,note:a.released_at?`Liberado ${fmt(a.released_at)}`:'Vigente'});
-  return items.sort((x,y)=>(y.at||0)-(x.at||0));
+  const push=(at,who,label,note,kind)=>{if(!at)return;const t=new Date(at);items.push({at:t.getTime(),day:fmtDay(at),clock:fmtTime(at),who:who||'',label,note:note||'',kind:kind||'state'});};
+  for(const e of Array.isArray(data?.events)?data.events:[]){
+    if(e.event_type==='assignment'||e.event_type==='reassigned')continue;
+    const def=CHANGE_EVENTS[e.event_type]||[String(e.event_type||'Cambio').replace(/_/g,' '),'state'],sc=e.event_type==='status_change'&&e.from_status&&e.to_status;
+    push(e.created_at,e.created_by_name||'Sistema',sc?`Estado: ${st(e.from_status)} → ${st(e.to_status)}`:def[0],changeNote(e,fmt),def[1]);
+  }
+  for(const a of Array.isArray(data?.assignments)?data.assignments:[]){
+    push(a.assigned_at,a.assigned_by_name||'Sistema',`Asignado a ${a.driver_name||'un chofer'} · ${a.truck_label||'móvil'}`,'','user');
+    if(a.released_at)push(a.released_at,a.released_by_name||'Sistema',`Se liberó a ${a.driver_name||'el chofer'}`,a.release_notes||'','user');
+  }
+  return items.sort((x,y)=>(x.at||0)-(y.at||0));
 }
 let historyDetailReady=false;
 function openHistoryDetail(id){const D=window.AuxiliosHistoryDetail;if(!D)return viewService(id);if(!historyDetailReady){historyDetailReady=true;D.init(historyDetailHost);}D.open(String(id));}
