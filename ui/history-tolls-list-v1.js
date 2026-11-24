@@ -17,13 +17,19 @@ async function enrich(rows,db,kind){
   for(const row of selected)row.historyTolls=found.get(String(row[key]))||{load_error:true};
   return rows;
 }
-function render(data,{heading=false}={}){
+function render(data,{heading=false,compact=false}={}){
   if(!data||data.load_error)return'<div class="hlt hlt-error">Peajes no disponibles</div>';
   const rows=Array.isArray(data.history_tolls)?data.history_tolls:[];
   if(!rows.length&&amount(data.accepted_toll_total)>0)return`<div class="hlt">${heading?'<span class="hlt-heading">Peajes</span>':''}<strong>${money(data.accepted_toll_total)}</strong><small>Aprobados · sin desglose</small></div>`;
   if(!rows.length)return'<div class="hlt hlt-empty">Sin peajes registrados</div>';
   const total=rows.filter(t=>t.display_status!=='rejected').reduce((n,t)=>n+amount(t.total_amount),0);
   const planned=rows.some(t=>t.display_status==='planned');
+  /* Compacto (tabla del Historial de Servicios): total y cantidad en dos renglones; el detalle va en el título y en el servicio. */
+  if(compact){
+    const count=rows.reduce((n,t)=>n+Math.max(1,amount(t.quantity)),0),payers=[...new Set(rows.map(t=>t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Sin informar'))];
+    const detail=rows.map(t=>`${t.toll_name||'Peaje'}${amount(t.quantity)>1?' ×'+amount(t.quantity):''}: ${money(t.total_amount)} (${statuses[t.display_status]||'Informado'})`).join('\n');
+    return`<div class="hlt hlt-compact" title="${esc(detail)}"><strong class="hlt-total">${money(total)}</strong><small>${count} peaje${count===1?'':'s'} · ${esc(payers.join(' y '))}${planned?' · incluye previstos':''}</small></div>`;
+  }
   return`<div class="hlt">${heading?'<span class="hlt-heading">Peajes</span>':''}<strong class="hlt-total">${money(total)}</strong>${planned?'<small class="hlt-note">Incluye previstos</small>':''}<ul class="hlt-list">${rows.map(t=>{
     const payer=t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Responsable sin informar';
     const qty=amount(t.quantity)>1?' ×'+amount(t.quantity):'';
