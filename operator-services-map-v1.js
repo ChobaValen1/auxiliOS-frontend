@@ -73,7 +73,7 @@ const DOCUMENTS={not_started:'Pendiente de carga',draft:'En borrador',submitted:
 function documentLabel(s){return DOCUMENTS[s.document_status]||(O()?.hasSignedRemito?.(s)?'Firmado · pendiente de revisión':'Pendiente de carga');}
 function primaryAction(s){
   if(!O()?.canTransitionState?.())return null;
-  const actions=L()?.quickActions?.(s)||[],want=s.driver_activated?'finalize':O().hasSignedRemito(s)?'finalize':({pending:s.logistics_type==='third_party'?'assign_outsourced':'assign',assigned:s.logistics_type==='third_party'?'finalize':'arrive',at_origin:'finalize'})[O().normalizedStatus(s.status)];
+  const actions=L()?.quickActions?.(s)||[],relay=actions.find(([key])=>key==='relay_handover'||key==='relay_delivered');if(relay)return relay;/* Relevo: la entrega que falta es el siguiente paso. */const want=s.driver_activated?'finalize':O().hasSignedRemito(s)?'finalize':({pending:s.logistics_type==='third_party'?'assign_outsourced':'assign',assigned:s.logistics_type==='third_party'?'finalize':'arrive',at_origin:'finalize'})[O().normalizedStatus(s.status)];
   return actions.find(([key])=>key===want)||null;
 }
 // Geographic suggestions use complete operational chains, never the current map filters.
