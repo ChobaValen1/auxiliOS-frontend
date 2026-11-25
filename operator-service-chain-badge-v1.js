@@ -38,6 +38,14 @@
   function decorateRelay(tr, td, id) {
     const r = relays.get(id)?.data, has = td?.querySelector('.os-relay-mark');
     tr.classList.toggle('os-relay-row', Boolean(r));
+    /* Si falta registrar la entrega, el desplegable de Estado lleva un punto que late: ahí está el siguiente paso. */
+    const st = tr.querySelector('.os-status[role="button"]'), next = relayStep(id);
+    if (st) {
+      st.classList.toggle('has-next-step', Boolean(next));
+      const dot = st.querySelector('.os-next-dot');
+      if (next && !dot) { const d = document.createElement('span'); d.className = 'os-next-dot'; d.setAttribute('aria-hidden', 'true'); st.appendChild(d); }
+      else if (!next) dot?.remove();
+    }
     if (!r || !td) { has?.remove(); return; }
     const label = r.handed_over ? 'Servicio con relevo: el vehículo ya se entregó' : 'Servicio con relevo: esperando la entrega del vehículo';
     if (has) { if (has.getAttribute('aria-label') !== label) has.setAttribute('aria-label', label); has.dataset.relayDone = String(Boolean(r.handed_over)); return; }

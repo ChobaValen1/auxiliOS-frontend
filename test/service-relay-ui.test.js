@@ -195,7 +195,7 @@ test('en edición no se registra la entrega (se guardaría el chofer viejo) y un
   assert.equal(w.relay.acting, false);
 });
 
-test('la entrega del relevo está en Acciones (estado y ⋯) y es el siguiente paso recomendado del mapa', () => {
+test('la entrega del relevo está en el menú de Estado, destacada, y es el siguiente paso recomendado del mapa', () => {
   const badge = fs.readFileSync('operator-service-chain-badge-v1.js', 'utf8');
   const life = fs.readFileSync('operator-service-lifecycle.js', 'utf8');
   const map = fs.readFileSync('operator-services-map-v1.js', 'utf8');
@@ -206,7 +206,13 @@ test('la entrega del relevo está en Acciones (estado y ⋯) y es el siguiente p
   assert.match(life, /function serviceQuickActions\(s\)\{const list=baseServiceQuickActions\(s\),relay=[^}]*relayStep\?\.\(s\.service_id\)[^}]*list\.unshift\(relay\)/);
   assert.match(life, /if\(action==='relay_handover'\|\|action==='relay_delivered'\)return window\.AuxEngancheClip\?\.runRelayStep\?\.\(id\)/);
   assert.match(map, /relay=actions\.find\(\(\[key\]\)=>key==='relay_handover'\|\|key==='relay_delivered'\);if\(relay\)return relay;/);
-  assert.match(os, /relayStep\?\.\(id\):null;if\(relayStep\)entries\.push\(\['relay',relayStep\[1\]\]\)/);
-  assert.match(os, /if\(action==='relay'\)return window\.AuxEngancheClip\?\.runRelayStep\?\.\(id\)/);
+  assert.doesNotMatch(os, /\['relay',relayStep/, 'el menú ⋯ no la repite: va en Estado');
+  assert.match(life, /\/\^relay_\/\.test\(action\)\?quickNextItem\(id,action,label\)/);
+  assert.match(life, /class="osl-quick-next"[\s\S]*?<small>Siguiente paso<\/small>/);
+  assert.match(badge, /st\.classList\.toggle\('has-next-step', Boolean\(next\)\)/);
+  const css = fs.readFileSync('estado-servicio-ax-v1.css', 'utf8');
+  assert.match(css, /button\.osl-quick-next \{[^}]*box-shadow: inset 3px 0 0 var\(--ax-accent\)/);
+  assert.match(css, /\.os-next-dot \{[^}]*animation: os-next-pulse/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(os, /relay_handover:\['Entrega del vehículo en el punto de intercambio \(relevo\)'/);
 });
