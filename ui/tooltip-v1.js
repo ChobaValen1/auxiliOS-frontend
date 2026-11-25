@@ -4,6 +4,8 @@
 (function(){
   if(window.AxTooltip||!window.matchMedia||!matchMedia('(hover:hover)').matches)return;
   var tip=null,target=null,timer=0,DELAY=350;
+  // Este globo reemplaza también al de CSS de components.css ([data-ax-tip]::after): sin esta marca se veían los dos encimados.
+  document.documentElement.classList.add('ax-tip-js');
   function el(){
     if(tip)return tip;
     tip=document.createElement('div');tip.className='ax-tip';tip.id='ax-tip';tip.setAttribute('role','tooltip');
