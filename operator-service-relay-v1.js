@@ -13,7 +13,7 @@
   const W = () => O()?.S?.wizard || null;
   /* El formulario de Particulares usa este mismo módulo con su propio objeto (standalone) y su propio
      contenedor (relayRoot): no se mezcla con el asistente de prestadoras aunque haya uno abierto. */
-  const cur = w => (w?.standalone ? w : (cur(w)));
+  const cur = w => (w?.standalone ? w : (W() || w));
   const $ = (c, id) => { const r = c?.owner?.relayRoot; return r?.isConnected ? r.querySelector('#' + id) : document.getElementById(id); };
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => (v === null || v === undefined || String(v).trim() === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
