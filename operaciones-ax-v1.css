@@ -549,3 +549,55 @@ body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-
   body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-filters { order: 0; flex-basis: 100%; }
   body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-manage { flex: 1 1 auto; }
 }
+
+/* ── Legibilidad de la tabla (2026-11-25) ───────────────────────────────
+   1) Más contraste entre la página y la tabla en los dos temas.
+   2) Tipo y Estado se resaltan al pasar el mouse: se leen y se tocan mejor.
+   3) El aviso del remito dice un estado concreto (pendiente, en borrador, creado) con su color. */
+:root[data-theme="light"] body:has(#screen-operaciones.active) { background: rgb(226, 230, 237); }
+:root:not([data-theme="light"]) body:has(#screen-operaciones.active) { background: var(--ax-bg); }
+:root:not([data-theme="light"]) #screen-operaciones :is(.auxf-btn, .auxf-search input, .os-status-tabs) { background: var(--ax-surface-2); }
+#screen-operaciones .os-table-wrap { border-color: var(--ax-border-strong); box-shadow: 0 1px 2px rgba(0, 0, 0, .28), 0 8px 24px rgba(0, 0, 0, .22); }
+:root[data-theme="light"] #screen-operaciones .os-table-wrap { box-shadow: 0 1px 2px rgba(20, 26, 40, .07), 0 6px 18px rgba(20, 26, 40, .07); }
+:root[data-theme="light"] #screen-operaciones .os-table th, :root[data-theme="light"] #screen-operaciones .os-table thead tr > :first-child { background: var(--ax-surface-3); color: var(--ax-text-2); border-bottom-color: var(--ax-border-strong); }
+#screen-operaciones .os-table th { color: var(--ax-text-2); }
+#screen-operaciones .os-table tbody tr:hover { background: var(--ax-surface-3); }
+/* Filtros, buscador y pestañas: en claro tenían el mismo gris que la página y no se distinguían. */
+:root[data-theme="light"] #screen-operaciones :is(.auxf-btn, .auxf-search input, .os-status-tabs) { background: var(--ax-surface); border-color: var(--ax-border-strong); box-shadow: 0 1px 2px rgba(20, 26, 40, .06); }
+:root[data-theme="light"] #screen-operaciones .auxf-btn:hover { border-color: var(--ax-text-3); }
+:root[data-theme="light"] #screen-operaciones .auxf-btn.is-active { background: var(--ax-accent-soft); border-color: var(--ax-accent); }
+:root[data-theme="light"] #screen-operaciones .auxf-search input::placeholder { color: var(--ax-text-3); }
+#screen-operaciones .auxf-btn .auxf-txt small { color: var(--ax-text-2); }
+:root[data-theme="light"] #screen-operaciones .os-status-tabs button:not(.active) { border-color: transparent; }
+:root[data-theme="light"] #screen-operaciones .os-status-tabs button.active { background: var(--ax-text); border-color: var(--ax-text); color: var(--ax-surface); }
+:root[data-theme="light"] #screen-operaciones .os-status-tabs button.active b { color: var(--ax-surface); opacity: .8; }
+
+/* Tipo: pastilla que se resalta al pasar; el clic abre el servicio (como la fila). */
+#screen-operaciones .os-type-pill { display: inline-block; max-width: 100%; box-sizing: border-box; padding: 4px 9px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); line-height: 1.3; white-space: normal; overflow-wrap: anywhere; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-type-pill:hover, #screen-operaciones tr:focus-within .os-type-pill { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+#screen-operaciones .os-table tbody tr:hover .os-type-pill:not(:hover) { border-color: var(--ax-text-3); }
+
+/* Estado: la pastilla del estado siempre tiene marco y se marca fuerte al pasar. */
+#screen-operaciones .col-status .os-status[role="button"] { border-color: var(--ax-border-strong); background: var(--ax-surface) !important; }
+#screen-operaciones .col-status .os-status[role="button"]:is(:hover, :focus-visible, [aria-expanded="true"]) { border-color: var(--ax-accent); background: var(--ax-accent-soft) !important; }
+
+/* Remito: un emoji al lado del estado (mismo estilo monocromático que el resto de la app), con su color.
+   El nombre sale en el globo; en el celular también se ve escrito. */
+#screen-operaciones .os-status-line { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+#screen-operaciones .os-table td.col-status .os-document-state.os-remito-ico { display: inline-grid; place-items: center; flex: 0 0 auto; box-sizing: border-box; width: 30px; min-width: 0; max-width: none; height: 30px; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ax-border-strong); border-radius: 50%; background: transparent; font-size: 15px; font-weight: var(--ax-fw-regular, 400); line-height: 1; overflow: visible; cursor: default; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-table td.col-status .os-remito-ico.is-action { cursor: pointer; }
+#screen-operaciones .os-remito-ico .os-remito-emoji { display: block; line-height: 1; }
+#screen-operaciones .os-remito-ico .os-remito-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#screen-operaciones .os-remito-ico.is-pending { border-style: dashed; color: var(--ax-text-3); }
+#screen-operaciones .os-remito-ico.is-draft { border-color: rgba(229, 145, 0, .55); background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-operaciones .os-remito-ico.is-ok { border-color: rgba(18, 160, 90, .55); background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-operaciones .os-remito-ico.is-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-operaciones .os-table td.col-status .os-remito-ico:hover, #screen-operaciones .os-table td.col-status .os-remito-ico:focus-visible { box-shadow: 0 0 0 3px var(--ax-surface-3); transform: scale(1.08); outline: none; }
+#screen-operaciones .os-remito-ico.is-action.is-ok:is(:hover, :focus-visible) { border-color: var(--ax-ok); background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-operaciones .os-remito-ico.is-action.is-review:is(:hover, :focus-visible) { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+@media (max-width: 720px) {
+  #screen-operaciones .os-status-line { flex-wrap: wrap; }
+  #screen-operaciones .os-table td.col-status .os-document-state.os-remito-ico { display: inline-flex; gap: 6px; width: auto; height: 32px; padding: 0 11px 0 9px; border-radius: var(--ax-radius-pill); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+  #screen-operaciones .os-remito-ico .os-remito-text { position: static; width: auto; height: auto; clip: auto; }
+}
+@media (prefers-reduced-motion: reduce) { #screen-operaciones :is(.os-type-pill, .os-remito-ico) { transition: none; } }
