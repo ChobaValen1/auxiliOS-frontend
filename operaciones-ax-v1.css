@@ -581,14 +581,23 @@ body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-
 #screen-operaciones .col-status .os-status[role="button"] { border-color: var(--ax-border-strong); background: var(--ax-surface) !important; }
 #screen-operaciones .col-status .os-status[role="button"]:is(:hover, :focus-visible, [aria-expanded="true"]) { border-color: var(--ax-accent); background: var(--ax-accent-soft) !important; }
 
-/* Remito: un estado concreto, sin cortar el texto, con su color. */
-#screen-operaciones .os-table td.col-status .os-document-state { width: max-content; min-width: 120px; max-width: 100%; height: auto; min-height: 26px; padding: 4px 9px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); font-weight: var(--ax-fw-semibold); line-height: 1.3; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
-#screen-operaciones .os-document-state.is-pending { border-style: dashed; color: var(--ax-text-2); background: transparent; }
-#screen-operaciones .os-document-state.is-draft { border-color: rgba(229, 145, 0, .55); background: var(--ax-warn-soft); color: var(--ax-warn); }
-#screen-operaciones .os-document-state.is-ok { border-color: rgba(18, 160, 90, .55); background: var(--ax-ok-soft); color: var(--ax-ok); }
-#screen-operaciones .os-document-state.is-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); }
-#screen-operaciones .os-table td.col-status .os-document-state:hover { box-shadow: 0 0 0 3px var(--ax-surface-3); }
-#screen-operaciones .os-document-state.is-action.is-ok:is(:hover, :focus-visible) { border-color: var(--ax-ok); background: var(--ax-ok-soft); color: var(--ax-ok); }
-#screen-operaciones .os-document-state.is-action.is-review:is(:hover, :focus-visible) { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
-#screen-operaciones .os-document-state.is-action:is(:hover, :focus-visible) { box-shadow: 0 0 0 3px var(--ax-surface-3); }
-@media (prefers-reduced-motion: reduce) { #screen-operaciones :is(.os-type-pill, .os-document-state) { transition: none; } }
+/* Remito: un emoji al lado del estado (mismo estilo monocromático que el resto de la app), con su color.
+   El nombre sale en el globo; en el celular también se ve escrito. */
+#screen-operaciones .os-status-line { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+#screen-operaciones .os-table td.col-status .os-document-state.os-remito-ico { display: inline-grid; place-items: center; flex: 0 0 auto; box-sizing: border-box; width: 30px; min-width: 0; max-width: none; height: 30px; min-height: 0; margin: 0; padding: 0; border: 1px solid var(--ax-border-strong); border-radius: 50%; background: transparent; font-size: 15px; font-weight: var(--ax-fw-regular, 400); line-height: 1; overflow: visible; cursor: default; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-table td.col-status .os-remito-ico.is-action { cursor: pointer; }
+#screen-operaciones .os-remito-ico .os-remito-emoji { display: block; line-height: 1; }
+#screen-operaciones .os-remito-ico .os-remito-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#screen-operaciones .os-remito-ico.is-pending { border-style: dashed; color: var(--ax-text-3); }
+#screen-operaciones .os-remito-ico.is-draft { border-color: rgba(229, 145, 0, .55); background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-operaciones .os-remito-ico.is-ok { border-color: rgba(18, 160, 90, .55); background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-operaciones .os-remito-ico.is-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-operaciones .os-table td.col-status .os-remito-ico:hover, #screen-operaciones .os-table td.col-status .os-remito-ico:focus-visible { box-shadow: 0 0 0 3px var(--ax-surface-3); transform: scale(1.08); outline: none; }
+#screen-operaciones .os-remito-ico.is-action.is-ok:is(:hover, :focus-visible) { border-color: var(--ax-ok); background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-operaciones .os-remito-ico.is-action.is-review:is(:hover, :focus-visible) { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+@media (max-width: 720px) {
+  #screen-operaciones .os-status-line { flex-wrap: wrap; }
+  #screen-operaciones .os-table td.col-status .os-document-state.os-remito-ico { display: inline-flex; gap: 6px; width: auto; height: 32px; padding: 0 11px 0 9px; border-radius: var(--ax-radius-pill); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+  #screen-operaciones .os-remito-ico .os-remito-text { position: static; width: auto; height: auto; clip: auto; }
+}
+@media (prefers-reduced-motion: reduce) { #screen-operaciones :is(.os-type-pill, .os-remito-ico) { transition: none; } }
