@@ -31,8 +31,24 @@
     tip.style.transform='translate('+Math.round(left)+'px,'+Math.round(top)+'px)';
     tip.dataset.side=below?'bottom':'top';
   }
+  // Si el globo repite lo que ya se lee en pantalla (texto completo, sin cortar), no aporta nada: no se muestra.
+  function norm(s){return String(s||'').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+  function cut(e){
+    if(!e||e.nodeType!==1)return false;
+    if(e.clientWidth>0&&(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1)){
+      var cs=getComputedStyle(e);if(cs.textOverflow==='ellipsis'||cs.webkitLineClamp!=='none'&&cs.webkitLineClamp||cs.overflow!=='visible'||cs.overflowX!=='visible')return true;
+    }
+    return false;
+  }
+  function redundant(node,text){
+    var t=norm(text);if(!t)return true;
+    if(norm(node.innerText||node.textContent).indexOf(t)<0)return false;
+    if(cut(node)||cut(node.parentElement))return false;
+    var kids=node.querySelectorAll('*');for(var i=0;i<kids.length;i++)if(cut(kids[i]))return false;
+    return true;
+  }
   function show(node){
-    var text=take(node);if(!text)return;
+    var text=take(node);if(!text||redundant(node,text))return;
     target=node;var t=el();t.textContent=text;
     node.setAttribute('aria-describedby','ax-tip');
     place();t.classList.add('is-on');

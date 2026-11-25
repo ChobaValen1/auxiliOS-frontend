@@ -11,3 +11,9 @@ test('U13 tooltip: un solo globo (apaga el ::after de CSS puro cuando está acti
   assert.match(js,/classList\.add\('ax-tip-js'\)/);
   assert.match(css,/\.ax-tip-js \[data-ax-tip\]::after\{content:none\}/);
 });
+
+test('U13 tooltip: no aparece si repite el texto que ya se ve completo',()=>{
+  assert.match(js,/function redundant\(node,text\)/);
+  assert.match(js,/if\(!text\|\|redundant\(node,text\)\)return;/);
+  assert.match(js,/textOverflow==='ellipsis'/);
+});
