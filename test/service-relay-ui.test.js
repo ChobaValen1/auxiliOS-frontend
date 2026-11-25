@@ -124,3 +124,89 @@ test('si la base todavía no tiene el relevo, el aviso lo dice claro al guardar'
   assert.equal(await R.persist(wizard({ relay: { ...located } }), 's1'), false);
   assert.match(toasts[0][1], /la base de datos todavía no tiene activado el relevo \(falta aplicar su actualización\)/);
 });
+
+/* Entrega del relevo en nombre del chofer (Administración / Operaciones). */
+function loadAs(roleName, db, wizard = null) {
+  const toasts = [], calls = [];
+  const window = { toast: (m, t) => toasts.push([t, m]), OperatorServices: { S: { wizard, drivers: [], trucks: [] } }, PERFIL_USUARIO: { roles: { name: roleName } },
+    cargarServiciosOperador: async () => calls.push('reload'), verServicioOperador: async id => calls.push(['view', id]) };
+  vm.runInNewContext(src, { window, document: { getElementById: () => null }, _db: db, console, Date, Number, String, JSON, Math, setTimeout, clearTimeout });
+  return { R: window.AuxRelevoServicio, toasts, calls };
+}
+const saved = { service_id: 's1', exchange_address: 'Av. 520 y 143, Gonnet', to_driver_id: 'd2', to_driver_name: 'Lucas P.', from_driver_name: 'Juan R.',
+  to_has_active_jornada: true, has_remito: true, handed_over: false, delivered: false };
+
+test('Operaciones ve la entrega del relevo en nombre del 1º chofer; el chofer o supervisión no', () => {
+  const w = wizard({ mode: 'view', relay: { ...located, original: { ...saved } } });
+  for (const r of ['operador', 'administracion']) {
+    const m = loadAs(r, { rpc: async () => ({}) }).R._handover(w, w.relay);
+    assert.equal(m.act, 'handover');
+    assert.match(m.label, /Registrar entrega a Lucas P\. en nombre de Juan R\./);
+    assert.equal(m.warns.length, 0);
+  }
+  for (const r of ['chofer', 'supervision', 'facturacion']) assert.equal(loadAs(r, { rpc: async () => ({}) }).R._handover(w, w.relay), null);
+  const { R } = loadAs('operador', { rpc: async () => ({}) });
+  assert.equal(R._handover(wizard({ mode: 'view', serviceStatus: 'completed', relay: { ...located, original: { ...saved } } }), { ...located, original: saved }), null);
+  assert.equal(R._handover(w, { ...located, original: null }), null, 'un relevo sin guardar no se entrega');
+});
+
+test('avisa si falta el remito o la jornada del que recibe; después de entregar ofrece la entrega en destino', () => {
+  const { R } = loadAs('operador', { rpc: async () => ({}) });
+  const w = wizard({ mode: 'view' });
+  const m = R._handover(w, { ...located, original: { ...saved, has_remito: false, to_has_active_jornada: false } });
+  assert.match(m.warns[0], /Todavía no hay remito/);
+  assert.match(m.warns[1], /Lucas P\. todavía no inició su jornada/);
+  const mid = R._handover(w, { ...located, original: { ...saved, handed_over: true, handed_over_at: '2026-11-25T15:00:00Z', handover_source: 'operator' } });
+  assert.equal(mid.act, 'delivered');
+  assert.match(mid.html, /lo registró Operaciones/);
+  assert.match(mid.label, /en nombre de Lucas P\./);
+  const done = R._handover(w, { ...located, original: { ...saved, handed_over: true, delivered: true, delivery_source: 'driver' } });
+  assert.equal(done.act, undefined);
+  assert.match(done.text, /Entregado en destino/);
+});
+
+test('registrar la entrega pide doble toque, usa la misma RPC que el chofer y recarga el servicio', async () => {
+  const rpcs = [];
+  const db = { rpc: async (name, args) => { rpcs.push([name, args]); return { data: { ...saved, handed_over: true, handover_source: 'operator' }, error: null }; } };
+  const w = wizard({ mode: 'view', relay: { ...located, original: { ...saved } } });
+  const { R, toasts, calls } = loadAs('operador', db, w);
+  const btn = { dataset: { relayAct: 'handover' } };
+  await R.act(w, btn);
+  assert.equal(rpcs.length, 0, 'el primer toque sólo pide confirmar');
+  assert.equal(w.relay.sure, 'handover');
+  assert.equal(await R.act(w, btn), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(rpcs)), [['mark_operator_service_relay_handover_v1', { p_service_id: 's1' }]]);
+  assert.equal(w.relay.handedOver, true);
+  assert.match(toasts[0][1], /El servicio pasó a Lucas P\./);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), ['reload', ['view', 's1']]);
+});
+
+test('en edición no se registra la entrega (se guardaría el chofer viejo) y un error de la base se muestra limpio', async () => {
+  let n = 0;
+  const edit = wizard({ mode: 'edit', relay: { ...located, original: { ...saved }, sure: 'handover' } });
+  const a = loadAs('operador', { rpc: async () => { n++; return {}; } }, edit);
+  await a.R.act(edit, { dataset: { relayAct: 'handover' } });
+  assert.equal(n, 0);
+  const w = wizard({ mode: 'view', relay: { ...located, original: { ...saved }, sure: 'handover' } });
+  const b = loadAs('administracion', { rpc: async () => ({ error: { message: 'RELEVO_SIN_JORNADA: Lucas P. todavía no inició su jornada con un móvil' } }) }, w);
+  assert.equal(await b.R.act(w, { dataset: { relayAct: 'handover' } }), false);
+  assert.equal(b.toasts[0][0], 'error');
+  assert.equal(b.toasts[0][1], 'Lucas P. todavía no inició su jornada con un móvil');
+  assert.equal(w.relay.acting, false);
+});
+
+test('la entrega del relevo está en Acciones (estado y ⋯) y es el siguiente paso recomendado del mapa', () => {
+  const badge = fs.readFileSync('operator-service-chain-badge-v1.js', 'utf8');
+  const life = fs.readFileSync('operator-service-lifecycle.js', 'utf8');
+  const map = fs.readFileSync('operator-services-map-v1.js', 'utf8');
+  const os = fs.readFileSync('operator-services.js', 'utf8');
+  assert.match(badge, /function relayStep\(id\)[\s\S]*?r\.delivered \|\| !canHandover\(\)[\s\S]*?\['relay_delivered', 'Registrar entrega en destino \(relevo\)'\] : \['relay_handover', 'Registrar entrega del relevo'\]/);
+  assert.match(badge, /async function runRelayStep\(id\)[\s\S]*?OperatorServiceLifecycleV2\?\.confirmAction[\s\S]*?markRelay\(id, dest\)/);
+  assert.match(badge, /relayStep, runRelayStep/);
+  assert.match(life, /function serviceQuickActions\(s\)\{const list=baseServiceQuickActions\(s\),relay=[^}]*relayStep\?\.\(s\.service_id\)[^}]*list\.unshift\(relay\)/);
+  assert.match(life, /if\(action==='relay_handover'\|\|action==='relay_delivered'\)return window\.AuxEngancheClip\?\.runRelayStep\?\.\(id\)/);
+  assert.match(map, /relay=actions\.find\(\(\[key\]\)=>key==='relay_handover'\|\|key==='relay_delivered'\);if\(relay\)return relay;/);
+  assert.match(os, /relayStep\?\.\(id\):null;if\(relayStep\)entries\.push\(\['relay',relayStep\[1\]\]\)/);
+  assert.match(os, /if\(action==='relay'\)return window\.AuxEngancheClip\?\.runRelayStep\?\.\(id\)/);
+  assert.match(os, /relay_handover:\['Entrega del vehículo en el punto de intercambio \(relevo\)'/);
+});
