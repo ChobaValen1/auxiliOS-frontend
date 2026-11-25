@@ -27,7 +27,7 @@ function stateHTML(row){
   const label=state==='activado'&&row.historyService?.activation_kind==='movement'?'Activado · Movida'
     :state==='activado'&&row.historyService?.activation_kind==='origin'?'Activado · Origen':labels[state]||'Registrado';
   const rr=row.historyService?.relay_role;
-  const relay=rr?` <span class="rmx-state is-activated" title="Servicio con relevo">Relevo · Tramo ${rr==='primero'?1:2}</span>`:'';
+  const relay=rr?` <span class="rmx-state is-activated" data-ax-explica title="Servicio con relevo">Relevo · Tramo ${rr==='primero'?1:2}</span>`:'';
   return `<span class="rmx-state ${state==='anulado'?'is-void':state==='activado'?'is-activated':'is-ok'}">${esc(label)}</span>${relay}`;
 }
 function relayFields(s){

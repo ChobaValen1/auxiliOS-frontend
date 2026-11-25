@@ -18,9 +18,16 @@
     }
     return null;
   }
+  // Solo se muestra el globo cuando el texto explica algo: data-ax-tip escrito a mano o un title marcado
+  // con data-ax-explica. El resto de los title (nombres de botones, datos repetidos) se quitan sin globo,
+  // así tampoco aparece el del navegador. Si el title era el único nombre del botón, pasa a aria-label.
   function take(node){
     var t=node.getAttribute('title');
-    if(t!=null){node.setAttribute('data-ax-tip',t);node.removeAttribute('title');}
+    if(t!=null){
+      node.removeAttribute('title');
+      if(node.hasAttribute('data-ax-explica'))node.setAttribute('data-ax-tip',t);
+      else if(t.trim()&&!node.hasAttribute('aria-label')&&!node.hasAttribute('aria-labelledby')&&!norm(node.textContent))node.setAttribute('aria-label',t.trim());
+    }
     return (node.getAttribute('data-ax-tip')||'').trim();
   }
   function place(){

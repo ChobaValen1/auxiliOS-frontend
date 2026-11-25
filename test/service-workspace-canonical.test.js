@@ -77,7 +77,7 @@ test('Conceptos adicionales vuelve a columna 1 y se habilita después de Prestad
   assert.match(admin,/Prestaciones adicionales/);
   assert.match(admin,/data-click="add-concept"/);
   assert.match(workspace,/const reason=!w\.data\.company_id\?'Elegí primero la Prestadora\.':lockedState\?/);
-  assert.match(workspace,/add\.disabled=!!reason;add\.title=reason;/);
+  assert.match(workspace,/add\.disabled=!!reason;add\.dataset\.axExplica='';add\.title=reason;/);
   
   assert.match(workspace,/data-concept-row/);
   assert.match(workspace,/data-concept-qty/);

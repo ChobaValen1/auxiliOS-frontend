@@ -17,3 +17,9 @@ test('U13 tooltip: no aparece si repite el texto que ya se ve completo',()=>{
   assert.match(js,/if\(!text\|\|redundant\(node,text\)\)return;/);
   assert.match(js,/textOverflow==='ellipsis'/);
 });
+
+test('U13 tooltip: solo aparece en explicaciones marcadas (data-ax-explica o data-ax-tip)',()=>{
+  assert.match(js,/node\.removeAttribute\('title'\);\s*if\(node\.hasAttribute\('data-ax-explica'\)\)node\.setAttribute\('data-ax-tip',t\);/);
+  assert.match(js,/setAttribute\('aria-label',t\.trim\(\)\)/);
+  assert.match(html,/data-ax-explica title="Km por litro/);
+});

@@ -19,7 +19,7 @@ test('draft displays the en borrador badge without restoring the removed notice 
   const {statusCell}=load(),s={service_id:'qa',status:'assigned',document_status:'draft',remito_status:'borrador'};
   const before=JSON.stringify(s),html=statusCell(s);
   assert.doesNotMatch(html,/Remito incompleto|Carga iniciada|ax-remito-preparing/);
-  assert.match(html,/class="os-document-state os-remito-ico is-draft" role="img" data-remito-state="draft" title="Remito en borrador · [^"]+" aria-label="Remito en borrador · [^"]+"><span class="os-remito-emoji" aria-hidden="true">📝<\/span><span class="os-remito-text">Remito en borrador<\/span><\/span>/);
+  assert.match(html,/class="os-document-state os-remito-ico is-draft" role="img" data-remito-state="draft" data-ax-explica title="Remito en borrador · [^"]+" aria-label="Remito en borrador · [^"]+"><span class="os-remito-emoji" aria-hidden="true">📝<\/span><span class="os-remito-text">Remito en borrador<\/span><\/span>/);
   assert.match(statusCell({service_id:'qa',status:'assigned',remito_id:1,remito_status:'borrador'}),/>Remito en borrador</);
   assert.equal(JSON.stringify(s),before);
 });

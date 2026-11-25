@@ -119,7 +119,7 @@
   }
   function linkedHtml(instance, service) {
     const link = LINKS[service.price_link]; if (!link) return '';
-    return `<span class="ct4-linked-chip" title="${esc(link[0])}">${icon('link')}${esc(link[0].replace(' del principal', ''))}</span>`;
+    return `<span class="ct4-linked-chip" data-ax-explica title="${esc(link[0])}">${icon('link')}${esc(link[0].replace(' del principal', ''))}</span>`;
   }
   function linkedDetailHtml(instance, service) {
     const link = LINKS[service.price_link]; if (!link) return '';

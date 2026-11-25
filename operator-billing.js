@@ -434,7 +434,7 @@
       <div><b>${esc(joinParts(selectionParts()))}</b><small>${esc(summary)}</small></div>
       <div class="ob-selection-actions">
         <button class="ob-button" data-ob="clear-selection" ${S.invoiceBusy ? 'disabled' : ''}>Limpiar</button>
-        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
+        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `data-ax-explica title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
       </div>
       ${hint}
       ${chainGapMarkup()}
@@ -522,7 +522,7 @@
   const COBRA = { provider: 'Prestadora', company: 'Empresa' };
   const collectorPill = row => {
     const key = isProviderExcess(row) ? 'provider' : 'company';
-    return `<span class="ob-collector is-${key}" title="${key === 'provider' ? 'Lo cobra la Prestadora: se le factura' : 'Lo cobra la Empresa al cliente'}">${esc(COBRA[key])}</span>`;
+    return `<span class="ob-collector is-${key}" data-ax-explica title="${key === 'provider' ? 'Lo cobra la Prestadora: se le factura' : 'Lo cobra la Empresa al cliente'}">${esc(COBRA[key])}</span>`;
   };
   function extraBillingState(row) {
     if (!isProviderExcess(row)) return '<span class="ob-state is-muted">Cobro al cliente</span><small>No se factura a la Prestadora</small>';
@@ -563,8 +563,8 @@
   const hasDelta = row => Math.abs(num(row.billing_delta)) > .009;
   const signedMoney = (value, currency) => `${num(value) > 0 ? '+' : '−'}${money(Math.abs(num(value)), currency)}`;
   function rowFlag(row) {
-    if (row.pricing_error) return `<small class="ob-flag is-error" title="${esc(row.pricing_error)}">${ico('circle-alert')}Error tarifario</small>`;
-    if (hasDelta(row)) return `<small class="ob-flag is-changed" title="Al cierre era ${esc(money(row.stored_company_amount, row.currency))}">${ico('triangle-alert')}Tarifa ${esc(signedMoney(row.billing_delta, row.currency))}</small>`;
+    if (row.pricing_error) return `<small class="ob-flag is-error" data-ax-explica title="${esc(row.pricing_error)}">${ico('circle-alert')}Error tarifario</small>`;
+    if (hasDelta(row)) return `<small class="ob-flag is-changed" data-ax-explica title="Al cierre era ${esc(money(row.stored_company_amount, row.currency))}">${ico('triangle-alert')}Tarifa ${esc(signedMoney(row.billing_delta, row.currency))}</small>`;
     return '';
   }
 
@@ -747,7 +747,7 @@
     const cls = [checked ? 'selected' : '', row.pricing_error ? 'is-error' : hasDelta(row) ? 'is-changed' : '', S.detailId && String(S.detailId) === id ? 'is-open' : ''].filter(Boolean).join(' ');
     // Toda la fila abre el detalle (el tilde y el menú siguen haciendo lo suyo).
     return `<tr data-billing-service="${esc(id)}" data-ob-open="${esc(id)}" tabindex="0" class="${cls}">
-      <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
+      <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled data-ax-explica title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
       ${bodyCells('services', row)}
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio" aria-label="Acciones del servicio">${ico('ellipsis')}</button></td>
     </tr>`;
