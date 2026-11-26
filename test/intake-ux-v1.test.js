@@ -19,12 +19,42 @@ test('inicio de sesión: el ojo de la contraseña usa el ícono del sistema visu
 });
 
 test('ingresos sin servicio: una fila legible con recorrido, cargos y estado', () => {
-  assert.match(services, /<span>Servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span><span>Estado<\/span>/);
+  assert.match(services, /<span>Fecha y hora<\/span><span>N\.º servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span>/);
   assert.match(services, /function intakeState\(i\)\{if\(i\.driver_activated\)return\{kind:'Activado',label:'Activado sin servicio'/);
   assert.match(services, /<small class="osi-wait">El chofer todavía no firmó<\/small>/);
-  assert.match(css, /#screen-operaciones \.osi-head, #screen-operaciones \.osi-row \{ display: grid; grid-template-columns: 128px minmax\(0, 2fr\)/);
-  // En pantallas angostas, tarjetas.
-  assert.match(css, /grid-template-areas: "id state" "route route" "client driver" "charges action";/);
+  assert.match(css, /#screen-operaciones \.osi-head, #screen-operaciones \.osi-row \{ display: grid; grid-template-columns: minmax\(100px, \.65fr\) 84px minmax\(0, 1\.55fr\)/);
+  // En pantallas angostas, tarjetas; en el celular el botón va abajo a todo el ancho.
+  assert.match(css, /grid-template-areas: "when id" "route route" "client driver" "match match" "charges action";/);
+  assert.match(css, /grid-template-areas: "when id" "route route" "client driver" "match match" "charges charges" "action action";/);
+  // Anular es un tacho que se pone rojo al pasar el mouse.
+  assert.match(services, /ico\('trash-2'\)/);
+  assert.match(css, /\.osi-row \.osi-annul:hover[^{]*\{ color: var\(--ax-danger\)/);
+});
+
+test('ingresos sin servicio: cola por antigüedad, servicio posible y espera', () => {
+  // Primero los que se pueden resolver, del que más espera al más nuevo; abajo los que esperan firma.
+  assert.match(services, /const ready=intakes\.filter\(i=>intakeState\(i\)\.ready\)\.sort\(byAge\),waiting=intakes\.filter\(i=>!intakeState\(i\)\.ready\)\.sort\(byAge\)/);
+  assert.match(services, /Esperando la firma del chofer · \$\{waiting\.length\}/);
+  // La fila y la ventana usan los mismos candidatos y el mismo criterio de recomendación.
+  assert.match(services, /const \{assigned,pending,candidates\}=intakeCandidates\(intake\);/);
+  assert.match(services, /function intakeBestMatch\(intake\)\{.*AuxiliosIntakeMatch\.rank\(intake,candidates\)\.find\(r=>r\.recommended\)/);
+  assert.match(services, /\$\{ico\('link'\)\}Asociar<\/button>/);
+  // Más de 24 h esperando se marca como demorado.
+  assert.match(services, /const INTAKE_LATE_MS=24\*60\*60\*1000;/);
+  assert.match(css, /\.osi-row\[data-late="true"\]\[data-state="ready"\]::before/);
+  // Abierto si hay algo para resolver, salvo que la persona lo haya tocado.
+  assert.match(services, /if\(!S\.intakesTouched\)panel\.open=ready\.length>0;/);
+});
+
+test('ingresos sin servicio: edad relativa y recorrido por localidad', () => {
+  const vm = require('node:vm');
+  const src = services.match(/const INTAKE_LATE_MS=[^\n]*\nfunction intakeAge[^\n]*/)[0];
+  const ctx = {}; vm.createContext(ctx); vm.runInContext(src + ';this.intakeAge=intakeAge;', ctx);
+  const now = Date.parse('2026-11-19T12:00:00Z'), at = h => ({ created_at: new Date(now - h * 3600e3).toISOString() });
+  assert.equal(ctx.intakeAge(at(0.2), now).label, 'hace 12 min');
+  assert.equal(ctx.intakeAge(at(5), now).label, 'hace 5 h');
+  assert.deepEqual([ctx.intakeAge(at(26), now).label, ctx.intakeAge(at(26), now).late], ['hace 1 d 2 h', true]);
+  assert.equal(ctx.intakeAge(at(23.9), now).late, false);
 });
 
 test('crear servicio desde ingreso: sin un servicio compatible va directo al alta', () => {
