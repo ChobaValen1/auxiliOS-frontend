@@ -106,3 +106,10 @@ test('Servicios activos comparte el formato: sin línea de conteo y con encabeza
   assert.match(css, /#screen-operaciones \.os-results-line \{ display: none; \}/);
   assert.match(js, /function fitHistoryWrap\(\)\{[^}]*os-map-mode/);
 });
+
+test('los filtros de prestadora, chofer y móvil se acotan entre sí (opciones en cascada)', () => {
+  const src = fs.readFileSync(require('node:path').join(__dirname, '..', 'operator-services.js'), 'utf8');
+  assert.match(src, /function filtered\(ignoreStatus=false,skip=''\)/);
+  assert.match(src, /skip==='driver'\|\|!S\.driverFilter/);
+  assert.match(src, /tally\('driver',serviceDriverId\)/);
+});
