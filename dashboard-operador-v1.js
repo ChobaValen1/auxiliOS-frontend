@@ -82,7 +82,15 @@ function queue(){const l=visible(),q=S.root.querySelector('#oh-queue');q.innerHT
   S.root.querySelector('#oh-empty').hidden=!!l.length;S.root.querySelector('#oh-qwrap').hidden=!l.length;const b=S.root.querySelector('#oh-bubble');b.textContent=tasks().length;b.classList.toggle('zero',!tasks().length);sizeQueue();moreState();}
 /* Escritorio: la bandeja se estira hasta la altura de la columna derecha. Celular: 3 visibles y el resto a un scroll. */
 function sizeQueue(){const q=S.root?.querySelector('#oh-queue');if(!q)return;const c=[...q.children],rail=S.root.querySelector('.oh-rail'),inbox=S.root.querySelector('.oh-inbox');q.style.height='';q.style.maxHeight='';
-  if(global.innerWidth>1150&&rail&&inbox){const extra=inbox.offsetHeight-q.offsetHeight;const h=Math.max(320,rail.offsetHeight-extra);q.style.height=h+'px';q.style.maxHeight=h+'px';return;}
+  if(global.innerWidth>1150&&rail&&inbox){
+    /* Ocupa toda la pantalla: la bandeja baja hasta el borde de la ventana (o hasta donde termina la columna derecha, si es más alta)
+       y la lista de choferes crece con el alto disponible. Se recalcula al cambiar el tamaño de la ventana. */
+    const scroller=S.root.closest('.content')||document.scrollingElement,bottom=scroller&&scroller!==document.scrollingElement?scroller.getBoundingClientRect().bottom:global.innerHeight;
+    const pad=parseFloat(getComputedStyle(scroller||document.body).paddingBottom)||24;
+    const drv=S.root.querySelector('.oh-drv');if(drv){drv.style.setProperty('--oh-drv-h','340px');const perf=S.root.querySelector('.oh-perf');const free=bottom-pad-(perf?perf.offsetHeight+14:0)-drv.getBoundingClientRect().top;drv.style.setProperty('--oh-drv-h',Math.max(340,Math.floor(free))+'px');}
+    const extra=inbox.offsetHeight-q.offsetHeight,qr=q.getBoundingClientRect(),toBottom=bottom-pad-qr.top-(inbox.getBoundingClientRect().bottom-qr.bottom);
+    const h=Math.max(320,rail.offsetHeight-extra,Math.floor(toBottom));q.style.height=h+'px';q.style.maxHeight=h+'px';return;}
+  S.root.querySelector('.oh-drv')?.style.removeProperty('--oh-drv-h');
   if(c.length>3)q.style.maxHeight=(c.slice(0,3).reduce((a,x)=>a+x.offsetHeight,0)+8*2+40)+'px';}
 function moreState(){const q=S.root?.querySelector('#oh-queue');if(!q)return;const hidden=[...q.children].filter(x=>x.offsetTop+x.offsetHeight/2>q.scrollTop+q.clientHeight).length;S.root.querySelector('#oh-more-n').textContent='+'+hidden;S.root.querySelector('#oh-qwrap').classList.toggle('end',hidden===0);}
 
