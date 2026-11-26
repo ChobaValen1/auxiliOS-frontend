@@ -89,7 +89,7 @@
       + (check ? '<label class="osl-check"><input type="checkbox" class="ax-check" ' + check.attr + '="' + esc(s.service_id) + '"' + (check.on ? ' checked' : '') + (check.disabled ? ' disabled' : '') + ' aria-label="Servicio ' + esc(s.service_order_number || '') + '"></label>' : '')
       + '<span class="osl-date">' + fmt(s.service_date) + '</span>'
       + '<span class="osl-main"><b>' + esc(s.service_order_number || 'Sin código') + '</b><small>' + esc([s.company_name, s.concept_name].filter(Boolean).join(' · ')) + '</small>' + (where ? '<small class="osl-where">' + esc(where) + '</small>' : '') + '</span>'
-      + '<span class="osl-amt"><b>' + money(s.total_amount) + '</b>' + (Number(s.adjustment_amount) ? '<small title="' + esc(s.adjustment_reason || '') + '">Ajuste ' + money(s.adjustment_amount) + '</small>' : '') + '</span></li>';
+      + '<span class="osl-amt"><b>' + money(s.total_amount) + '</b>' + (Number(s.adjustment_amount) ? '<small data-ax-explica title="' + esc(s.adjustment_reason || '') + '">Ajuste ' + money(s.adjustment_amount) + '</small>' : '') + '</span></li>';
   }
   function monthHtml() {
     var d = st.data, draft = draftOf(d), av = d.available || [], pend = d.pending || [], sum = selection(av, st.sel), all = av.length && sum.n === av.length;

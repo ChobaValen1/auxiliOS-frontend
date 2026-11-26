@@ -28,7 +28,7 @@ function render(data,{heading=false,compact=false}={}){
   if(compact){
     const count=rows.reduce((n,t)=>n+Math.max(1,amount(t.quantity)),0),payers=[...new Set(rows.map(t=>t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Sin informar'))];
     const detail=rows.map(t=>`${t.toll_name||'Peaje'}${amount(t.quantity)>1?' ×'+amount(t.quantity):''}: ${money(t.total_amount)} (${statuses[t.display_status]||'Informado'})`).join('\n');
-    return`<div class="hlt hlt-compact" title="${esc(detail)}"><strong class="hlt-total">${money(total)}</strong><small>${count} peaje${count===1?'':'s'} · ${esc(payers.join(' y '))}${planned?' · incluye previstos':''}</small></div>`;
+    return`<div class="hlt hlt-compact" data-ax-explica title="${esc(detail)}"><strong class="hlt-total">${money(total)}</strong><small>${count} peaje${count===1?'':'s'} · ${esc(payers.join(' y '))}${planned?' · incluye previstos':''}</small></div>`;
   }
   return`<div class="hlt">${heading?'<span class="hlt-heading">Peajes</span>':''}<strong class="hlt-total">${money(total)}</strong>${planned?'<small class="hlt-note">Incluye previstos</small>':''}<ul class="hlt-list">${rows.map(t=>{
     const payer=t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Responsable sin informar';

@@ -173,7 +173,7 @@ function valorCampo(c,r){
       :`<input data-rmp-field="${c.col}" type="${c.tipo||'text'}" value="${esc(actual)}" autocomplete="off"${c.upper?' style="text-transform:uppercase"':''}>`;
     return`<div class="rmp-edit${cambiado?' is-changed':''}">${input}${cambiado?`<span class="rmp-before">Antes: <s>${esc(v||'—')}</s></span>`:''}</div>`;
   }
-  const lock=c.vinculado&&r.operator_service_id?` <span class="rmp-lock" title="${esc(c.vinculado)}">🔗</span>`:'';
+  const lock=c.vinculado&&r.operator_service_id?` <span class="rmp-lock" data-ax-explica title="${esc(c.vinculado)}">🔗</span>`:'';
   return v?`<span>${esc(v)}</span>${lock}`:`<span class="rmp-empty">Sin cargar</span>${lock}`;
 }
 function marcarCambio(el){
