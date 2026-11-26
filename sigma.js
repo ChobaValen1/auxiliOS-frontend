@@ -306,7 +306,7 @@ function openFuelModal() {
   _actualizarEstadoConexion();
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('cb-camion-info');
-  if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
+  if (info) info.textContent = _truckActual.plate || '—'; // sólo el dominio: la fila con la fecha queda compacta
   const fecha = document.getElementById('cb-fecha');
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
   ['cb-litros','cb-precio','cb-km','cb-estacion'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -321,6 +321,7 @@ function openFuelModal() {
   _fuelTicketEstado();
   const ticketInput = document.getElementById('cb-ticket-input'); if (ticketInput) ticketInput.value = '';
   _modalError('cb-error', '');
+  _fuelMarcar(null);
   openModal('modal-combustible');
 }
 async function openPlanModal() {
@@ -4655,6 +4656,22 @@ function _actualizarEstadoConexion() {
   _fuelTicketEstado();
 }
 
+// Remarca el campo que falta (borde rojo) y lo trae a la vista; null limpia todas las marcas.
+function _fuelMarcar(id) {
+  document.querySelectorAll('#modal-combustible .is-missing').forEach(el => { el.classList.remove('is-missing'); el.removeAttribute('aria-invalid'); });
+  if (!id) return;
+  const el = id === 'cb-pay' ? document.querySelector('#modal-combustible .fuel-pay') : document.getElementById(id);
+  if (!el) return;
+  const box = el.closest?.('.fuel-field, .fuel-date') || el;
+  box.classList?.add('is-missing');
+  if (el.setAttribute) el.setAttribute('aria-invalid', 'true');
+  try { box.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); } catch (e) { /* no crítico */ }
+  if (el.tagName === 'INPUT' && el.type !== 'file') { try { el.focus({ preventScroll: true }); } catch (e) { /* no crítico */ } }
+}
+// Al corregir un campo marcado, se le saca la marca.
+document.addEventListener('input', e => { const f = e.target?.closest?.('#modal-combustible .is-missing'); if (f) { f.classList.remove('is-missing'); e.target.removeAttribute('aria-invalid'); } });
+document.addEventListener('click', e => { const f = e.target?.closest?.('#modal-combustible .fuel-pay.is-missing, #modal-combustible #cb-app-select.is-missing'); if (f) f.classList.remove('is-missing'); });
+
 // Muestra si el ticket ya está adjunto. El ticket es obligatorio para guardar la carga.
 function _fuelTicketEstado() {
   const btn   = document.getElementById('cb-scan-btn');
@@ -4879,6 +4896,7 @@ async function leerTicketCombustible(input) {
     return;
   }
   window._fuelTicketFile = ticket; // se guarda con la carga (fuel-tickets-v1.js)
+  document.getElementById('cb-scan-btn')?.classList?.remove('is-missing');
   _fuelTicketEstado();
 
   if (!navigator.onLine || !base64) {
@@ -4937,9 +4955,9 @@ async function leerTicketCombustible(input) {
       const patenteActual = (_truckActual?.plate || '').replace(/\s|-/g, '').toUpperCase();
       const info = document.getElementById('cb-camion-info');
       if (patenteActual && patenteDetectada === patenteActual) {
-        if (info) info.textContent = `✓ ${_truckActual.plate} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`.trim();
+        if (info) info.textContent = `✓ ${_truckActual.plate}`;
       } else if (patenteActual && patenteDetectada !== patenteActual) {
-        if (info) info.textContent = `⚠ Ticket: ${d.patente} — Jornada: ${_truckActual.plate}`;
+        if (info) info.textContent = `⚠ ${_truckActual.plate} · ticket ${d.patente}`;
       }
     }
 
@@ -5027,24 +5045,27 @@ async function guardarCombustible() {
   const estacion = document.getElementById('cb-estacion')?.value || null;
   const ticket = window._fuelTicketFile || null;
 
-  if (!ticket)                    { _modalError('cb-error', 'Sacale una foto al ticket: es obligatorio para guardar la carga'); return; }
-  if (!fecha)                     { _modalError('cb-error', 'Seleccioná la fecha'); return; }
-  if (!litros || isNaN(litros))   { _modalError('cb-error', 'Ingresá los litros cargados'); return; }
-  if (litros <= 0)                { _modalError('cb-error', 'Los litros deben ser un valor mayor a 0'); return; }
-  if (litros > 5000)              { _modalError('cb-error', 'Los litros ingresados parecen incorrectos (máx. 5000)'); return; }
-  if (!precio || isNaN(precio))   { _modalError('cb-error', 'Ingresá el precio por litro'); return; }
-  if (precio <= 0)                { _modalError('cb-error', 'El precio debe ser mayor a 0'); return; }
-  if (kmTexto && km === null)     { _modalError('cb-error', 'El odómetro tiene que ser un número entero de km'); return; }
-  if (km !== null && km <= 0)     { _modalError('cb-error', 'Los KM deben ser un valor mayor a 0'); return; }
+  // Cada error remarca el campo que falta y lo lleva a la vista.
+  const falta = (campo, msg) => { _modalError('cb-error', msg); _fuelMarcar(campo); };
+  if (!ticket)                    return falta('cb-scan-btn', 'Sacale una foto al ticket: es obligatorio para guardar la carga');
+  if (!fecha)                     return falta('cb-fecha', 'Seleccioná la fecha');
+  if (!litros || isNaN(litros))   return falta('cb-litros', 'Ingresá los litros cargados');
+  if (litros <= 0)                return falta('cb-litros', 'Los litros deben ser un valor mayor a 0');
+  if (litros > 5000)              return falta('cb-litros', 'Los litros ingresados parecen incorrectos (máx. 5000)');
+  if (!precio || isNaN(precio))   return falta('cb-precio', 'Ingresá el precio por litro');
+  if (precio <= 0)                return falta('cb-precio', 'El precio debe ser mayor a 0');
+  if (!kmTexto)                   return falta('cb-km', 'Ingresá el kilometraje del tablero: es obligatorio');
+  if (km === null)                return falta('cb-km', 'El odómetro tiene que ser un número entero de km');
+  if (km <= 0)                    return falta('cb-km', 'Los KM deben ser un valor mayor a 0');
   const odo = N.revisarOdometro(km, _truckActual?.current_km);
-  if (odo.error)                  { _modalError('cb-error', odo.error); return; }
+  if (odo.error)                  return falta('cb-km', odo.error);
   if (odo.aviso && _fuelKmConfirmado !== km) {
     _fuelKmConfirmado = km;
-    _modalError('cb-error', odo.aviso + ' Revisá el tablero: si está bien, tocá Guardar carga otra vez.');
-    return;
+    return falta('cb-km', odo.aviso + ' Revisá el tablero: si está bien, tocá Guardar carga otra vez.');
   }
-  if (!selectedPayMethod)         { _modalError('cb-error', 'Seleccioná el medio de pago'); return; }
-  if (selectedPayMethod === 'app' && !selectedApp) { _modalError('cb-error', 'Seleccioná la app de pago'); return; }
+  if (!selectedPayMethod)         return falta('cb-pay', 'Seleccioná el medio de pago');
+  if (selectedPayMethod === 'app' && !selectedApp) return falta('cb-app-select', 'Seleccioná la app de pago');
+  _fuelMarcar(null);
   _modalError('cb-error', '');
 
   const jornadaCombustible = (_jornadasAbiertasCache || []).find(j =>
