@@ -361,14 +361,17 @@
       const node = document.getElementById(id);
       if (node) node.style.display = 'none';
     });
-    // El operador no ve el Resumen: entra directo a Servicios.
+    // El operador entra a su Inicio: bandeja de acción sin importes (dashboard-operador-v1.js).
     const dashboard = document.getElementById('nav-dashboard');
-    if (dashboard) dashboard.style.display = 'none';
+    if (dashboard) {
+      dashboard.style.display = '';
+      const label = dashboard.querySelector('.nav-label');
+      if (label) label.textContent = 'Inicio';
+    }
     const operations = document.getElementById('nav-operaciones');
     if (operations) operations.style.display = '';
     const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4.2 4.6A7 7 0 1 1 3.1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2.4 2.6v3.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.8v3.6l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', 'Historial', false);
-    orderTop([operations, history]);
-    if (document.getElementById('screen-dashboard')?.classList.contains('active') && document.getElementById('screen-operaciones') && typeof goTo === 'function') goTo('operaciones');
+    orderTop([dashboard, operations, history]);
   }
 
   function managementToolsMarkup() {
@@ -632,7 +635,6 @@
     const previous = window.goTo;
     if (typeof previous !== 'function' || previous.__auxCanonicalNavigation) return;
     const wrapped = function(name, ...args) {
-      if (name === 'dashboard' && role() === 'operador') name = 'operaciones';
       if (name === 'historial-sistema' && !canUseHistory()) return notify('Sin permiso para acceder a Historial', 'error');
       if ((name === 'configuracion' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
       const result = previous.call(this, name, ...args);
