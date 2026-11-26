@@ -107,3 +107,23 @@ test('combustible: si el ticket no sube, Administración no crea la carga', asyn
   await assert.rejects(window.AuxFuelTickets.attach(3, { name: 't.jpg', type: 'image/jpeg', size: 10 }), { message: 'sin red' });
   assert.deepEqual(calls, [], 'sin archivo subido no se vincula nada');
 });
+
+test('combustible: aviso único de ticket y km obligatorios para chofer y Administración', () => {
+  const store = {}, made = [];
+  const mk = () => { const el = { classList: { add() {}, remove() {} }, querySelector: () => ({ focus() {}, set onclick(f) { el.ok = f; } }) }; made.push(el); return el; };
+  const ctxFor = roleName => {
+    const window = { localStorage: { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = v; } } };
+    const ctx = { window, document: { addEventListener() {}, getElementById: () => null, createElement: mk, body: { appendChild() {} } }, console, Intl, Date, setTimeout,
+      PERFIL_USUARIO: { roles: { name: roleName } }, USUARIO_ACTUAL: { id: 'u' } };
+    vm.runInNewContext(src, ctx); return window.AuxFuelTickets;
+  };
+  assert.equal(ctxFor('supervision').avisoObligatorio(false), false, 'Supervisión no carga combustible');
+  const chofer = ctxFor('chofer');
+  assert.equal(chofer.avisoObligatorio(false), true);
+  assert.match(made[0].innerHTML, /sacarle una foto al ticket/);
+  assert.match(made[0].innerHTML, /kilometraje del tablero/);
+  made[0].ok();
+  assert.ok(store['auxilios.aviso.combustible-obligatorio.v1'], 'Entendido lo guarda');
+  assert.equal(chofer.avisoObligatorio(false), false, 'no se repite');
+  assert.match(src, /addEventListener\('auxilios:perfil'/);
+});

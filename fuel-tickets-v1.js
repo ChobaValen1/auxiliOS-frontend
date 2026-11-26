@@ -488,5 +488,32 @@
     try { await attach(fuelId, file); return true; } catch (x) { console.warn('[combustible] ticket del chofer', x); return false; }
   }
 
-  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, checkFile: checkFile, openEdit: openEdit, _decimal: decimal };
+  /* ── Aviso único: desde el 25/11/2026 el ticket y el km son obligatorios ── */
+  var AVISO_KEY = 'auxilios.aviso.combustible-obligatorio.v1';
+  function avisoTexto(r) {
+    return r === 'chofer'
+      ? 'Desde ahora, para guardar una carga de combustible tenés que <b>sacarle una foto al ticket</b> y poner el <b>kilometraje del tablero</b>. Sin señal podés sacar la foto igual: se sube sola cuando vuelve la conexión.'
+      : 'Desde ahora, toda carga de combustible necesita <b>la foto del ticket</b> y el <b>kilometraje</b>, la haga el chofer o Administración. Si falta alguno, la carga no se guarda y el campo queda marcado.';
+  }
+  function avisoObligatorio(force) {
+    var r = role();
+    if (r !== 'chofer' && r !== 'administracion') return false;
+    try { if (!force && global.localStorage && global.localStorage.getItem(AVISO_KEY)) return false; } catch (e) { /* sin almacenamiento: se muestra */ }
+    var b = box('fuelt-aviso');
+    b.innerHTML = '<div class="modal-box fuelt-box fuelt-aviso" role="dialog" aria-modal="true" aria-labelledby="fuelt-aviso-title">'
+      + '<div class="modal-head"><span class="modal-head-title" id="fuelt-aviso-title">' + ico('receipt') + ' Combustible: ticket y km obligatorios</span></div>'
+      + '<div class="modal-body"><p class="fuelt-aviso-text">' + avisoTexto(r) + '</p>'
+      + '<p class="fuelt-aviso-why">' + ico('shield-check') + '<span>El ticket es la prueba de cada carga y el km nos deja controlar el consumo de cada camión.</span></p></div>'
+      + '<div class="modal-footer"><button type="button" class="btn btn-primary" data-fuelt-aviso-ok>Entendido</button></div></div>';
+    var ok = b.querySelector('[data-fuelt-aviso-ok]');
+    ok.onclick = function () {
+      try { global.localStorage && global.localStorage.setItem(AVISO_KEY, new Date().toISOString()); } catch (e) { /* no crítico */ }
+      close('fuelt-aviso');
+    };
+    try { ok.focus(); } catch (e) { /* no crítico */ }
+    return true;
+  }
+  document.addEventListener('auxilios:perfil', function () { setTimeout(function () { avisoObligatorio(false); }, 600); });
+
+  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, checkFile: checkFile, avisoObligatorio: avisoObligatorio, openEdit: openEdit, _decimal: decimal };
 })(window);
