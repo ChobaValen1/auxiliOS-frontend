@@ -4,6 +4,8 @@
 (function(){
   if(window.AxTooltip||!window.matchMedia||!matchMedia('(hover:hover)').matches)return;
   var tip=null,target=null,timer=0,DELAY=350;
+  // Este globo reemplaza también al de CSS de components.css ([data-ax-tip]::after): sin esta marca se veían los dos encimados.
+  document.documentElement.classList.add('ax-tip-js');
   function el(){
     if(tip)return tip;
     tip=document.createElement('div');tip.className='ax-tip';tip.id='ax-tip';tip.setAttribute('role','tooltip');
@@ -16,9 +18,16 @@
     }
     return null;
   }
+  // Solo se muestra el globo cuando el texto explica algo: data-ax-tip escrito a mano o un title marcado
+  // con data-ax-explica. El resto de los title (nombres de botones, datos repetidos) se quitan sin globo,
+  // así tampoco aparece el del navegador. Si el title era el único nombre del botón, pasa a aria-label.
   function take(node){
     var t=node.getAttribute('title');
-    if(t!=null){node.setAttribute('data-ax-tip',t);node.removeAttribute('title');}
+    if(t!=null){
+      node.removeAttribute('title');
+      if(node.hasAttribute('data-ax-explica'))node.setAttribute('data-ax-tip',t);
+      else if(t.trim()&&!node.hasAttribute('aria-label')&&!node.hasAttribute('aria-labelledby')&&!norm(node.textContent))node.setAttribute('aria-label',t.trim());
+    }
     return (node.getAttribute('data-ax-tip')||'').trim();
   }
   function place(){
@@ -29,8 +38,24 @@
     tip.style.transform='translate('+Math.round(left)+'px,'+Math.round(top)+'px)';
     tip.dataset.side=below?'bottom':'top';
   }
+  // Si el globo repite lo que ya se lee en pantalla (texto completo, sin cortar), no aporta nada: no se muestra.
+  function norm(s){return String(s||'').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+  function cut(e){
+    if(!e||e.nodeType!==1)return false;
+    if(e.clientWidth>0&&(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1)){
+      var cs=getComputedStyle(e);if(cs.textOverflow==='ellipsis'||cs.webkitLineClamp!=='none'&&cs.webkitLineClamp||cs.overflow!=='visible'||cs.overflowX!=='visible')return true;
+    }
+    return false;
+  }
+  function redundant(node,text){
+    var t=norm(text);if(!t)return true;
+    if(norm(node.innerText||node.textContent).indexOf(t)<0)return false;
+    if(cut(node)||cut(node.parentElement))return false;
+    var kids=node.querySelectorAll('*');for(var i=0;i<kids.length;i++)if(cut(kids[i]))return false;
+    return true;
+  }
   function show(node){
-    var text=take(node);if(!text)return;
+    var text=take(node);if(!text||redundant(node,text))return;
     target=node;var t=el();t.textContent=text;
     node.setAttribute('aria-describedby','ax-tip');
     place();t.classList.add('is-on');

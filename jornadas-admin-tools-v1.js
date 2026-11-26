@@ -385,10 +385,10 @@
         if(row){
           const cell=row.querySelector('td');
           cell?.querySelector('.jat-payroll-review')?.remove();
-          if(cell){const badge=document.createElement('div');badge.className='jat-payroll-review';const delta=Number(item.adjustment_pending||0);badge.textContent=item.estado==='pagada'?`Ajuste pendiente ${fmtMoney(delta)}`:`Requiere revisión · Δ ${delta>=0?'+':''}${fmtMoney(delta)}`;badge.title=item.review_reason||'Corrección administrativa posterior';cell.appendChild(badge);}
+          if(cell){const badge=document.createElement('div');badge.className='jat-payroll-review';const delta=Number(item.adjustment_pending||0);badge.textContent=item.estado==='pagada'?`Ajuste pendiente ${fmtMoney(delta)}`:`Requiere revisión · Δ ${delta>=0?'+':''}${fmtMoney(delta)}`;badge.dataset.axExplica='';badge.title=item.review_reason||'Corrección administrativa posterior';cell.appendChild(badge);}
         }
         if(typeof _reciboActual!=='undefined'&&_reciboActual?.liquidacion_id===item.liquidacion_id){
-          const estado=$('rec-estado');let warning=$('jat-payroll-receipt-review');if(!warning&&estado?.parentElement){warning=document.createElement('div');warning.id='jat-payroll-receipt-review';warning.className='jat-payroll-receipt-review';estado.parentElement.appendChild(warning);}if(warning){const delta=Number(item.adjustment_pending||0);warning.textContent=item.estado==='pagada'?`Requiere ajuste: ${fmtMoney(delta)}. El pago original se conserva.`:`Requiere revisión. Total propuesto: ${fmtMoney(item.proposed_total)} · diferencia ${delta>=0?'+':''}${fmtMoney(delta)}.`;warning.title=item.review_reason||'';}
+          const estado=$('rec-estado');let warning=$('jat-payroll-receipt-review');if(!warning&&estado?.parentElement){warning=document.createElement('div');warning.id='jat-payroll-receipt-review';warning.className='jat-payroll-receipt-review';estado.parentElement.appendChild(warning);}if(warning){const delta=Number(item.adjustment_pending||0);warning.textContent=item.estado==='pagada'?`Requiere ajuste: ${fmtMoney(delta)}. El pago original se conserva.`:`Requiere revisión. Total propuesto: ${fmtMoney(item.proposed_total)} · diferencia ${delta>=0?'+':''}${fmtMoney(delta)}.`;warning.dataset.axExplica='';warning.title=item.review_reason||'';}
         }
       }
     }catch(error){console.warn('[JornadasAdminTools] payroll review surface',error?.message||error);}

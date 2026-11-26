@@ -2769,17 +2769,17 @@ function _deltaBadge(actual, anterior, opts = {}) {
     return `<span style="${base};background:rgba(107,114,128,0.18);color:var(--muted)" title="Sin cambios">→ 0%</span>`;
   }
   if (prev === 0) {
-    return `<span style="${base};background:rgba(74,222,128,0.18);color:#4ade80" title="Sin dato anterior">▲ nuevo</span>`;
+    return `<span style="${base};background:rgba(74,222,128,0.18);color:#4ade80" data-ax-explica title="Sin dato anterior">▲ nuevo</span>`;
   }
   if (cur === 0) {
     const color = invert ? '#4ade80' : '#ef4444';
     const bg = invert ? 'rgba(74,222,128,0.18)' : 'rgba(239,68,68,0.18)';
-    return `<span style="${base};background:${bg};color:${color}" title="Anterior: ${prev.toLocaleString('es-AR')}">▼ -100%</span>`;
+    return `<span style="${base};background:${bg};color:${color}" data-ax-explica title="Anterior: ${prev.toLocaleString('es-AR')}">▼ -100%</span>`;
   }
   const pctRaw = ((cur - prev) / Math.abs(prev)) * 100;
   const pct = Math.abs(pctRaw) < 1 ? Math.round(pctRaw * 10) / 10 : Math.round(pctRaw);
   if (pct === 0) {
-    return `<span style="${base};background:rgba(107,114,128,0.18);color:var(--muted)" title="Anterior: ${prev.toLocaleString('es-AR')}">→ 0%</span>`;
+    return `<span style="${base};background:rgba(107,114,128,0.18);color:var(--muted)" data-ax-explica title="Anterior: ${prev.toLocaleString('es-AR')}">→ 0%</span>`;
   }
   const positivo = pct > 0;
   const good = invert ? !positivo : positivo;
@@ -2787,7 +2787,7 @@ function _deltaBadge(actual, anterior, opts = {}) {
   const bg = good ? 'rgba(74,222,128,0.18)' : 'rgba(239,68,68,0.18)';
   const arrow = positivo ? '▲' : '▼';
   const val = positivo ? `+${pct}%` : `${pct}%`;
-  return `<span style="${base};background:${bg};color:${color}" title="Anterior: ${prev.toLocaleString('es-AR')}">${arrow} ${val}</span>`;
+  return `<span style="${base};background:${bg};color:${color}" data-ax-explica title="Anterior: ${prev.toLocaleString('es-AR')}">${arrow} ${val}</span>`;
 }
 
 // ── cargarDashboard ───────────────────────────
@@ -5991,7 +5991,7 @@ function renderTablaRemitos(data) {
       ].filter(Boolean).join('');
       const acciones = `<div class="rmx-row-actions">
           ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion && (!r.historyEntry || r.historyState === 'pendiente') ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
-          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : porEnviar ? `<button class="rmx-act is-send" type="button" data-rmx-action="enviar" title="Todavía no se envió al cliente">Enviar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
+          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : porEnviar ? `<button class="rmx-act is-send" type="button" data-rmx-action="enviar" data-ax-explica title="Todavía no se envió al cliente">Enviar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
           ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
         </div>`;
 
@@ -6007,7 +6007,7 @@ function renderTablaRemitos(data) {
         <td class="rmx-vehicle"><span class="rmx-plate">${_rmxEsc(r.patente || '—')}</span>${r.marca ? `<span class="rmx-sub">${_rmxEsc(r.marca)}</span>` : ''}</td>
         <td>${r.tipoReal ? `<span class="rmx-type">${_rmxEsc(r.tipoReal)}</span>` : '<span class="rmx-type is-empty">Sin clasificar</span>'}</td>
         <td class="rmx-col-tolls">${window.AuxiliosHistoryTolls?.render(r.historyTolls)||'<span class="rmx-muted">Peajes no disponibles</span>'}</td>
-        <td class="rmx-money"${detalle ? ` title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
+        <td class="rmx-money"${detalle ? ` data-ax-explica title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
         <td><div class="rmx-pays">${pagoHTML}</div></td>
         <td>${estadoPill}</td>
         <td>${acciones}</td>`;
@@ -7950,6 +7950,7 @@ function actualizarBotonesTaller() {
     const active=button.dataset.workshopType===selected;
     button.hidden=!!selected&&!active;
     button.setAttribute('aria-pressed',String(active));
+    button.dataset.axExplica='';
     button.title=active?'Tocá para cambiar el tipo de trabajo':'';
   });
 }
@@ -9171,7 +9172,7 @@ function _renderRendicionesTabla() {
       <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:2px;font-weight:600">Resumen por chofer (rango seleccionado)</div>
       <div style="color:var(--muted);font-size:11px;margin-bottom:8px">Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}.</div>
       <table class="cfg-rend-table">
-        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">¿Cierra la plata?</th><th style="text-align:right" title="Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}">Descuento en sueldo</th></tr></thead>
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">¿Cierra la plata?</th><th style="text-align:right" data-ax-explica title="Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}">Descuento en sueldo</th></tr></thead>
         <tbody>${resumenRows}</tbody>
       </table>
     </div>
@@ -10174,8 +10175,8 @@ async function cargarTablaAdminUsuarios() {
     if (!a) return '<span class="usr-seen">Nunca</span>';
     const donde = [a.device === 'movil' ? 'Celular' : a.device === 'escritorio' ? 'Computadora' : '', PANTALLAS[a.screen] || ''].filter(Boolean).join(' · ');
     const tip = _escHtml(`Último ingreso con contraseña: ${fechaHora(a.last_sign_in_at)}`);
-    if (a.online) return `<span class="usr-seen on" title="${tip}"><i aria-hidden="true"></i>En línea${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
-    return `<span class="usr-seen" title="${tip}">${_escHtml(hace(a.last_seen_at))}${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
+    if (a.online) return `<span class="usr-seen on" data-ax-explica title="${tip}"><i aria-hidden="true"></i>En línea${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
+    return `<span class="usr-seen" data-ax-explica title="${tip}">${_escHtml(hace(a.last_seen_at))}${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
   };
   const iniciales = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
   const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
@@ -15104,7 +15105,7 @@ function _jadminRenderFila(r) {
   const efvoTxt = rend ? _jadminMoney(rend.esperado) : '—';
   const efvoCls = !rend ? 'money-cell zero' : faltante ? 'money-cell faltante' : 'money-cell';
   const efvoTitle = faltante
-    ? ` title="La rendición de esta fecha cerró en faltante: ${_escHtml(_jadminMoneySigned(rend.diff))}"`
+    ? ` data-ax-explica title="La rendición de esta fecha cerró en faltante: ${_escHtml(_jadminMoneySigned(rend.diff))}"`
     : '';
   const gastosTxt = rend ? _jadminMoney(rend.gastos) : '—';
   const gastosCls = rend && Number(rend.gastos) ? 'money-cell' : 'money-cell zero';
@@ -15126,14 +15127,14 @@ function _jadminRenderFila(r) {
   if (r.status === 'open') {
     const hAb = _jadminHorasAbierta(r);
     const larga = hAb != null && hAb > _JADMIN_HORAS_ABIERTA_LARGA;
-    estadoHtml = `<span class="pill pill-amber"${larga ? ` title="Abierta hace ${Math.floor(hAb)} horas"` : ''}><span class="dot a"></span>Abierta${larga ? ` · ${Math.floor(hAb)} h` : ''}</span>`;
+    estadoHtml = `<span class="pill pill-amber"${larga ? ` data-ax-explica title="Abierta hace ${Math.floor(hAb)} horas"` : ''}><span class="dot a"></span>Abierta${larga ? ` · ${Math.floor(hAb)} h` : ''}</span>`;
   } else if (r.status === 'closed') {
     estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
     estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
   }
   if (r.in_workshop) {
-    estadoHtml += `<span class="taller-mark" title="La unidad ingresó a taller durante esta jornada">🔧</span>`;
+    estadoHtml += `<span class="taller-mark" data-ax-explica title="La unidad ingresó a taller durante esta jornada">🔧</span>`;
   }
 
   const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
@@ -15144,7 +15145,7 @@ function _jadminRenderFila(r) {
   if (_orgs.includes('manual_ia_fallo') || _orgs.includes('manual_editado')) {
     origenBadge = '<span class="km-origen manual">A MANO</span>';
   } else if (_orgs.includes('manual_offline')) {
-    origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
+    origenBadge = '<span class="km-origen offline" data-ax-explica title="Cargado sin conexión">OFFLINE</span>';
   }
 
   // Horas de motor: sólo en los camiones con horómetro, debajo de los km.
@@ -15152,7 +15153,7 @@ function _jadminRenderFila(r) {
   if (r.horas_motor_inicio != null) {
     const aMano = [r.horas_motor_inicio_origen, r.horas_motor_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado');
     const motorTitle = `Horas de motor: ${_fmtHoras(r.horas_motor_inicio)} → ${r.horas_motor_final != null ? _fmtHoras(r.horas_motor_final) : 'sin cerrar'}${aMano ? ' · cargadas a mano' : ''}`;
-    motorHtml = `<div class="jadmin-motor${aMano ? ' is-manual' : ''}" title="${_escHtml(motorTitle)}">${_escHtml(_horasMotorTexto(r.horas_motor_inicio, r.horas_motor_final))}</div>`;
+    motorHtml = `<div class="jadmin-motor${aMano ? ' is-manual' : ''}" data-ax-explica title="${_escHtml(motorTitle)}">${_escHtml(_horasMotorTexto(r.horas_motor_inicio, r.horas_motor_final))}</div>`;
   }
 
   return `
@@ -15180,7 +15181,7 @@ function _jadminRenderFila(r) {
       <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}${motorHtml}</td>
       <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
       <td class="right ${srvCls}" data-label="Servicios">${srv ? `<button type="button" class="jadmin-srv" title="Ver los servicios de esta jornada">${srv}</button>` : srv}</td>
-      <td class="right" data-label="Km/l"><span class="${kmlCls}" title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
+      <td class="right" data-label="Km/l"><span class="${kmlCls}" data-ax-explica title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
       <td class="right" data-label="Efectivo esp."><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
       <td class="right" data-label="Gastos"><span class="${gastosCls}">${gastosTxt}</span></td>
       <td class="center" data-label="Incidentes"><span class="${incCls}">${incTxt}</span></td>
@@ -16004,7 +16005,7 @@ function _grillaChipHtml(iso, t, clickCelda) {
   // Marca ⚠ si la jornada real difiere de la grilla (solo hoy y días pasados)
   const conflicto = iso <= hoyIso ? _grillaConflictos[`${iso}|${t.truck_id}`] : null;
   if (conflicto) {
-    chip = chip.replace('class="grilla-chip', `title="⚠ ${conflicto.replace(/"/g, '&quot;')}" class="grilla-chip grilla-chip-alerta`);
+    chip = chip.replace('class="grilla-chip', `data-ax-explica title="⚠ ${conflicto.replace(/"/g, '&quot;')}" class="grilla-chip grilla-chip-alerta`);
   }
 
   return { chip, conflicto };
@@ -16027,7 +16028,7 @@ function renderGrillaTabla() {
     const feriado   = _grillaFeriados[iso];
     const clases    = [esHoy ? 'grilla-hoy' : '', feriado ? 'grilla-feriado' : ''].filter(Boolean).join(' ');
     const click     = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" style="cursor:pointer"` : '';
-    const tooltip   = feriado ? `title="${feriado.replace(/"/g, '&quot;')}"` : (esAdmin ? 'title="Clic para marcar/desmarcar feriado"' : '');
+    const tooltip   = feriado ? `data-ax-explica title="${feriado.replace(/"/g, '&quot;')}"` : (esAdmin ? 'data-ax-explica title="Clic para marcar/desmarcar feriado"' : '');
     const finde = i >= 5 ? ' grilla-finde' : '';
     ths += `<th class="${clases}${finde}" ${click} ${tooltip}><span class="grilla-th-dn">${diasNom[i]}${esHoy ? ' · Hoy' : ''}</span><span class="grilla-th-fecha">${parseInt(iso.slice(8,10), 10)}<small>/${iso.slice(5,7)}</small></span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
   });
@@ -16173,7 +16174,7 @@ function _grillaHtmlMiSemana(semana) {
     // Nombre completo del feriado como nota truncada; la pill queda corta
     // para no romper el layout de la fila con nombres largos.
     if (feriado) {
-      pills += `<span class="gsem-pill p-feriado" title="${feriado.replace(/"/g, '&quot;')}">🎌 Feriado</span>`;
+      pills += `<span class="gsem-pill p-feriado" data-ax-explica title="${feriado.replace(/"/g, '&quot;')}">🎌 Feriado</span>`;
       asig  += `<div class="gsem-nota gsem-nota-feriado">${feriado}</div>`;
     }
 
@@ -16216,7 +16217,7 @@ function _grillaHtmlDiaAdmin(semana) {
   const iso     = semana[_grillaDiaIdx];
   const feriado = _grillaFeriados[iso];
   const esHoy   = iso === hoyIso;
-  const clickHead = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" title="Tocá para marcar/desmarcar feriado"` : '';
+  const clickHead = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" data-ax-explica title="Tocá para marcar/desmarcar feriado"` : '';
   const head = `
     <div class="grilla-dia-head ${esHoy ? 'hoy' : ''} ${esAdmin ? 'admin' : ''}" ${clickHead}>
       <span class="grilla-dia-head-fecha">${diasNomLargo[_grillaDiaIdx]} ${_gDDMM(iso)}${esHoy ? ' · HOY' : ''}</span>

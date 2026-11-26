@@ -3,4 +3,6 @@
 .ax-tip[data-side=top]{transform-origin:center bottom}
 .ax-tip[data-side=bottom]{transform-origin:center top}
 .ax-tip.is-on{opacity:1;scale:1}
+/* Con este globo activo se apaga el de CSS puro (components.css), que si no aparece debajo y se ve doble. */
+.ax-tip-js [data-ax-tip]::after{content:none}
 @media (prefers-reduced-motion:reduce){.ax-tip{transition:opacity 1ms}}
