@@ -664,8 +664,8 @@ body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-
 
 /* Historial compacto: el título ya está arriba, sin resumen de período ni conteo, y la tabla ocupa el alto que queda. */
 #screen-operaciones.os-is-history #os-history-heading { display: none; }
-#screen-operaciones.os-is-history .os-results-line { display: none; }
-#screen-operaciones.os-is-history .os-results-summary { margin: 0 0 var(--ax-sp-2); }
-#screen-operaciones.os-is-history .os-results-summary:not(:has(.os-filter-chip)) { margin: 0; }
+#screen-operaciones .os-results-line { display: none; }
+#screen-operaciones .os-results-summary { margin: 0 0 var(--ax-sp-2); }
+#screen-operaciones .os-results-summary:not(:has(.os-filter-chip)) { margin: 0; }
 #screen-operaciones.os-is-history .os-commandbar { margin-bottom: var(--ax-sp-2); }
 #screen-operaciones.os-is-history .os-status-tabs { margin-bottom: var(--ax-sp-2); }

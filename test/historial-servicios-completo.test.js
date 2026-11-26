@@ -96,7 +96,13 @@ test('Historial compacto: título arriba, sin resumen ni conteo, tabla con alto 
   assert.match(js, /SCREENS\.operaciones\.title='Historial de servicios'/);
   assert.match(js, /function fitHistoryWrap\(\)/);
   assert.match(css, /os-is-history #os-history-heading \{ display: none; \}/);
-  assert.match(css, /os-is-history \.os-results-line \{ display: none; \}/);
+  assert.match(css, /#screen-operaciones \.os-results-line \{ display: none; \}/);
   assert.match(css, /os-back-btn \{ border-color: var\(--ax-accent\)/);
   assert.doesNotMatch(js, /finalizado\$\{done===1/);
+});
+
+test('Servicios activos comparte el formato: sin línea de conteo y con encabezados fijos', () => {
+  const js = read('operator-services.js'), css = read('operaciones-ax-v1.css');
+  assert.match(css, /#screen-operaciones \.os-results-line \{ display: none; \}/);
+  assert.match(js, /function fitHistoryWrap\(\)\{[^}]*os-map-mode/);
 });
