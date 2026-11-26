@@ -50,8 +50,8 @@ test('combustible: la carga desde Administración usa la función protegida de l
 test('combustible: conectado en la jornada, el camión y el escaneo del chofer', () => {
   assert.match(sigma, /AuxFuelTickets\.openNew\(\$\{Number\(log\.log_id\)\}/);
   assert.match(sigma, /AuxFuelTickets\.buttonHtml\(f, \{ logId: log\.log_id, truckId: log\.truck_id \}\)/);
-  assert.match(sigma, /window\._fuelTicketFile = file;/);
-  assert.match(sigma, /AuxFuelTickets\.attachDriverScan\(resultado\.data\.fuel_id, ticketFile\)/);
+  assert.match(sigma, /window\._fuelTicketFile = ticket;/);
+  assert.match(sigma, /await AuxFuelTickets\.attach\(fuelId, ticket\)/, 'el ticket del chofer es obligatorio y se espera la subida');
   assert.match(truck, /global\.AuxFuelTickets\.buttonHtml\(f, \{ truckId: st\.id \}\)/);
   assert.match(index, /<script src="\/fuel-tickets-v1\.js\?v=/);
   assert.match(index, /<link rel="stylesheet" href="\/fuel-tickets-v1\.css\?v=/);

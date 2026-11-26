@@ -13,7 +13,9 @@
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function notify(m, t) { if (typeof global.toast === 'function') global.toast(m, t || 'info'); }
   /* Acepta 1500, 1.500, 1500,50 y 1.500,50 (formato argentino) y 40.5. */
-  function decimal(v) {
+  function decimal(v, kind) {
+    /* Con fuel-numbers-v1.js cargado: «45.320» litros son 45,32 (no 45.320) y «1.850» pesos son 1850. */
+    if (global.AuxFuelNumbers) return global.AuxFuelNumbers.decimal(v, kind === 'litros' ? 'litros' : 'importe');
     var s = String(v == null ? '' : v).replace(/[$\s]/g, '');
     if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
     else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
@@ -118,7 +120,7 @@
     b.querySelectorAll('[data-fuelt-close]').forEach(function (x) { x.onclick = function () { close('fuelt-new'); }; });
 
     function values() {
-      var l = decimal(E.liters.value), p = decimal(E.price_per_liter.value), t = decimal(E.total.value);
+      var l = decimal(E.liters.value, 'litros'), p = decimal(E.price_per_liter.value), t = decimal(E.total.value);
       return { l: l, p: p, t: t, km: String(E.km_at_load.value || '').trim(), reason: String(E.reason.value || '').trim(), app: st.pay === 'app' ? (st.app || String(E.payment_app.value || '').trim()) : '' };
     }
     function problems() {
@@ -301,7 +303,7 @@
       E.payment_app.hidden = st.pay !== 'app' || known;
     }
     function cur() {
-      var l = decimal(E.liters.value), p = decimal(E.price_per_liter.value), km = String(E.km_at_load.value || '').trim().replace(/\./g, '');
+      var l = decimal(E.liters.value, 'litros'), p = decimal(E.price_per_liter.value), km = String(E.km_at_load.value || '').trim().replace(/\./g, '');
       return { fuel_date: E.fuel_date.value, liters: l, price: p, km: km, pay: st.pay, app: st.pay === 'app' ? (APPS.indexOf(st.app) >= 0 ? st.app : String(E.payment_app.value || '').trim()) : '', station: String(E.gas_station.value || '').trim(), reason: String(E.reason.value || '').trim() };
     }
     var same = function (a, b2) { return Math.abs(a - b2) < 0.005; };
@@ -382,7 +384,7 @@
       var k = u.getAttribute('data-undo');
       if (k === 'liters') E.liters.value = numText(orig.liters);
       if (k === 'price') { E.price_per_liter.value = numText(orig.price); st.last = 'price'; }
-      if (k === 'liters' || k === 'price') E.total.value = numText(round2(decimal(E.liters.value) * decimal(E.price_per_liter.value)));
+      if (k === 'liters' || k === 'price') E.total.value = numText(round2(decimal(E.liters.value, 'litros') * decimal(E.price_per_liter.value)));
       if (k === 'fuel_date') E.fuel_date.value = orig.fuel_date;
       if (k === 'km') E.km_at_load.value = orig.km ? numText(Number(orig.km)) : '';
       if (k === 'station') E.gas_station.value = orig.station;
@@ -465,5 +467,5 @@
     try { await attach(fuelId, file); return true; } catch (x) { console.warn('[combustible] ticket del chofer', x); return false; }
   }
 
-  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, openEdit: openEdit, _decimal: decimal };
+  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, checkFile: checkFile, openEdit: openEdit, _decimal: decimal };
 })(window);

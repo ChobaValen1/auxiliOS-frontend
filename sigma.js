@@ -316,6 +316,9 @@ function openFuelModal() {
   document.querySelectorAll('[id^="cb-efectivo"],[id^="cb-transferencia"],[id^="cb-app"]').forEach(el => { el.style.borderColor = 'var(--border)'; el.style.background = 'var(--bg)'; });
   selectedPayMethod = ''; selectedApp = '';
   window._fuelTicketFile = null;
+  _fuelCreatedAtDevice = new Date().toISOString(); // misma clave si hay que reintentar: no duplica la carga
+  _fuelKmConfirmado = null;
+  _fuelTicketEstado();
   const ticketInput = document.getElementById('cb-ticket-input'); if (ticketInput) ticketInput.value = '';
   _modalError('cb-error', '');
   openModal('modal-combustible');
@@ -4525,18 +4528,30 @@ if (typeof obRegistrarHandler === 'function') {
   // log_id TMP-* ya llega remapeado por obSync.
   // Idempotente: si un intento anterior ya insertó la carga (mismo camión +
   // created_at_device), no vuelve a insertar.
-  obRegistrarHandler('fuel', async (payload) => {
-    if (payload.created_at_device) {
+  // Si la op trae la foto del ticket (obligatoria desde 2026-11), se sube después de la carga;
+  // si falla, la op queda en error y el reintento encuentra la carga y vuelve a subir sólo el ticket.
+  obRegistrarHandler('fuel', async (payload, blobs) => {
+    const { ticket_name, ...datos } = payload || {};
+    let fuelId = null, ticketPath = null;
+    if (datos.created_at_device) {
       const { data: previas } = await _db
         .from('fuel_records')
-        .select('fuel_id')
-        .eq('truck_id', payload.truck_id)
-        .eq('created_at_device', payload.created_at_device)
+        .select('fuel_id,ticket_path')
+        .eq('truck_id', datos.truck_id)
+        .eq('created_at_device', datos.created_at_device)
         .limit(1);
-      if (previas && previas.length) return {};
+      if (previas && previas.length) { fuelId = previas[0].fuel_id; ticketPath = previas[0].ticket_path; }
     }
-    const res = await registrarCombustible(payload);
-    if (!res || !res.ok) throw new Error(res?.errorMsg || 'No se pudo registrar la carga de combustible');
+    if (!fuelId) {
+      const res = await registrarCombustible(datos);
+      if (!res || !res.ok) throw new Error(res?.errorMsg || 'No se pudo registrar la carga de combustible');
+      fuelId = res.data?.fuel_id;
+    }
+    const blob = blobs && blobs.ticket;
+    if (blob && fuelId && !ticketPath && window.AuxFuelTickets) {
+      const file = blob instanceof File ? blob : new File([blob], ticket_name || 'ticket.jpg', { type: blob.type || 'image/jpeg' });
+      await AuxFuelTickets.attach(fuelId, file);
+    }
     return {};
   });
 
@@ -4634,15 +4649,35 @@ function _actualizarEstadoConexion() {
   const btn   = document.getElementById('cb-scan-btn');
   const label = document.getElementById('cb-scan-label');
   if (!btn || !label) return;
-  if (navigator.onLine) {
-    btn.disabled      = false;
-    btn.style.opacity = '1';
-    label.textContent = 'Escanear ticket';
-  } else {
-    btn.disabled      = true;
-    btn.style.opacity = '0.4';
-    label.textContent = 'OCR no disponible sin señal';
-  }
+  // Sin señal no se puede leer el ticket, pero la foto es obligatoria: se saca igual y se sube al volver la señal.
+  btn.disabled      = false;
+  btn.style.opacity = '1';
+  _fuelTicketEstado();
+}
+
+// Muestra si el ticket ya está adjunto. El ticket es obligatorio para guardar la carga.
+function _fuelTicketEstado() {
+  const btn   = document.getElementById('cb-scan-btn');
+  const label = document.getElementById('cb-scan-label');
+  const hint  = document.getElementById('cb-scan-hint');
+  const file  = typeof window !== 'undefined' ? window._fuelTicketFile : null;
+  if (btn) btn.classList.toggle('is-attached', !!file);
+  if (label) label.textContent = file ? 'Ticket adjunto · cambiar foto' : (navigator.onLine ? 'Escanear ticket' : 'Sacar foto del ticket');
+  if (hint) hint.textContent = file
+    ? 'La foto se guarda con la carga'
+    : (navigator.onLine ? 'Sin ticket no se puede guardar · leemos litros, precio y km' : 'Sin señal: sacá la foto igual, se sube cuando vuelva');
+}
+
+// El ticket que se sube: la foto original si es válida, o la versión comprimida en JPEG.
+function _fuelTicketArchivo(file, base64) {
+  try {
+    if (window.AuxFuelTickets?.checkFile) { window.AuxFuelTickets.checkFile(file); return file; }
+    if (file && /^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type || '') && file.size <= 10 * 1024 * 1024) return file;
+  } catch (e) { /* se usa la versión comprimida */ }
+  if (!base64) return null;
+  const bin = atob(base64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], 'ticket.jpg', { type: 'image/jpeg' });
 }
 
 // ── OFFLINE — MIGRACIÓN ONE-SHOT DE LA COLA VIEJA DE COMBUSTIBLE ───────
@@ -4795,73 +4830,89 @@ async function _renderIndicadorOffline() {
 }
 
 // ── LECTOR DE TICKET OCR ──────────────────────
+// El ticket es obligatorio: la foto queda adjunta aunque no se pueda leer (sin señal o ilegible).
+// Los números se leen con AuxFuelNumbers (fuel-numbers-v1.js): «1.234,50», «45,320» y «123.456 km»
+// no pierden miles ni decimales, y litros × precio se cruza con el total del ticket.
 async function leerTicketCombustible(input) {
   const file = input.files[0];
   if (!file || _fuelBusy) return;
-  if (typeof window !== 'undefined') window._fuelTicketFile = file; // se guarda con la carga (fuel-tickets-v1.js)
   _setFuelBusy('scan');
-  try {
-
   const status = document.getElementById('cb-scan-status');
   const mostrar = (msg, color, bg) => {
+    if (!status) return;
     status.style.display = 'block';
     status.style.color = color;
     status.style.background = bg;
     status.style.border = `1px solid ${color}44`;
     status.textContent = msg;
   };
-
+  try {
   mostrar('Leyendo ticket… Esperá un momento.', 'var(--amber)', 'var(--amber-lo)');
 
   // Comprimir imagen si es muy grande
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 1600;
-        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.width  * scale;
-        canvas.height = img.height * scale;
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+  let base64 = null;
+  try {
+    base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1600;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width  = img.width  * scale;
+          canvas.height = img.height * scale;
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
       };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-try {
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  } catch (e) { base64 = null; }
+
+  const ticket = _fuelTicketArchivo(file, base64);
+  if (!ticket) {
+    mostrar('No se pudo abrir la foto. Sacale otra foto al ticket.', 'var(--red)', 'rgba(255,59,48,0.1)');
+    return;
+  }
+  window._fuelTicketFile = ticket; // se guarda con la carga (fuel-tickets-v1.js)
+  _fuelTicketEstado();
+
+  if (!navigator.onLine || !base64) {
+    mostrar(navigator.onLine
+      ? 'Foto del ticket adjunta. No se pudo leer: completá los datos a mano.'
+      : 'Foto del ticket adjunta. Sin señal no se puede leer: completá los datos a mano.', 'var(--amber)', 'var(--amber-lo)');
+    return;
+  }
+
+  try {
     // LLAMADO A LA EDGE FUNCTION DE SUPABASE
     const accessToken = await obtenerAccessToken();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/procesar-ticket`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify({ imagen_base64: base64 }),
     });
-
-    if (!res.ok) { 
-      const errData = await res.json().catch(() => ({}));
-      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
-      return; 
-    }
-    
-    const d = await res.json();
-    if (d.error || !d.success) { 
-      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
-      return; 
+    const d = res.ok ? await res.json().catch(() => ({})) : {};
+    if (!res.ok || d.error || !d.success) {
+      mostrar('Foto del ticket adjunta, pero no se pudo leer. Completá los datos a mano.', 'var(--amber)', 'var(--amber-lo)');
+      return;
     }
 
-    // Rellenar campos
-    const set = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
-    set('cb-litros',  d.litros);
-    set('cb-precio',  d.precio_por_litro);
-    set('cb-km',      d.km);
+    const N = window.AuxFuelNumbers;
+    const set = (id, val) => { if (val != null && val !== '') { const el = document.getElementById(id); if (el) el.value = val; } };
+    // La lectura puede traer texto («1.234,50») o números (1234.5); se concilian con el total del ticket.
+    const c = N.conciliar({ litros: d.litros, precio: d.precio_por_litro, total: d.total });
+    const km = N.km(d.km);
+    set('cb-litros', c.litros != null ? N.texto(c.litros, 3) : null);
+    set('cb-precio', c.precio != null ? N.texto(c.precio, 2, true) : null);
+    set('cb-km', km != null ? N.miles(km) : null);
     set('cb-estacion', d.estacion);
     // Un año mal leído hacía que la carga se guardara, pero desapareciera del
     // listado reciente (que ordena por fuel_date). Solo aceptar fechas cercanas.
@@ -4872,7 +4923,7 @@ try {
       fechaTicketValida = Number.isFinite(fechaDetectada.getTime()) && diferenciaDias <= 7;
       if (fechaTicketValida) set('cb-fecha', d.fecha);
     }
-    if (d.litros && d.precio_por_litro) calcCombTotal();
+    calcCombTotal();
 
     if (d.metodo_pago) {
       const metodos = { efectivo:'efectivo', transferencia:'transferencia', tarjeta:'transferencia' };
@@ -4892,31 +4943,31 @@ try {
       }
     }
 
-    // Resumen de lo detectado
-    const campos = [
-      d.litros          && `${d.litros} L`,
-      d.precio_por_litro && `$${d.precio_por_litro}/L`,
-      d.total           && `Total $${d.total}`,
-      d.estacion        && d.estacion,
-      d.km              && `${d.km} km`,
-      d.fecha           && (fechaTicketValida ? d.fecha : `Fecha detectada descartada: ${d.fecha}`),
-      d.patente         && `Patente: ${d.patente}`,
+    // Resumen de lo leído, en formato argentino, para que el chofer lo compare con el papel.
+    const leido = [
+      c.litros != null && `${N.texto(c.litros, 3)} L`,
+      c.precio != null && `$${N.texto(c.precio, 2, true)}/L`,
+      c.total  != null && `total $${N.texto(c.total, 2, true)}`,
+      km != null && `${N.miles(km)} km`,
     ].filter(Boolean);
-
+    const avisos = [];
+    if (c.consistente === false) avisos.push(`Litros × precio no da el total del ticket ($${N.texto(c.total, 2)}). Revisá los números.`);
+    else if (c.corregidos.length) avisos.push(`Ajustamos ${c.corregidos.join(' y ')} para que litros × precio dé el total del ticket.`);
+    const odo = N.revisarOdometro(km, _truckActual?.current_km);
+    if (odo.error || odo.aviso) avisos.push(odo.error || odo.aviso);
+    if (d.fecha && !fechaTicketValida) avisos.push(`Fecha leída descartada: ${d.fecha}.`);
+    const dudoso = avisos.length > 0 || (d.confianza != null && Number(d.confianza) < 60);
     mostrar(
-      'Datos leídos. Revisá y corregí los campos antes de guardar.',
-      'var(--green)', 'rgba(52,199,89,0.1)'
+      (leido.length ? `Leído: ${leido.join(' · ')}. ` : '') + (avisos.length ? avisos.join(' ') + ' ' : '') + 'Revisá y corregí los campos antes de guardar.',
+      dudoso ? 'var(--amber)' : 'var(--green)', dudoso ? 'var(--amber-lo)' : 'rgba(52,199,89,0.1)'
     );
   } catch (err) {
-    mostrar('No se pudo leer el ticket. Completá los datos manualmente o reintentá.', 'var(--red)', 'rgba(255,59,48,0.1)');
+    mostrar('Foto del ticket adjunta, pero no se pudo leer. Completá los datos a mano o reintentá.', 'var(--amber)', 'var(--amber-lo)');
     console.error('[OCR]', err);
   }
-
-  // Limpiar el input para permitir re-escanear la misma imagen
   } catch (error) {
-    const status = document.getElementById('cb-scan-status');
-    if (status) { status.style.display = 'block'; status.textContent = 'No se pudo abrir la foto. Elegí otra imagen o completá los datos manualmente.'; }
-  } finally { input.value = ''; _setFuelBusy(''); }
+    mostrar('No se pudo abrir la foto. Elegí otra imagen.', 'var(--red)', 'rgba(255,59,48,0.1)');
+  } finally { input.value = ''; _setFuelBusy(''); _fuelTicketEstado(); }
 }
 
 // ── GUARDAR — COMBUSTIBLE ─────────────────────
@@ -4940,13 +4991,20 @@ function selectAppBtn(el, name) {
 }
 
 function calcCombTotal() {
-  const l = parseFloat(document.getElementById('cb-litros')?.value) || 0;
-  const p = parseFloat(document.getElementById('cb-precio')?.value) || 0;
+  const N = window.AuxFuelNumbers;
+  const l = N.decimal(document.getElementById('cb-litros')?.value, 'litros') || 0;
+  const p = N.decimal(document.getElementById('cb-precio')?.value, 'importe') || 0;
   const el = document.getElementById('cb-total');
-  if (el) el.textContent = '$' + (l * p).toLocaleString('es-AR');
+  if (el) el.textContent = '$' + N.texto(l * p, 2);
+}
+// Litros y precio aceptan coma o punto como los escribe el chofer («45,5», «1.250,90»).
+function sanitizeFuelDecimal(input) {
+  input.value = input.value.replace(/[^0-9.,]/g, '');
 }
 
 let _fuelBusy = '';
+let _fuelCreatedAtDevice = null; // fijo mientras el modal está abierto: reintentar no duplica la carga
+let _fuelKmConfirmado = null;    // odómetro dudoso que el chofer ya confirmó tocando Guardar otra vez
 function _setFuelBusy(state) {
   _fuelBusy = state;
   document.querySelectorAll('#modal-combustible button, #modal-combustible input').forEach(el => { el.disabled = !!state; });
@@ -4960,19 +5018,31 @@ function _setFuelBusy(state) {
 }
 async function guardarCombustible() {
   if (_fuelBusy) return;
-  const litros = parseFloat(document.getElementById('cb-litros')?.value);
-  const precio = parseFloat(document.getElementById('cb-precio')?.value);
+  const N = window.AuxFuelNumbers;
+  const litros = N.decimal(document.getElementById('cb-litros')?.value, 'litros');
+  const precio = N.decimal(document.getElementById('cb-precio')?.value, 'importe');
   const fecha  = document.getElementById('cb-fecha')?.value;
-  const km     = parseInt(document.getElementById('cb-km')?.value) || null;
+  const kmTexto = String(document.getElementById('cb-km')?.value || '').trim();
+  const km     = N.km(kmTexto);
   const estacion = document.getElementById('cb-estacion')?.value || null;
+  const ticket = window._fuelTicketFile || null;
 
+  if (!ticket)                    { _modalError('cb-error', 'Sacale una foto al ticket: es obligatorio para guardar la carga'); return; }
   if (!fecha)                     { _modalError('cb-error', 'Seleccioná la fecha'); return; }
   if (!litros || isNaN(litros))   { _modalError('cb-error', 'Ingresá los litros cargados'); return; }
   if (litros <= 0)                { _modalError('cb-error', 'Los litros deben ser un valor mayor a 0'); return; }
   if (litros > 5000)              { _modalError('cb-error', 'Los litros ingresados parecen incorrectos (máx. 5000)'); return; }
   if (!precio || isNaN(precio))   { _modalError('cb-error', 'Ingresá el precio por litro'); return; }
   if (precio <= 0)                { _modalError('cb-error', 'El precio debe ser mayor a 0'); return; }
+  if (kmTexto && km === null)     { _modalError('cb-error', 'El odómetro tiene que ser un número entero de km'); return; }
   if (km !== null && km <= 0)     { _modalError('cb-error', 'Los KM deben ser un valor mayor a 0'); return; }
+  const odo = N.revisarOdometro(km, _truckActual?.current_km);
+  if (odo.error)                  { _modalError('cb-error', odo.error); return; }
+  if (odo.aviso && _fuelKmConfirmado !== km) {
+    _fuelKmConfirmado = km;
+    _modalError('cb-error', odo.aviso + ' Revisá el tablero: si está bien, tocá Guardar carga otra vez.');
+    return;
+  }
   if (!selectedPayMethod)         { _modalError('cb-error', 'Seleccioná el medio de pago'); return; }
   if (selectedPayMethod === 'app' && !selectedApp) { _modalError('cb-error', 'Seleccioná la app de pago'); return; }
   _modalError('cb-error', '');
@@ -4981,55 +5051,61 @@ async function guardarCombustible() {
     Number(j?.truck_id) === Number(_truckActual?.truck_id)
   ) || (Number(_jornadaActivaLocal?.truck_id) === Number(_truckActual?.truck_id) ? _jornadaActivaLocal : null);
 
+  if (!_fuelCreatedAtDevice) _fuelCreatedAtDevice = new Date().toISOString();
   const datos = {
     truck_id:        _truckActual.truck_id,
     log_id:          jornadaCombustible?.log_id || null,
     fuel_date:       fecha || new Date().toISOString().slice(0, 10),
-    liters:          litros,
-    price_per_liter: precio,
+    liters:          Math.round(litros * 1000) / 1000,
+    price_per_liter: Math.round(precio * 100) / 100,
     km_at_load:      km,
     payment_method:  selectedPayMethod,
     payment_app:     selectedPayMethod === 'app' ? selectedApp : null,
     gas_station:     estacion,
-    created_at_device: new Date().toISOString(),
+    // Momento real de la carga = clave de idempotencia: un reintento no duplica la carga.
+    created_at_device: _fuelCreatedAtDevice,
+  };
+  const cerrarOk = () => {
+    window._fuelTicketFile = null; _fuelCreatedAtDevice = null; _fuelKmConfirmado = null;
+    closeModal('modal-combustible');
+    selectedPayMethod = ''; selectedApp = '';
   };
   _setFuelBusy('save');
   try {
   datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
   // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
-  // encolar en el outbox unificado
+  // encolar en el outbox unificado, con la foto del ticket.
   if (!navigator.onLine || _logIdEsTemporal(datos.log_id)) {
-    // created_at_device = momento real de la carga → clave de idempotencia del handler
     await obAdd({
       tipo: 'fuel',
-      payload: datos,
+      payload: { ...datos, ticket_name: ticket.name || 'ticket.jpg' },
+      blobs: { ticket: ticket },
       dependeDe: _logIdEsTemporal(datos.log_id) ? datos.log_id : null
     });
-    operationFeedback('Carga guardada', 'Se sincronizará automáticamente al recuperar conexión.', 'success', 2400);
-    closeModal('modal-combustible');
-    selectedPayMethod = ''; selectedApp = '';
+    operationFeedback('Carga guardada', 'La carga y el ticket se sincronizan al recuperar conexión.', 'success', 2400);
+    cerrarOk();
     return;
   }
 
-  const btn = document.getElementById('btn-guardar-combustible');
-  if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
-
   const resultado = await registrarCombustible(datos);
-
-  if (btn) { btn.textContent = '⛽ Guardar carga'; btn.style.pointerEvents = 'auto'; }
-
-  if (resultado.ok) {
-    // La foto del ticket escaneado queda guardada con la carga; si falla, la carga igual queda registrada.
-    const ticketFile = window._fuelTicketFile; window._fuelTicketFile = null;
-    if (ticketFile && resultado.data?.fuel_id && window.AuxFuelTickets) AuxFuelTickets.attachDriverScan(resultado.data.fuel_id, ticketFile);
-    operationFeedback('Carga registrada', `${litros} litros guardados correctamente.`, 'success', 2200);
-    closeModal('modal-combustible');
-    selectedPayMethod = ''; selectedApp = '';
-    cargarScreenCamion();
-  } else {
+  if (!resultado.ok) {
     operationFeedback('Carga inválida', resultado.errorMsg || 'No se pudo registrar la carga de combustible.', 'error', 2800);
+    return;
   }
+  // El ticket es obligatorio: si no se sube, el modal queda abierto para reintentar
+  // (la carga ya registrada no se duplica gracias a created_at_device).
+  const fuelId = resultado.data?.fuel_id;
+  try {
+    await AuxFuelTickets.attach(fuelId, ticket);
+  } catch (error) {
+    console.error('[Combustible] ticket', error);
+    _modalError('cb-error', 'La carga quedó registrada, pero el ticket no se subió. Revisá la conexión y tocá Guardar carga otra vez.');
+    return;
+  }
+  operationFeedback('Carga registrada', `${N.texto(litros, 3)} litros guardados con el ticket.`, 'success', 2200);
+  cerrarOk();
+  cargarScreenCamion();
   } catch (error) {
     console.error('[Combustible]',error);
     _modalError('cb-error','No se pudo guardar la carga. Revisá la conexión y reintentá.');
