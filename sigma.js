@@ -2836,6 +2836,13 @@ async function cargarDashboard() {
      admin: el chofer nunca ve esa barra. */
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
+  /* El operador tiene su propio Inicio, sin importes: no pasa por los filtros
+     ni las alertas del admin, que son de otro rol. */
+  if (PERFIL_USUARIO?.roles?.name === 'operador') {
+    if (emergQuick) emergQuick.style.display = 'none';
+    dashCambiarVista('operador');
+    return;
+  }
   await _inicializarFiltrosRendAdmin();
   _alxActualizarBadges(); // badges de alertas (campanita + botón) en segundo plano
   /* El admin entra directo a Análisis. El chofer no tiene barra de pestañas y su
@@ -2859,6 +2866,9 @@ function dashCambiarVista(vista, el) {
   if (vr) vr.style.display = vista === 'rendimiento' ? '' : 'none';
   const vx = document.getElementById('dash-view-analitica');
   if (vx) vx.style.display = vista === 'analitica' ? '' : 'none';
+  const vo = document.getElementById('dash-view-operador');
+  if (vo) vo.style.display = vista === 'operador' ? '' : 'none';
+  if (vista === 'operador') window.AuxOperatorHome?.cargar();
   if (vista === 'rendimiento') _cargarViewRendimiento();
   if (vista === 'analitica')   _cargarViewAnalitica();
 }

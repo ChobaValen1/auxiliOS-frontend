@@ -152,13 +152,13 @@ test('the desktop sidenav expands to labels and can collapse to emoji-only mode'
 
 test("payroll is not hidden by the former configuration CSS rule",()=>{assert.doesNotMatch(read("configuration-center.css"),/sidenav > #nav-sueldos/);assert.match(read("configuration-center.js"),/ensureNavNode\('nav-sueldos', 'sueldos'/);});
 
-test('el operador no ve el Resumen y entra directo a Servicios', () => {
+test('el operador entra a su Inicio sin importes', () => {
   const center = read('configuration-center.js');
   const fn = center.slice(center.indexOf('function configureOperatorNavigation'), center.indexOf('function managementToolsMarkup'));
 
-  assert.doesNotMatch(fn, /ensureNavNode\('nav-dashboard'/);
-  assert.match(fn, /dashboard\.style\.display = 'none'/);
-  assert.match(fn, /orderTop\(\[operations, history\]\)/);
-  assert.match(fn, /goTo\('operaciones'\)/);
-  assert.match(center, /if \(name === 'dashboard' && role\(\) === 'operador'\) name = 'operaciones';/);
+  assert.doesNotMatch(fn, /dashboard\.style\.display = 'none'/);
+  assert.match(fn, /label\.textContent = 'Inicio'/);
+  assert.match(fn, /orderTop\(\[dashboard, operations, history\]\)/);
+  assert.doesNotMatch(fn, /goTo\('operaciones'\)/);
+  assert.doesNotMatch(center, /name === 'dashboard' && role\(\) === 'operador'/);
 });
