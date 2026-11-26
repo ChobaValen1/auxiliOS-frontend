@@ -98,7 +98,7 @@ function drivers(anim){const D=S.data?.drivers||[],on=D.filter(d=>d.state!=='ina
 /* ── Cómo viene la gestión ── */
 const M=[
   {k:'asg',f:'assign_minutes',l:'Tiempo hasta asignar',u:' min',better:'down',goal:15,help:'Mediana de minutos desde que se carga el servicio hasta que tiene chofer'},
-  {k:'late',f:'late',l:'Servicios demorados',u:'',better:'down',goal:null,help:'Finalizados que pasaron 2 h sin llegar al origen o 3 h en origen'},
+  {k:'late',f:'late',l:'Servicios demorados',u:'',better:'down',goal:null,help:'Finalizados que tardaron más de 2 h en llegar al origen desde que se asignaron'},
   {k:'rem',f:'remito_same_day',l:'Remitos cerrados en el día',u:' %',better:'up',goal:90,help:'Finalizados con el remito firmado el mismo día'},
   {k:'fin',f:'completed',l:'Finalizados por día',u:'',better:'up',goal:null,help:'Servicios que llegaron a Finalizado'},
 ];

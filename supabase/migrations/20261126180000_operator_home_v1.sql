@@ -9,8 +9,9 @@
 --   drivers: choferes activos con su jornada abierta (móvil y patente) y si están libres o con servicio.
 --   series:  evolución diaria de métricas de gestión de los últimos p_days días y de los p_days anteriores.
 --
--- Demoras: no hay hora estimada de llegada cargada, así que se usan umbrales por tiempo transcurrido
--- (percentil 80 de los últimos 30 días): más de 120 min asignado sin arribar, o más de 180 min en origen.
+-- Demoras: no hay hora estimada de llegada cargada, así que se usa un umbral por tiempo transcurrido
+-- (cerca del percentil 80 de los últimos 30 días): más de 120 min asignado sin arribar al origen.
+-- El tiempo en origen no se mide: el estado «arribado» dura hasta finalizar e incluye el traslado.
 
 create or replace function app_private.operator_home_v1(p_now timestamptz, p_days integer)
 returns jsonb language plpgsql stable set search_path = '' as $f$
@@ -20,7 +21,6 @@ declare
   v_start timestamptz := v_day::timestamp at time zone tz;
   v_days integer := least(greatest(coalesce(p_days, 14), 7), 60);
   late_assigned constant interval := interval '120 minutes';
-  late_origin constant interval := interval '180 minutes';
   result jsonb;
 begin
   with
@@ -76,14 +76,6 @@ begin
       s.origin, s.destination, s.driver_name, s.driver_phone, null, null
     from open_svc s where s.status in ('assigned', 'en_route') and not coalesce(s.driver_activated, false)
       and greatest(s.assigned_at, coalesce(s.scheduled_for, s.assigned_at)) < p_now - late_assigned
-    union all
-    -- Demorado en origen
-    select 'late_origin', 0, s.service_id, coalesce(nullif(s.service_order_number, ''), s.service_number),
-      coalesce(s.driver_arrived_at, s.arrived_at), s.customer_name, s.vehicle_plate, s.vehicle_make_model,
-      s.origin, s.destination, s.driver_name, s.driver_phone, null, null
-    from open_svc s where s.status = 'at_origin' and not coalesce(s.driver_activated, false)
-      and coalesce(s.driver_arrived_at, s.arrived_at) < p_now - late_origin
-      and not exists (select 1 from relay r where r.service_id = s.service_id)
     union all
     -- Relevo por entregar: el 1º chofer ya arribó al origen y todavía no entregó el vehículo.
     select 'relay', 2, s.service_id, coalesce(nullif(s.service_order_number, ''), s.service_number),
@@ -141,8 +133,7 @@ begin
          from svc s where (s.created_at at time zone tz)::date = d.dd and not coalesce(s.driver_activated, false)
            and s.assigned_at > greatest(s.created_at, coalesce(s.scheduled_for, s.created_at)) + interval '1 minute') assign_minutes,
       (select count(*) from svc s where s.status = 'completed' and (s.completed_at at time zone tz)::date = d.dd and not coalesce(s.driver_activated, false)
-           and ((s.arrived_at - greatest(s.assigned_at, coalesce(s.scheduled_for, s.assigned_at))) > late_assigned
-             or (s.completed_at - s.arrived_at) > late_origin)) late,
+           and (s.arrived_at - greatest(s.assigned_at, coalesce(s.scheduled_for, s.assigned_at))) > late_assigned) late,
       (select round(100.0 * count(*) filter (where r.firmado_at is not null and (r.firmado_at at time zone tz)::date = d.dd) / nullif(count(*), 0))
          from svc s left join public.remitos r on r.remito_id = s.remito_id and r.status <> 'anulado'
         where s.status = 'completed' and (s.completed_at at time zone tz)::date = d.dd and not coalesce(s.driver_activated, false)) remito_same_day,
@@ -152,7 +143,7 @@ begin
   select jsonb_build_object(
     'generated_at', p_now,
     'day', v_day,
-    'thresholds', jsonb_build_object('late_assigned_minutes', 120, 'late_origin_minutes', 180),
+    'thresholds', jsonb_build_object('late_assigned_minutes', 120),
     'kpis', (select jsonb_object_agg(k, data) from kpi),
     'tasks', coalesce((select jsonb_agg(jsonb_build_object(
         'kind', t.kind, 'service_id', t.service_id, 'intake_id', t.intake_id, 'label', t.label, 'since', t.since,
