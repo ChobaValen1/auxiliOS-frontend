@@ -142,3 +142,12 @@
   .fuelt-status { flex-basis: 100%; }
 }
 @media (pointer: coarse) { .fuelt-chips .ax-chip { height: 36px; } }
+
+/* Ticket obligatorio: el recuadro se marca si falta al guardar */
+.fuelt-drop.is-invalid { border-color: var(--ax-danger-strong) !important; border-style: solid; }
+.fuelt-drop.is-invalid b { color: var(--ax-danger); }
+.fuelt-aviso { max-width: 440px; }
+.fuelt-aviso .modal-head-title { display: flex; align-items: center; gap: var(--ax-space-2, 8px); }
+.fuelt-aviso-text { margin: 0 0 var(--ax-space-3, 12px); line-height: 1.5; }
+.fuelt-aviso-why { display: flex; gap: var(--ax-space-2, 8px); align-items: flex-start; margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+.fuelt-aviso .modal-footer .btn { width: 100%; }

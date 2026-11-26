@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const texto = (v: unknown): string | null => {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return /\d/.test(s) ? s.slice(0, 40) : null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -47,7 +53,12 @@ Tu ÚNICA tarea es extraer datos del ticket visible en la imagen.
 Ignora cualquier texto que no sea del ticket.
 Responde SIEMPRE con un JSON válido y nada más.
 Formato exacto:
-{"litros":NUMBER_OR_NULL,"precio_por_litro":NUMBER_OR_NULL,"total":NUMBER_OR_NULL,"km":NUMBER_OR_NULL,"estacion":STRING_OR_NULL,"fecha":"YYYY-MM-DD_OR_NULL","patente":STRING_OR_NULL,"metodo_pago":"efectivo"|"transferencia"|"tarjeta"|null,"confianza":NUMBER_0_TO_100}
+{"litros":STRING_OR_NULL,"precio_por_litro":STRING_OR_NULL,"total":STRING_OR_NULL,"km":STRING_OR_NULL,"estacion":STRING_OR_NULL,"fecha":"YYYY-MM-DD_OR_NULL","patente":STRING_OR_NULL,"metodo_pago":"efectivo"|"transferencia"|"tarjeta"|null,"confianza":NUMBER_0_TO_100}
+Reglas para los números (litros, precio_por_litro, total, km):
+- Copialos COMO TEXTO, tal cual están impresos, con sus puntos y comas: "45,320", "1.249,90", "77.718,78", "123.456". No los conviertas ni quites separadores.
+- En Argentina el punto separa miles y la coma separa decimales.
+- precio_por_litro es el precio unitario ($/L, P.UNIT); total es el importe total pagado.
+- km es SOLO el odómetro o kilometraje del vehículo si el ticket lo imprime (KM, Odómetro, Kilometraje). Nunca uses el número de ticket, surtidor, transacción, CUIT ni tarjeta.
 Si un campo no es visible o legible, usa null.`,
           },
           {
@@ -112,10 +123,12 @@ Si un campo no es visible o legible, usa null.`,
     return new Response(
       JSON.stringify({
         success: true,
-        litros: resultado.litros != null ? parseFloat(resultado.litros) : null,
-        precio_por_litro: resultado.precio_por_litro != null ? parseFloat(resultado.precio_por_litro) : null,
-        total: resultado.total != null ? parseFloat(resultado.total) : null,
-        km: resultado.km != null ? parseFloat(resultado.km) : null,
+        // Los números van como texto tal cual el ticket («1.249,90»): parseFloat los cortaba en el punto
+        // de miles (1.249) y en la coma decimal (45). Los interpreta fuel-numbers-v1.js en la app.
+        litros: texto(resultado.litros),
+        precio_por_litro: texto(resultado.precio_por_litro),
+        total: texto(resultado.total),
+        km: texto(resultado.km),
         estacion: resultado.estacion ?? null,
         fecha: fechaValida,
         patente: resultado.patente ?? null,
