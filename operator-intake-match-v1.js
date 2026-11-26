@@ -4,7 +4,7 @@
    con 2 o más criterios que coinciden se recomienda asociar; con 0 o 1 se sugiere crear el servicio nuevo. */
 (function(root){'use strict';
 const RECOMMEND_AT=2;
-const LABELS={number:'N.º de servicio',plate:'patente',document:'DNI del cliente',route:'origen y destino'};
+const LABELS={number:'N.º de servicio',plate:'patente',document:'DNI del cliente',route:'recorrido'};
 const txt=v=>String(v==null?'':v).trim();
 const noAccents=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'');
 /* Distancia de edición, cortada en 2: sólo importa si es 0, 1 o más. */

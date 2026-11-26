@@ -84,41 +84,77 @@
 #screen-operaciones .os-intakes > summary small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #screen-operaciones .os-intakes > summary > span { min-width: 0; }
 #screen-operaciones .os-intakes > summary b, #screen-operaciones .os-intakes > summary small { white-space: normal; }
-#screen-operaciones .os-intakes > summary strong { flex: 0 0 auto; color: var(--ax-warn); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
+#screen-operaciones .os-intakes > summary strong { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 2px 8px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); text-align: right; }
+#screen-operaciones .os-intakes > summary strong i { font-style: normal; color: var(--ax-text-3); }
+#screen-operaciones .os-intakes .osi-sum-ready { color: var(--ax-warn); font-weight: var(--ax-fw-bold); white-space: nowrap; }
+#screen-operaciones .os-intakes .osi-sum-wait, #screen-operaciones .os-intakes .osi-sum-age { white-space: nowrap; }
+#screen-operaciones .os-intakes .osi-sum-age.is-late { color: var(--ax-danger); }
 
-/* Lista: una fila por ingreso que entra completa en 1366 px; en el celular, tarjetas. */
+/* Cola: una fila por ingreso, del que más espera al más nuevo. Entra completa desde 1100 px; más angosto, tarjetas. */
 #screen-operaciones .os-intake-list { overflow: visible; max-height: none; background: var(--ax-surface-2); border-radius: 0 0 var(--ax-radius-lg) var(--ax-radius-lg); }
-#screen-operaciones .osi-head, #screen-operaciones .osi-row { display: grid; grid-template-columns: 128px minmax(0, 2fr) minmax(0, 1.2fr) 112px 104px 160px 142px; gap: var(--ax-sp-3); align-items: center; padding: 10px 14px; }
+#screen-operaciones .osi-head, #screen-operaciones .osi-row { display: grid; grid-template-columns: minmax(100px, .65fr) 84px minmax(0, 1.55fr) minmax(0, 1.15fr) minmax(0, 1.4fr) minmax(0, .8fr) 160px; gap: var(--ax-sp-3); align-items: center; padding: 10px 14px; }
 #screen-operaciones .osi-head { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
-#screen-operaciones .osi-row { border-bottom: 1px solid var(--ax-border); }
-#screen-operaciones .osi-row:last-child { border-bottom: 0; }
+#screen-operaciones .osi-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#screen-operaciones .osi-row { position: relative; border-bottom: 1px solid var(--ax-border); }
+#screen-operaciones .osi-group:last-child .osi-row:last-child { border-bottom: 0; }
 #screen-operaciones .osi-row:hover { background: var(--ax-surface-3); }
+/* Demorado (más de 24 h): una marca a la izquierda y el tiempo en rojo. */
+#screen-operaciones .osi-row[data-late="true"][data-state="ready"]::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--ax-danger); }
+#screen-operaciones .osi-row[data-late="true"] .osi-age { color: var(--ax-danger); font-weight: var(--ax-fw-semibold); }
 #screen-operaciones .osi-cell { display: grid; gap: 3px; min-width: 0; }
 #screen-operaciones .osi-cell b, #screen-operaciones .osi-cell small, #screen-operaciones .osi-place { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #screen-operaciones .osi-cell b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
 #screen-operaciones .osi-cell small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #screen-operaciones .osi-id b { font-family: var(--ax-font-mono); }
-#screen-operaciones .osi-id small:last-child { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
-#screen-operaciones .osi-place { position: relative; padding-left: 16px; color: var(--ax-text); font-size: var(--ax-fs-md); }
-#screen-operaciones .osi-place i { position: absolute; left: 2px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; border: 2px solid var(--ax-text-2); }
-#screen-operaciones .osi-place i.to { border-radius: 2px; background: var(--ax-text-2); }
+#screen-operaciones .osi-id .osi-age { white-space: normal; }
+#screen-operaciones .osi-id .osi-docs { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-operaciones .osi-trip { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-operaciones .osi-trip .osi-place { flex: 0 1 auto; min-width: 0; }
+#screen-operaciones .osi-arrow { flex: 0 0 auto; color: var(--ax-text-3); font-weight: var(--ax-fw-regular, 400); }
 #screen-operaciones .osi-charges b { font-family: var(--ax-font-mono); }
 #screen-operaciones .osi-state { justify-items: start; }
-#screen-operaciones .osi-kind { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-kind { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
 #screen-operaciones .osi-status { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
 #screen-operaciones .osi-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
 #screen-operaciones .osi-status.ready { color: var(--ax-warn); }
 #screen-operaciones .osi-status.ready::before { background: var(--ax-warn); }
+/* Servicio posible: el mismo criterio que la ventana de asociar (2 o más datos coinciden). */
+#screen-operaciones .osi-row > .osi-action { grid-column: 7; grid-row: 1; }
+#screen-operaciones .osi-match { grid-column: 3 / 7; grid-row: 2; display: flex; gap: 8px; align-items: center; justify-self: start; min-width: 0; max-width: 100%; margin-top: -2px; padding: 5px 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-operaciones .osi-match > .ax-icon { flex: 0 0 auto; width: 14px; height: 14px; color: var(--ax-accent); }
+#screen-operaciones .osi-match > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+#screen-operaciones .osi-match b { font-size: var(--ax-fs-sm) !important; }
+#screen-operaciones .osi-match small { color: var(--ax-text-3) !important; font-size: var(--ax-fs-xs) !important; }
 #screen-operaciones .osi-action { justify-items: end; }
-#screen-operaciones .osi-action .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#screen-operaciones .osi-action .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; white-space: nowrap; }
 #screen-operaciones .osi-action .ax-icon { width: 15px; height: 15px; }
 #screen-operaciones .osi-wait { color: var(--ax-text-3) !important; text-align: right; white-space: normal !important; }
+/* Esperando la firma: abajo y más apagados, porque todavía no hay nada para hacer. */
+#screen-operaciones .osi-subhead { padding: 8px 14px; border-top: 1px solid var(--ax-border); border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-group:first-of-type:empty + .osi-subhead { border-top: 0; }
+#screen-operaciones .osi-group-waiting .osi-cell b, #screen-operaciones .osi-group-waiting .osi-trip { color: var(--ax-text-2); }
 @media (max-width: 1100px) {
   #screen-operaciones .osi-head { display: none; }
-  #screen-operaciones .osi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id state" "route route" "client driver" "charges action"; gap: 10px var(--ax-sp-3); padding: 12px 14px; }
+  #screen-operaciones .osi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id state" "route route" "client driver" "match match" "charges action"; gap: 10px var(--ax-sp-3); padding: 12px 14px; }
+  #screen-operaciones .osi-match { grid-area: match; margin-top: 0; }
   #screen-operaciones .osi-id { grid-area: id; } #screen-operaciones .osi-route { grid-area: route; } #screen-operaciones .osi-client { grid-area: client; }
-  #screen-operaciones .osi-driver { grid-area: driver; } #screen-operaciones .osi-charges { grid-area: charges; } #screen-operaciones .osi-state { grid-area: state; justify-items: end; } #screen-operaciones .osi-action { grid-area: action; align-self: end; }
-  #screen-operaciones .osi-place { white-space: normal; }
+  #screen-operaciones .osi-driver { grid-area: driver; } #screen-operaciones .osi-charges { grid-area: charges; } #screen-operaciones .osi-state { grid-area: state; justify-items: end; text-align: right; } #screen-operaciones .osi-row > .osi-action { grid-area: action; align-self: end; }
+  #screen-operaciones .osi-trip { flex-wrap: wrap; }
+  #screen-operaciones .osi-trip .osi-place { white-space: normal; }
+}
+/* Celular: el servicio posible a todo el ancho y el botón grande abajo, con Anular al costado. */
+@media (max-width: 640px) {
+  #screen-operaciones .os-intakes > summary { flex-wrap: wrap; }
+  #screen-operaciones .os-intakes > summary strong { flex-basis: 100%; justify-content: flex-start; padding-left: 22px; text-align: left; }
+  #screen-operaciones .os-intakes > summary > span > small { display: none; }
+  #screen-operaciones .osi-row { grid-template-areas: "id state" "route route" "client driver" "match match" "charges charges" "action action"; gap: 8px var(--ax-sp-3); }
+  #screen-operaciones .osi-match { grid-area: match; margin-top: 0; }
+  #screen-operaciones .osi-match > span { display: grid; gap: 1px; }
+  #screen-operaciones .osi-charges { grid-area: charges; }
+  #screen-operaciones .osi-action { display: flex !important; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 12px; }
+  #screen-operaciones .osi-action .btn { flex: 1 1 auto; min-height: 44px; }
+  #screen-operaciones .osi-action .osi-wait { text-align: left; }
+  #screen-operaciones .osi-annul { min-height: 44px; }
 }
 #os-intake-link .os-intake-hint { margin: 0 12px; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: 1.45; }
 #os-intake-link .os-intake-summary small + small { color: var(--ax-text-3); }
@@ -530,7 +566,8 @@
 #screen-operaciones .os-history-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--ax-accent); color: var(--ax-accent-fg); font: 700 11px/18px var(--ax-font); text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--ax-bg); }
 #screen-operaciones .os-history-badge[hidden] { display: none; }
 #screen-operaciones .os-back-btn { display: inline-flex; align-items: center; gap: 8px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; transition: background var(--ax-dur) var(--ax-ease); }
-#screen-operaciones .os-back-btn:hover { background: var(--ax-surface-3); }
+#screen-operaciones .os-back-btn { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-bold); }
+#screen-operaciones .os-back-btn:hover { background: var(--ax-accent-hover); border-color: var(--ax-accent-hover); }
 #screen-operaciones .os-back-btn .ax-icon { width: 16px; height: 16px; }
 #screen-operaciones .os-back-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
 @media (min-width: 901px) {
@@ -601,3 +638,34 @@ body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-
   #screen-operaciones .os-remito-ico .os-remito-text { position: static; width: auto; height: auto; clip: auto; }
 }
 @media (prefers-reduced-motion: reduce) { #screen-operaciones :is(.os-type-pill, .os-remito-ico) { transition: none; } }
+
+/* Servicios creados por el chofer: Fecha y hora | N.º | Recorrido | Cliente | Chofer | Cargos | Acción + tacho. */
+#screen-operaciones .osi-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#screen-operaciones .osi-when .osi-age { white-space: normal; }
+#screen-operaciones .osi-id b { font-size: var(--ax-fs-sm); }
+#screen-operaciones .osi-driver { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#screen-operaciones .osi-driver .osi-cell b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#screen-operaciones .osi-avatar { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); }
+#screen-operaciones .osi-row .osi-action { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+#screen-operaciones .osi-row .osi-action .btn { width: auto; flex: 0 1 auto; padding-inline: 12px; }
+#screen-operaciones .osi-row .osi-annul { flex: 0 0 auto; display: grid; place-items: center; width: 34px; height: 34px; min-height: 0; padding: 0; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-3); text-decoration: none; cursor: pointer; transition: color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .osi-row .osi-annul .ax-icon { width: 19px; height: 19px; }
+#screen-operaciones .osi-row .osi-annul:hover, #screen-operaciones .osi-row .osi-annul:focus-visible { color: var(--ax-danger); background: color-mix(in srgb, var(--ax-danger) 14%, transparent); border-color: color-mix(in srgb, var(--ax-danger) 50%, transparent); }
+@media (max-width: 1100px) {
+  #screen-operaciones .osi-row { grid-template-areas: "when id" "route route" "client driver" "match match" "charges action"; }
+  #screen-operaciones .osi-when { grid-area: when; } #screen-operaciones .osi-id { grid-area: id; justify-items: end; text-align: right; }
+}
+@media (max-width: 640px) {
+  #screen-operaciones .osi-row { grid-template-areas: "when id" "route route" "client driver" "match match" "charges charges" "action action"; }
+  #screen-operaciones .osi-row .osi-action { flex-direction: row-reverse; justify-content: space-between; }
+  #screen-operaciones .osi-row .osi-action .btn { flex: 1 1 auto; min-height: 44px; }
+  #screen-operaciones .osi-row .osi-annul { width: 44px; height: 44px; }
+}
+
+/* Historial compacto: el título ya está arriba, sin resumen de período ni conteo, y la tabla ocupa el alto que queda. */
+#screen-operaciones.os-is-history #os-history-heading { display: none; }
+#screen-operaciones.os-is-history .os-results-line { display: none; }
+#screen-operaciones.os-is-history .os-results-summary { margin: 0 0 var(--ax-sp-2); }
+#screen-operaciones.os-is-history .os-results-summary:not(:has(.os-filter-chip)) { margin: 0; }
+#screen-operaciones.os-is-history .os-commandbar { margin-bottom: var(--ax-sp-2); }
+#screen-operaciones.os-is-history .os-status-tabs { margin-bottom: var(--ax-sp-2); }

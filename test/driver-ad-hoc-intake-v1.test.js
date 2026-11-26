@@ -57,7 +57,7 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(link,/s\.assigned_truck_id is distinct from i\.truck_id/);
   assert.match(link,/service_origin='driver_ad_hoc'/);
   assert.match(link,/administrative_review_status='pending'/);
-  assert.match(services,/Ingresos sin servicio/);
+  assert.match(services,/Servicios creados por el chofer/);
   assert.match(services,/<details id="os-driver-intakes"/);
   assert.match(services,/link_driver_service_intake_v1/);
   assert.match(services,/Crear un servicio nuevo con los datos del remito/);
@@ -78,7 +78,7 @@ test('la mesa de ingresos expone por RPC el resumen operativo y de facturación'
   }
   assert.match(intakeWorkspace,/coalesce\(r\.km_reales,tr\.km_traveled,0\)/);
   assert.match(intakeWorkspace,/revoke all on function public\.list_driver_service_intakes_v2\(integer\) from public,anon/);
-  assert.match(services,/<span>Servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span>/);
+  assert.match(services,/<span>Fecha y hora<\/span><span>N\.º servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span>/);
   for(const key of ['service_code','km_traveled','customer_name','driver_name','truck_label','toll_total','excess_total'])assert.match(services,new RegExp(`i\\.${key}`));
 });
 

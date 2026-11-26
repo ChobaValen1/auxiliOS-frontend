@@ -21,6 +21,6 @@ test('el texto legal de Arrastre nunca se oculta',()=>{
 });
 
 test('"Escanear ticket" se muestra como acción recomendada',()=>{
-  assert.match(css,/\.fuel-scan::after \{[^}]*content: "Recomendado"/);
+  assert.match(css,/\.fuel-scan::after \{[^}]*content: "Obligatorio"/);
   assert.match(css,/\.fuel-scan \{[^}]*border: 2px solid var\(--amber\)/);
 });

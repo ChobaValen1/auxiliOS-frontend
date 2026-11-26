@@ -50,8 +50,8 @@ test('combustible: la carga desde Administración usa la función protegida de l
 test('combustible: conectado en la jornada, el camión y el escaneo del chofer', () => {
   assert.match(sigma, /AuxFuelTickets\.openNew\(\$\{Number\(log\.log_id\)\}/);
   assert.match(sigma, /AuxFuelTickets\.buttonHtml\(f, \{ logId: log\.log_id, truckId: log\.truck_id \}\)/);
-  assert.match(sigma, /window\._fuelTicketFile = file;/);
-  assert.match(sigma, /AuxFuelTickets\.attachDriverScan\(resultado\.data\.fuel_id, ticketFile\)/);
+  assert.match(sigma, /window\._fuelTicketFile = ticket;/);
+  assert.match(sigma, /await AuxFuelTickets\.attach\(fuelId, ticket\)/, 'el ticket del chofer es obligatorio y se espera la subida');
   assert.match(truck, /global\.AuxFuelTickets\.buttonHtml\(f, \{ truckId: st\.id \}\)/);
   assert.match(index, /<script src="\/fuel-tickets-v1\.js\?v=/);
   assert.match(index, /<link rel="stylesheet" href="\/fuel-tickets-v1\.css\?v=/);
@@ -86,4 +86,44 @@ test('combustible: corregir muestra lo anterior, marca cambios y manda sólo lo 
 test('combustible: estilos con los tokens del sistema, sin colores fijos', () => {
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.match(css, /var\(--ax-accent\)/);
+});
+
+test('combustible: Administración también tiene que adjuntar el ticket y el km', () => {
+  // problems() bloquea sin ticket ni km, y el ticket se sube ANTES de crear la carga.
+  assert.match(src, /if \(!st\.file\) out\.ticket = 'Adjuntá el ticket: es obligatorio\.';/);
+  assert.match(src, /if \(!v\.km\) out\.km = 'Indicá el kilometraje: es obligatorio\.';/);
+  assert.match(src, /Foto o PDF · obligatorio/);
+  assert.doesNotMatch(src, /Foto o PDF · opcional/);
+  const submit = src.slice(src.indexOf("f.onsubmit = async function"), src.indexOf('/* ── Corregir una carga'));
+  const up = submit.indexOf("await upload(file,"), create = submit.indexOf("rpc('admin_create_fuel_record_v1'"), ln = submit.indexOf('await link(data.fuel_id, path');
+  assert.ok(up > 0 && create > up && ln > create, 'sube el ticket, crea la carga y recién ahí los vincula');
+  assert.match(submit, /la carga no se guardó/);
+});
+
+test('combustible: si el ticket no sube, Administración no crea la carga', async () => {
+  const calls = [];
+  const db = { storage: { from: () => ({ upload: async () => ({ error: { message: 'sin red' } }) }) }, rpc: async fn => { calls.push(fn); return { data: {}, error: null }; } };
+  const window = {}; vm.runInNewContext(src, { window, document: { addEventListener() {} }, console, Intl, Date, _db: db, PERFIL_USUARIO: { roles: { name: 'administracion' } }, USUARIO_ACTUAL: { id: 'u-1' } });
+  await assert.rejects(window.AuxFuelTickets.attach(3, { name: 't.jpg', type: 'image/jpeg', size: 10 }), { message: 'sin red' });
+  assert.deepEqual(calls, [], 'sin archivo subido no se vincula nada');
+});
+
+test('combustible: aviso único de ticket y km obligatorios para chofer y Administración', () => {
+  const store = {}, made = [];
+  const mk = () => { const el = { classList: { add() {}, remove() {} }, querySelector: () => ({ focus() {}, set onclick(f) { el.ok = f; } }) }; made.push(el); return el; };
+  const ctxFor = roleName => {
+    const window = { localStorage: { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = v; } } };
+    const ctx = { window, document: { addEventListener() {}, getElementById: () => null, createElement: mk, body: { appendChild() {} } }, console, Intl, Date, setTimeout,
+      PERFIL_USUARIO: { roles: { name: roleName } }, USUARIO_ACTUAL: { id: 'u' } };
+    vm.runInNewContext(src, ctx); return window.AuxFuelTickets;
+  };
+  assert.equal(ctxFor('supervision').avisoObligatorio(false), false, 'Supervisión no carga combustible');
+  const chofer = ctxFor('chofer');
+  assert.equal(chofer.avisoObligatorio(false), true);
+  assert.match(made[0].innerHTML, /sacarle una foto al ticket/);
+  assert.match(made[0].innerHTML, /kilometraje del tablero/);
+  made[0].ok();
+  assert.ok(store['auxilios.aviso.combustible-obligatorio.v1'], 'Entendido lo guarda');
+  assert.equal(chofer.avisoObligatorio(false), false, 'no se repite');
+  assert.match(src, /addEventListener\('auxilios:perfil'/);
 });

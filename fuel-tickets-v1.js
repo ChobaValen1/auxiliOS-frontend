@@ -13,11 +13,19 @@
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function notify(m, t) { if (typeof global.toast === 'function') global.toast(m, t || 'info'); }
   /* Acepta 1500, 1.500, 1500,50 y 1.500,50 (formato argentino) y 40.5. */
-  function decimal(v) {
+  function decimal(v, kind) {
+    /* Con fuel-numbers-v1.js cargado: «45.320» litros son 45,32 (no 45.320) y «1.850» pesos son 1850. */
+    if (global.AuxFuelNumbers) return global.AuxFuelNumbers.decimal(v, kind === 'litros' ? 'litros' : 'importe');
     var s = String(v == null ? '' : v).replace(/[$\s]/g, '');
     if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
     else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
     return s === '' ? NaN : Number(s);
+  }
+  /* Kilometraje entero: «123.456», «123,456» o «123456» son 123456 km. */
+  function kmNum(v) {
+    if (global.AuxFuelNumbers) return global.AuxFuelNumbers.km(v);
+    var x = String(v == null ? '' : v).trim().replace(/[.,\s]/g, '');
+    return /^\d+$/.test(x) ? Number(x) : null;
   }
   function ico(n) { return '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + n + '"/></svg>'; }
   function today() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()); }
@@ -37,16 +45,23 @@
   }
 
   /* Sube el archivo a la carpeta del usuario y lo vincula a la carga. */
-  async function attach(fuelId, file) {
+  async function upload(file, tag) {
     checkFile(file);
     var me = uid(); if (!me || !db()) throw new Error('Iniciá sesión de nuevo para adjuntar el ticket.');
     var ext = (String(file.name || '').split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
-    var path = me + '/fuel-' + Number(fuelId) + '-' + Date.now() + '.' + ext;
+    var path = me + '/fuel-' + tag + '-' + Date.now() + '.' + ext;
     var up = await db().storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
     if (up.error) throw up.error;
-    var res = await db().rpc('set_fuel_record_ticket_v1', { p_fuel_id: Number(fuelId), p_path: path, p_mime: file.type });
+    return path;
+  }
+  async function link(fuelId, path, mime) {
+    var res = await db().rpc('set_fuel_record_ticket_v1', { p_fuel_id: Number(fuelId), p_path: path, p_mime: mime });
     if (res.error) throw res.error;
     return path;
+  }
+  async function attach(fuelId, file) {
+    var path = await upload(file, Number(fuelId));
+    return link(fuelId, path, file.type);
   }
 
   async function refresh(logId, truckId) {
@@ -101,13 +116,13 @@
       + '<label class="fuelt-field" data-f="reason"><span class="fuelt-sr">Motivo</span><textarea class="ax-textarea" name="reason" rows="2" placeholder="Contá en pocas palabras qué pasó"></textarea><small class="fuelt-msg"></small></label></section>'
       // Ticket
       + '<section class="fuelt-step fuelt-step-plain"><label class="fuelt-drop" data-fuelt-drop tabindex="0"><input name="ticket" type="file" accept="image/*,application/pdf" hidden>'
-      + '<span class="fuelt-drop-empty">' + ico('upload') + '<span><b>Adjuntar ticket</b><small>Foto o PDF · opcional · lo ven Administración y Supervisión</small></span></span>'
+      + '<span class="fuelt-drop-empty">' + ico('upload') + '<span><b>Adjuntar ticket *</b><small>Foto o PDF · obligatorio · lo ven Administración y Supervisión</small></span></span>'
       + '<span class="fuelt-drop-file" hidden><span class="fuelt-thumb"></span><span class="fuelt-file-name"></span><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-fuelt-unfile>Quitar</button></span></label></section>'
       // Opcionales
-      + '<details class="fuelt-more"><summary><span>Más datos</span><small data-fuelt-more-sum>Fecha ' + esc(fmtDate(jornadaDate)) + ' · km y estación opcionales</small></summary>'
+      + '<details class="fuelt-more"><summary><span>Más datos</span><small data-fuelt-more-sum>Fecha ' + esc(fmtDate(jornadaDate)) + ' · falta el km</small></summary>'
       + '<div class="fuelt-more-grid">'
       + '<label class="fuelt-field"><span>Fecha de la carga</span><input class="ax-input" name="fuel_date" type="date" value="' + esc(jornadaDate) + '"></label>'
-      + '<label class="fuelt-field" data-f="km"><span>Kilometraje</span><span class="fuelt-affix"><input class="ax-input" name="km_at_load" inputmode="numeric" autocomplete="off" placeholder="Opcional"><i>km</i></span><small class="fuelt-msg"></small></label>'
+      + '<label class="fuelt-field" data-f="km"><span>Kilometraje *</span><span class="fuelt-affix"><input class="ax-input" name="km_at_load" inputmode="numeric" autocomplete="off" placeholder="Del tablero o del ticket"><i>km</i></span><small class="fuelt-msg"></small></label>'
       + '<label class="fuelt-field fuelt-wide"><span>Estación</span><input class="ax-input" name="gas_station" autocomplete="off" placeholder="Opcional · ej.: YPF Ruta 2 km 45"></label>'
       + '</div></details>'
       + '<div role="alert" class="fuelt-error"></div></div>'
@@ -118,7 +133,7 @@
     b.querySelectorAll('[data-fuelt-close]').forEach(function (x) { x.onclick = function () { close('fuelt-new'); }; });
 
     function values() {
-      var l = decimal(E.liters.value), p = decimal(E.price_per_liter.value), t = decimal(E.total.value);
+      var l = decimal(E.liters.value, 'litros'), p = decimal(E.price_per_liter.value), t = decimal(E.total.value);
       return { l: l, p: p, t: t, km: String(E.km_at_load.value || '').trim(), reason: String(E.reason.value || '').trim(), app: st.pay === 'app' ? (st.app || String(E.payment_app.value || '').trim()) : '' };
     }
     function problems() {
@@ -128,10 +143,12 @@
       if (!st.pay) out.pay = 'Elegí cómo se pagó.';
       else if (st.pay === 'app' && !v.app) out.pay = 'Indicá la app de pago.';
       if (v.reason.length < 5) out.reason = 'Contá el motivo (al menos 5 letras).';
-      if (v.km && !(/^\d+$/.test(v.km.replace(/\./g, '')))) out.km = 'El kilometraje es un número entero.';
+      if (!v.km) out.km = 'Indicá el kilometraje: es obligatorio.';
+      else if (kmNum(v.km) == null) out.km = 'El kilometraje es un número entero.';
+      if (!st.file) out.ticket = 'Adjuntá el ticket: es obligatorio.';
       return out;
     }
-    var LABEL = { liters: 'litros', price: 'precio', pay: 'medio de pago', reason: 'motivo', km: 'kilometraje' };
+    var LABEL = { liters: 'litros', price: 'precio', pay: 'medio de pago', reason: 'motivo', km: 'kilometraje', ticket: 'ticket' };
     function paint() {
       var pr = problems(), v = values();
       ['liters', 'price', 'reason', 'km'].forEach(function (k) {
@@ -141,6 +158,7 @@
         fld.classList.toggle('is-done', !pr[k] && (k !== 'km' || !!v.km));
         if (k !== 'km' || show || fld.querySelector('.fuelt-msg').textContent) fld.querySelector('.fuelt-msg').textContent = show ? pr[k] : '';
       });
+      var dropEl = q('[data-fuelt-drop]'); if (dropEl) dropEl.classList.toggle('is-invalid', !!(pr.ticket && st.tried));
       var pm = q('[data-f-msg="pay"]'); pm.textContent = pr.pay && st.tried ? pr.pay : ''; pm.classList.toggle('is-bad', !!(pr.pay && st.tried));
       q('[data-step="amount"]').classList.toggle('is-done', !pr.liters && !pr.price);
       q('[data-step="pay"]').classList.toggle('is-done', !pr.pay);
@@ -148,7 +166,7 @@
       var miss = Object.keys(pr).map(function (k) { return LABEL[k]; }), status = q('[data-fuelt-status]');
       status.classList.toggle('is-ready', !miss.length);
       status.innerHTML = miss.length ? 'Falta: <b>' + esc(miss.join(', ')) + '</b>' : ico('check') + ' Listo · ' + esc(money(round2(v.l * v.p)));
-      q('[data-fuelt-more-sum]').textContent = 'Fecha ' + fmtDate(E.fuel_date.value || jornadaDate) + (v.km ? ' · ' + v.km + ' km' : '') + (E.gas_station.value.trim() ? ' · ' + E.gas_station.value.trim() : (v.km ? '' : ' · km y estación opcionales'));
+      q('[data-fuelt-more-sum]').textContent = 'Fecha ' + fmtDate(E.fuel_date.value || jornadaDate) + (v.km ? ' · ' + v.km + ' km' : '') + (E.gas_station.value.trim() ? ' · ' + E.gas_station.value.trim() : (v.km ? '' : ' · falta el km'));
     }
     // Litros × precio = total; si se escribe el total, se calcula el precio (lo último que se tocó manda).
     function recalc(src) {
@@ -225,19 +243,24 @@
       var pr = problems(), first = Object.keys(pr)[0];
       if (first) {
         if (first === 'km') q('.fuelt-more').open = true;
-        var target = { liters: E.liters, price: E.price_per_liter, pay: q('[data-fuelt-seg="pay"] button'), reason: E.reason, km: E.km_at_load }[first];
+        var target = { liters: E.liters, price: E.price_per_liter, pay: q('[data-fuelt-seg="pay"] button'), reason: E.reason, km: E.km_at_load, ticket: q('[data-fuelt-drop]') }[first];
+        if (target && target.scrollIntoView) { try { target.scrollIntoView({ block: 'center' }); } catch (x) { /* no crítico */ } }
         if (target) target.focus();
         return;
       }
       var v = values();
-      var payload = { fuel_date: E.fuel_date.value || jornadaDate, liters: v.l, price_per_liter: round2(v.p), km_at_load: v.km ? Number(v.km.replace(/\./g, '')) : null, payment_method: st.pay, payment_app: st.pay === 'app' ? v.app : null, gas_station: String(E.gas_station.value || '').trim() || null, reason: v.reason };
+      var payload = { fuel_date: E.fuel_date.value || jornadaDate, liters: v.l, price_per_liter: round2(v.p), km_at_load: kmNum(v.km), payment_method: st.pay, payment_app: st.pay === 'app' ? v.app : null, gas_station: String(E.gas_station.value || '').trim() || null, reason: v.reason };
       var file = st.file;
       btn.disabled = true; btn.textContent = 'Guardando…';
       try {
+        // El ticket es la prueba de la carga: se sube primero; si no sube, la carga no se crea.
+        var path;
+        try { path = await upload(file, 'adm-' + Number(logId)); }
+        catch (x) { throw new Error('No se pudo subir el ticket, la carga no se guardó: ' + (x.message || x)); }
         var res = await db().rpc('admin_create_fuel_record_v1', { p_log_id: Number(logId), p_payload: payload });
         if (res.error) throw res.error;
         var data = res.data || {}, warn = '';
-        if (file) { try { await attach(data.fuel_id, file); } catch (x) { warn = ' La carga se guardó, pero el ticket no: ' + (x.message || x); } }
+        try { await link(data.fuel_id, path, file.type); } catch (x) { warn = ' La carga se guardó, pero no se pudo vincular el ticket: adjuntalo desde la carga. ' + (x.message || x); }
         close('fuelt-new');
         notify((data.rendicion_observed ? 'Carga guardada. La rendición aprobada quedó observada para revisarla.' : 'Carga de combustible guardada.') + warn, warn ? 'warning' : 'success');
         await refresh(logId, data.truck_id);
@@ -301,7 +324,7 @@
       E.payment_app.hidden = st.pay !== 'app' || known;
     }
     function cur() {
-      var l = decimal(E.liters.value), p = decimal(E.price_per_liter.value), km = String(E.km_at_load.value || '').trim().replace(/\./g, '');
+      var l = decimal(E.liters.value, 'litros'), p = decimal(E.price_per_liter.value), km = String(E.km_at_load.value || '').trim().replace(/\./g, '');
       return { fuel_date: E.fuel_date.value, liters: l, price: p, km: km, pay: st.pay, app: st.pay === 'app' ? (APPS.indexOf(st.app) >= 0 ? st.app : String(E.payment_app.value || '').trim()) : '', station: String(E.gas_station.value || '').trim(), reason: String(E.reason.value || '').trim() };
     }
     var same = function (a, b2) { return Math.abs(a - b2) < 0.005; };
@@ -382,7 +405,7 @@
       var k = u.getAttribute('data-undo');
       if (k === 'liters') E.liters.value = numText(orig.liters);
       if (k === 'price') { E.price_per_liter.value = numText(orig.price); st.last = 'price'; }
-      if (k === 'liters' || k === 'price') E.total.value = numText(round2(decimal(E.liters.value) * decimal(E.price_per_liter.value)));
+      if (k === 'liters' || k === 'price') E.total.value = numText(round2(decimal(E.liters.value, 'litros') * decimal(E.price_per_liter.value)));
       if (k === 'fuel_date') E.fuel_date.value = orig.fuel_date;
       if (k === 'km') E.km_at_load.value = orig.km ? numText(Number(orig.km)) : '';
       if (k === 'station') E.gas_station.value = orig.station;
@@ -465,5 +488,32 @@
     try { await attach(fuelId, file); return true; } catch (x) { console.warn('[combustible] ticket del chofer', x); return false; }
   }
 
-  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, openEdit: openEdit, _decimal: decimal };
+  /* ── Aviso único: desde el 25/11/2026 el ticket y el km son obligatorios ── */
+  var AVISO_KEY = 'auxilios.aviso.combustible-obligatorio.v1';
+  function avisoTexto(r) {
+    return r === 'chofer'
+      ? 'Desde ahora, para guardar una carga de combustible tenés que <b>sacarle una foto al ticket</b> y poner el <b>kilometraje del tablero</b>. Sin señal podés sacar la foto igual: se sube sola cuando vuelve la conexión.'
+      : 'Desde ahora, toda carga de combustible necesita <b>la foto del ticket</b> y el <b>kilometraje</b>, la haga el chofer o Administración. Si falta alguno, la carga no se guarda y el campo queda marcado.';
+  }
+  function avisoObligatorio(force) {
+    var r = role();
+    if (r !== 'chofer' && r !== 'administracion') return false;
+    try { if (!force && global.localStorage && global.localStorage.getItem(AVISO_KEY)) return false; } catch (e) { /* sin almacenamiento: se muestra */ }
+    var b = box('fuelt-aviso');
+    b.innerHTML = '<div class="modal-box fuelt-box fuelt-aviso" role="dialog" aria-modal="true" aria-labelledby="fuelt-aviso-title">'
+      + '<div class="modal-head"><span class="modal-head-title" id="fuelt-aviso-title">' + ico('receipt') + ' Combustible: ticket y km obligatorios</span></div>'
+      + '<div class="modal-body"><p class="fuelt-aviso-text">' + avisoTexto(r) + '</p>'
+      + '<p class="fuelt-aviso-why">' + ico('shield-check') + '<span>El ticket es la prueba de cada carga y el km nos deja controlar el consumo de cada camión.</span></p></div>'
+      + '<div class="modal-footer"><button type="button" class="btn btn-primary" data-fuelt-aviso-ok>Entendido</button></div></div>';
+    var ok = b.querySelector('[data-fuelt-aviso-ok]');
+    ok.onclick = function () {
+      try { global.localStorage && global.localStorage.setItem(AVISO_KEY, new Date().toISOString()); } catch (e) { /* no crítico */ }
+      close('fuelt-aviso');
+    };
+    try { ok.focus(); } catch (e) { /* no crítico */ }
+    return true;
+  }
+  document.addEventListener('auxilios:perfil', function () { setTimeout(function () { avisoObligatorio(false); }, 600); });
+
+  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, checkFile: checkFile, avisoObligatorio: avisoObligatorio, openEdit: openEdit, _decimal: decimal };
 })(window);
