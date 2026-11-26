@@ -87,3 +87,23 @@ test('combustible: estilos con los tokens del sistema, sin colores fijos', () =>
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.match(css, /var\(--ax-accent\)/);
 });
+
+test('combustible: Administración también tiene que adjuntar el ticket y el km', () => {
+  // problems() bloquea sin ticket ni km, y el ticket se sube ANTES de crear la carga.
+  assert.match(src, /if \(!st\.file\) out\.ticket = 'Adjuntá el ticket: es obligatorio\.';/);
+  assert.match(src, /if \(!v\.km\) out\.km = 'Indicá el kilometraje: es obligatorio\.';/);
+  assert.match(src, /Foto o PDF · obligatorio/);
+  assert.doesNotMatch(src, /Foto o PDF · opcional/);
+  const submit = src.slice(src.indexOf("f.onsubmit = async function"), src.indexOf('/* ── Corregir una carga'));
+  const up = submit.indexOf("await upload(file,"), create = submit.indexOf("rpc('admin_create_fuel_record_v1'"), ln = submit.indexOf('await link(data.fuel_id, path');
+  assert.ok(up > 0 && create > up && ln > create, 'sube el ticket, crea la carga y recién ahí los vincula');
+  assert.match(submit, /la carga no se guardó/);
+});
+
+test('combustible: si el ticket no sube, Administración no crea la carga', async () => {
+  const calls = [];
+  const db = { storage: { from: () => ({ upload: async () => ({ error: { message: 'sin red' } }) }) }, rpc: async fn => { calls.push(fn); return { data: {}, error: null }; } };
+  const window = {}; vm.runInNewContext(src, { window, document: { addEventListener() {} }, console, Intl, Date, _db: db, PERFIL_USUARIO: { roles: { name: 'administracion' } }, USUARIO_ACTUAL: { id: 'u-1' } });
+  await assert.rejects(window.AuxFuelTickets.attach(3, { name: 't.jpg', type: 'image/jpeg', size: 10 }), { message: 'sin red' });
+  assert.deepEqual(calls, [], 'sin archivo subido no se vincula nada');
+});

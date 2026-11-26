@@ -142,3 +142,7 @@
   .fuelt-status { flex-basis: 100%; }
 }
 @media (pointer: coarse) { .fuelt-chips .ax-chip { height: 36px; } }
+
+/* Ticket obligatorio: el recuadro se marca si falta al guardar */
+.fuelt-drop.is-invalid { border-color: var(--ax-danger-strong) !important; border-style: solid; }
+.fuelt-drop.is-invalid b { color: var(--ax-danger); }
