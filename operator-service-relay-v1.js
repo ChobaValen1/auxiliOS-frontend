@@ -5,7 +5,9 @@
    el punto B (se elige con el buscador para que quede ubicado en el mapa) y el chofer que recibe. El móvil NO se
    elige: es el de la jornada activa de ese chofer (se muestra para que Operaciones lo vea).
    Se monta como Enganchado: sync(w) al dibujar y persist(w, id) después de guardar el servicio. La entrega
-   del vehículo la marca el chofer desde su app (etapa 3). */
+   del vehículo la marca el chofer desde su app (etapa 3). Si el chofer no puede, Administración u Operaciones la
+   registran en su nombre desde el servicio abierto (bloque «Entrega del relevo», 25/11/2026): mismas RPC que la app
+   del chofer; la base guarda quién la marcó (handover_source / delivery_source = 'operator') y el evento del servicio. */
 (() => {
   'use strict';
   const db = () => (typeof _db !== 'undefined' ? _db : null);
@@ -13,7 +15,7 @@
   const W = () => O()?.S?.wizard || null;
   /* El formulario de Particulares usa este mismo módulo con su propio objeto (standalone) y su propio
      contenedor (relayRoot): no se mezcla con el asistente de prestadoras aunque haya uno abierto. */
-  const cur = w => (w?.standalone ? w : (cur(w)));
+  const cur = w => (w?.standalone ? w : (W() || w));
   const $ = (c, id) => { const r = c?.owner?.relayRoot; return r?.isConnected ? r.querySelector('#' + id) : document.getElementById(id); };
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => (v === null || v === undefined || String(v).trim() === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
@@ -151,7 +153,8 @@
         <div class="osv4-relay-grid">
           <label class="osv4-relay-field"><span>Chofer que recibe *</span><select id="osv4-relay-driver"></select></label>
           <div class="osv4-relay-field"><span>Móvil que recibe</span><div id="osv4-relay-truck" class="osv4-relay-truck" role="status"></div></div></div>
-        <p class="osv4-relay-note">Es <b>un solo servicio y un solo remito</b>: lo cierra el chofer que recibe. Los dos choferes ven el servicio desde que lo guardás y los dos lo cuentan completo para el sueldo.</p>`;
+        <div id="osv4-relay-handover" class="osv4-relay-handover" hidden></div>
+        <p class="osv4-relay-note">Es <b>un solo servicio y un solo remito</b>: lo hace el 1º chofer con el cliente. Los dos choferes ven el servicio desde que lo guardás y los dos lo cuentan completo para el sueldo.</p>`;
       const input = box.querySelector('#osv4-relay-address');
       input.addEventListener('focus', () => { const c = state(cur(w)); c.search.focused = true; paintSuggestions(c); });
       input.addEventListener('blur', () => setTimeout(() => { const c = state(cur(w)); c.search.focused = false; paintSuggestions(c); paintStatus(c); }, 160));
@@ -167,6 +170,7 @@
       /* mousedown evita que el blur cierre la lista antes del clic. */
       box.addEventListener('mousedown', e => { if (e.target.closest('[data-relay-pick]')) e.preventDefault(); });
       box.addEventListener('click', e => { const b = e.target.closest('[data-relay-pick]'); if (b) void choose(cur(w), Number(b.dataset.relayPick)); });
+      box.querySelector('#osv4-relay-handover').addEventListener('click', e => { const b = e.target.closest('[data-relay-act]'); if (b) void act(cur(w), b); });
       box.querySelector('#osv4-relay-driver').addEventListener('change', e => { const cw = cur(w), c = state(cw); c.toDriver = e.target.value; c.truck = null; c.truckFor = ''; cw.dirty = true; update(cw); void lookupTruck(cw); });
     }
     return { box, slot };
@@ -199,6 +203,68 @@
     paintTruck(c);
     input.setAttribute('aria-expanded', String(Boolean(c.search.focused && c.search.suggestions.length)));
     paintStatus(c);
+    paintHandover(w, c);
+  }
+
+  /* ── Entrega del relevo en nombre del chofer (Administración / Operaciones) ── */
+  const role = () => { try { const p = typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO : window.PERFIL_USUARIO; return String(p?.roles?.name || ''); } catch { return ''; } };
+  const canAct = () => ['administracion', 'operador'].includes(role());
+  const hhmm = v => { try { return v ? new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : ''; } catch { return ''; } };
+  const who = (src, op) => (src === 'operator' ? op : 'lo marcó el chofer');
+  /* Lo que se ve: null si no corresponde mostrar el bloque. */
+  function handoverModel(w, c) {
+    const r = c.original;
+    if (!canAct() || !r || !c.on || !w.serviceId || !['assigned', 'at_origin'].includes(w.serviceStatus)) return null;
+    const from = r.from_driver_name || 'el 1º chofer', to = r.to_driver_name || 'el 2º chofer';
+    if (r.delivered) return { tone: 'done', text: `Entregado en destino${r.delivered_at ? ' a las ' + hhmm(r.delivered_at) : ''} (${who(r.delivery_source, 'lo registró Operaciones')}).` };
+    if (r.handed_over) {
+      const done = `${esc(from)} se lo entregó a <b>${esc(to)}</b>${r.handed_over_at ? ' a las ' + hhmm(r.handed_over_at) : ''} (${who(r.handover_source, 'lo registró Operaciones')}). Falta la entrega en destino.`;
+      return { tone: 'mid', html: done, act: 'delivered', label: `Registrar entrega en destino en nombre de ${to}`,
+        confirm: `Confirmá: ${to} entregó el vehículo en destino` };
+    }
+    const warns = [];
+    if (!r.has_remito) warns.push(`Todavía no hay remito. Si registrás la entrega ahora, el servicio pasa a ${to} y ${from} deja de verlo en su app para hacer el remito.`);
+    if (!r.to_has_active_jornada) warns.push(`${to} todavía no inició su jornada con un móvil: la entrega no se puede registrar hasta que la inicie.`);
+    return { tone: 'wait', html: `<b>${esc(from)}</b> todavía no marcó la entrega del vehículo a <b>${esc(to)}</b> en el punto de intercambio. Si no puede hacerlo desde su app, registrala vos en su nombre.`,
+      warns, act: 'handover', label: `Registrar entrega a ${to} en nombre de ${from}`, confirm: `Confirmá: ${from} le entregó el vehículo a ${to}` };
+  }
+  function paintHandover(w, c) {
+    const el = $(c, 'osv4-relay-handover'); if (!el) return;
+    const m = handoverModel(w, c);
+    if (!m) { el.hidden = true; if (el.innerHTML) el.innerHTML = ''; return; }
+    const editing = w.mode !== 'view', busy = c.acting, sure = c.sure && c.sure === m.act;
+    const btn = !m.act ? '' : editing
+      ? '<small class="osv4-relay-handover-hint">Para registrar la entrega en nombre del chofer, cerrá la edición y abrí el servicio.</small>'
+      : `<button type="button" class="ax-btn${sure ? ' ax-btn-primary' : ''} osv4-relay-handover-btn" data-relay-act="${m.act}" ${busy ? 'disabled' : ''}>${esc(busy ? 'Registrando…' : sure ? m.confirm : m.label)}</button>${sure && !busy ? '<small class="osv4-relay-handover-hint">Tocá de nuevo para confirmar. Queda registrado con tu usuario en Cambios.</small>' : ''}`;
+    const html = `<div class="osv4-relay-handover-head"><b>Entrega del relevo</b></div>
+      <p class="osv4-relay-handover-text">${m.html || esc(m.text)}</p>
+      ${(m.warns || []).map(x => `<p class="osv4-relay-handover-warn">${esc(x)}</p>`).join('')}${btn}`;
+    el.hidden = false; el.dataset.tone = m.tone;
+    if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
+  }
+  /* Doble toque (igual que la app del chofer): el primero arma la confirmación, el segundo llama a la base. */
+  async function act(w, btn) {
+    const c = state(w), kind = btn.dataset.relayAct, id = w.serviceId;
+    if (!canAct() || !id || c.acting || w.mode !== 'view' || !db()) return;
+    if (c.sure !== kind) { c.sure = kind; clearTimeout(c.sureTimer); c.sureTimer = setTimeout(() => { if (c.sure === kind) { c.sure = ''; update(w); } }, 6000); return update(w); }
+    clearTimeout(c.sureTimer); c.sure = ''; c.acting = true; update(w);
+    const fn = kind === 'delivered' ? 'mark_operator_service_relay_delivered_v1' : 'mark_operator_service_relay_handover_v1';
+    try {
+      const { data, error } = await db().rpc(fn, { p_service_id: id });
+      if (error) throw error;
+      if (data) c.original = data;
+      c.handedOver = true; c.acting = false;
+      notify(kind === 'delivered' ? 'Listo: quedó registrada la entrega en destino.' : `Listo: quedó registrada la entrega. El servicio pasó a ${c.original?.to_driver_name || 'el 2º chofer'}.`, 'success');
+      update(w);
+      /* El chofer asignado cambió: se recargan la tabla y la ficha para no mostrar datos viejos. */
+      try { await window.cargarServiciosOperador?.(); } catch (_) {}
+      if (!w.standalone && kind === 'handover' && W() === w && typeof window.verServicioOperador === 'function') { try { await window.verServicioOperador(id); } catch (_) {} }
+      return true;
+    } catch (e) {
+      c.acting = false; update(w);
+      notify(String(e?.message || e || 'No se pudo registrar la entrega').replace(/^[A-Z_]{4,}:\s*/, ''), 'error');
+      return false;
+    }
   }
 
   function paintTruck(c) {
@@ -264,5 +330,5 @@
     return [c.address || 'Sin punto de intercambio', driver ? `recibe ${driver.full_name}` : (c.toDriver ? 'recibe otro chofer' : 'sin chofer que recibe')].join(' · ');
   }
 
-  window.AuxRelevoServicio = { sync, update, persist, lookupTruck, load, summary, visible: shown, _state: state, _missing: missing };
+  window.AuxRelevoServicio = { sync, update, persist, lookupTruck, load, summary, visible: shown, act, _state: state, _missing: missing, _handover: handoverModel };
 })();

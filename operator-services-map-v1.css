@@ -3,7 +3,7 @@
 .osm-view-switch button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--ax-text-2);font:600 12px var(--ax-font);cursor:pointer}
 .osm-view-switch button[aria-pressed=true]{background:var(--ax-surface-3);color:var(--ax-text);box-shadow:0 1px 4px #0002}
 #screen-operaciones.os-map-mode>.os-table-wrap{display:none}
-#screen-operaciones.os-map-mode .os-commandbar>[onclick="personalizarVistaServicios()"]{display:none}
+#screen-operaciones.os-map-mode .os-commandbar [onclick="personalizarVistaServicios()"]{display:none}
 #osm-workspace{--osm-line:var(--ax-border);--osm-muted:var(--ax-text-2);color:var(--ax-text);font:13px var(--ax-font);margin-top:12px;border:1px solid var(--osm-line);border-radius:16px;background:var(--ax-surface);overflow:hidden}
 #osm-workspace[hidden],#osm-workspace [hidden],.osm-view-switch[hidden]{display:none!important}
 #osm-workspace *{box-sizing:border-box}

@@ -4,7 +4,9 @@
      A: Base → Origen → Destino        B: Origen → Destino → Base        (en el medio: Origen → Destino)
    Cada servicio cobra su movida y sus km. Los km de B se calculan con su recorrido al guardar; los de A
    se recalculan acá y se guardan junto con el enganche (set_operator_service_chain_v1).
-   Se monta como Tercerizado y Pinacars: sync(w) al dibujar y persist(w, id) después de guardar. */
+   Se monta como Tercerizado y Pinacars: sync(w) al dibujar y persist(w, id) después de guardar.
+   Candidatos (25/11/2026): todos los servicios de la misma prestadora del mismo día; los que ya tienen
+   otro enganchado se ven deshabilitados. */
 (() => {
   'use strict';
   const db = () => (typeof _db !== 'undefined' ? _db : null);
@@ -95,9 +97,11 @@
   const selected = c => c.candidates.find(x => String(x.service_id) === String(c.selectedId)) || (c.previous && String(c.previous.service_id) === String(c.selectedId) ? c.previous : null);
   const time = v => { try { return new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); } catch { return ''; } };
   const place = v => String(v || '—').split(',')[0];
-  function optionLabel(x) {
+  /* Ya tiene otro servicio enganchado (a cada uno se le engancha a lo sumo uno): se muestra pero no se elige. */
+  const taken = (c, x) => Boolean(x.taken) && String(x.service_id) !== String(c.originalId || '');
+  function optionLabel(x, busy) {
     const gap = x.gap_km != null ? ` · termina a ${num(x.gap_km).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km del origen` : '';
-    return `${x.label || 'Servicio'} · ${time(x.scheduled_for)} · ${place(x.origin)} → ${place(x.destination)}${gap}`;
+    return `${x.label || 'Servicio'} · ${time(x.scheduled_for)} · ${place(x.origin)} → ${place(x.destination)}${busy ? ' · ya tiene otro enganchado' : gap}`;
   }
 
   function render(w) {
@@ -144,9 +148,9 @@
         ? `<p class="osv4-chain-value">${sel ? `Enganchado a <b>${esc(sel.label)}</b> · ${esc(place(sel.origin))} → ${esc(place(sel.destination))}` : 'No está enganchado a otro servicio.'}</p>`
         : `<label class="osv4-chain-field"><span>¿A qué servicio sigue?</span><select id="osv4-chain-select" ${c.loading ? 'disabled' : ''} ${!c.selectedId ? 'aria-invalid="true"' : ''}>
           <option value="">Elegí el servicio anterior…</option>
-          ${options.map(x => `<option value="${esc(x.service_id)}" ${String(x.service_id) === String(c.selectedId) ? 'selected' : ''}>${esc(optionLabel(x))}</option>`).join('')}
+          ${options.map(x => { const busy = taken(c, x); return `<option value="${esc(x.service_id)}" ${String(x.service_id) === String(c.selectedId) ? 'selected' : ''}${busy ? ' disabled' : ''}>${esc(optionLabel(x, busy))}</option>`; }).join('')}
         </select></label>
-        ${!options.length && !c.candLoading ? '<small class="osv4-chain-hint">No hay servicios de esta prestadora de las últimas 24 h para enganchar.</small>' : !c.selectedId ? '<small class="osv4-chain-hint">Hasta que elijas el servicio anterior, este servicio se calcula saliendo de la base.</small>' : ''}`;
+        ${!options.length && !c.candLoading ? '<small class="osv4-chain-hint">No hay otros servicios de esta prestadora ese día para enganchar.</small>' : !c.selectedId ? '<small class="osv4-chain-hint">Hasta que elijas el servicio anterior, este servicio se calcula saliendo de la base.</small>' : ''}`;
       const route = sel || c.next ? `<p class="osv4-chain-route">Se factura <b>${esc(LABEL[mode] || mode)}</b>${sel ? ` · ${esc(sel.label)} pasa a facturarse <b>${esc(LABEL[modeFor(FULL, Boolean(sel.has_previous), true)])}</b>` : ''}</p>` : '';
       html = `${field}${next}${route}${c.error ? `<small class="osv4-chain-error">${esc(c.error)}</small>` : ''}`;
     }

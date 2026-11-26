@@ -6,3 +6,20 @@ test('U13 tooltip: se carga, es accesible y respeta el movimiento reducido',()=>
   assert.match(js,/role','tooltip'/);assert.match(js,/aria-describedby/);assert.match(js,/Escape/);assert.match(js,/\(hover:hover\)/);
   assert.match(css,/var\(--ax-accent/);assert.match(css,/prefers-reduced-motion/);
 });
+
+test('U13 tooltip: un solo globo (apaga el ::after de CSS puro cuando está activo)',()=>{
+  assert.match(js,/classList\.add\('ax-tip-js'\)/);
+  assert.match(css,/\.ax-tip-js \[data-ax-tip\]::after\{content:none\}/);
+});
+
+test('U13 tooltip: no aparece si repite el texto que ya se ve completo',()=>{
+  assert.match(js,/function redundant\(node,text\)/);
+  assert.match(js,/if\(!text\|\|redundant\(node,text\)\)return;/);
+  assert.match(js,/textOverflow==='ellipsis'/);
+});
+
+test('U13 tooltip: solo aparece en explicaciones marcadas (data-ax-explica o data-ax-tip)',()=>{
+  assert.match(js,/node\.removeAttribute\('title'\);\s*if\(node\.hasAttribute\('data-ax-explica'\)\)node\.setAttribute\('data-ax-tip',t\);/);
+  assert.match(js,/setAttribute\('aria-label',t\.trim\(\)\)/);
+  assert.match(html,/data-ax-explica title="Km por litro/);
+});

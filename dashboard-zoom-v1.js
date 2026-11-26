@@ -236,7 +236,7 @@
       '<div class="axz-rangos" role="group" aria-label="Rango de fechas">' +
         rangos.map(function (r) {
           return '<button type="button" data-axz-rango="' + r.id + '" aria-pressed="false"' +
-            (r.dias ? ' title="Últimos ' + r.dias + ' días hasta el fin del período"' : '') + '>' + r.label + '</button>';
+            (r.dias ? ' data-ax-explica title="Últimos ' + r.dias + ' días hasta el fin del período"' : '') + '>' + r.label + '</button>';
         }).join('') +
       '</div>' +
       '<div class="axz-der">' +
@@ -259,7 +259,7 @@
       nav = document.createElement('div');
       nav.className = 'axz-nav';
       nav.innerHTML = '<canvas aria-hidden="true"></canvas><div class="axz-dim is-izq"></div><div class="axz-dim is-der"></div>' +
-        '<div class="axz-sel" title="Arrastrá para moverte · estirá los bordes para cambiar el rango"><i class="axz-h is-izq"></i><i class="axz-h is-der"></i></div>';
+        '<div class="axz-sel" data-ax-explica title="Arrastrá para moverte · estirá los bordes para cambiar el rango"><i class="axz-h is-izq"></i><i class="axz-h is-der"></i></div>';
       wrap.parentNode.insertBefore(nav, wrap.nextSibling);
       navCv = nav.querySelector('canvas');
       navSel = nav.querySelector('.axz-sel');

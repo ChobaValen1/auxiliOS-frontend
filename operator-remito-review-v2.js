@@ -287,7 +287,7 @@ ${cell('Cantidad',p?qtyText(p.qty):dash,qtyText(r.qty),!p||Math.abs(p.qty-r.qty)
       return '<section><h4>'+label+'</h4>'+items.map(({row,passes,amount})=>{
         const key=kind+':'+row[idKey],decision=E.decisions.get(key),resolved=isResolved(kind,row[idKey]),status=resolved?(decision.value==='rejected'?'Rechazado':decision.value==='adjusted'?'Aprobado con cambios':'Aprobado'):differences.has(key)?'Pendiente de revisión':row.administratively_excluded?'Excluido del servicio':'Sin diferencias';
         const tone=resolved?(decision.value==='rejected'?'rejected':'accepted'):'neutral';
-        const saved=resolved?(decision.saved?'<i class="os-charge-saved is-saved" title="Decisión guardada">●</i>':'<i class="os-charge-saved" title="Sin guardar · Se conserva al guardar o finalizar">○</i>'):'';
+        const saved=resolved?(decision.saved?'<i class="os-charge-saved is-saved" title="Decisión guardada">●</i>':'<i class="os-charge-saved" data-ax-explica title="Sin guardar · Se conserva al guardar o finalizar">○</i>'):'';
         return '<article class="os-charge-row '+tone+'"><b title="'+esc(row[nameKey]||label)+'">'+esc(row[nameKey]||label)+(kind==='toll'&&passes>1?' <small class="os-charge-passes">×'+passes+'</small>':'')+'</b><span class="os-charge-amount">'+money(amount)+'</span>'+(saved||'<i></i>')+'<span class="os-charge-meta"><span class="os-charge-badge '+tone+'">'+status+'</span><span>'+esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)))+'</span>'+(decision?.reason?'<em>Motivo: '+esc(decision.reason)+'</em>':'')+'</span></article>';
       }).join('')+(rows.length?'':'<small class="os-charge-empty">Sin cargos informados.</small>')+'</section>';
     }).join('')+(unsavedCount()?'<small class="os-charge-legend">○ Sin guardar · se conserva al guardar o finalizar</small>':'')+'</div>';
@@ -315,7 +315,7 @@ ${cell('Cantidad',p?qtyText(p.qty):dash,qtyText(r.qty),!p||Math.abs(p.qty-r.qty)
     const pending=pendingEmbeddedRows().length;
     btn.disabled=!!E.busy||pending>0;
     btn.textContent=E.busy?'Guardando y finalizando…':'Guardar y finalizar';
-    btn.title=pending>0?`Falta resolver ${pending} diferencia${pending===1?'':'s'} de cargos`:'Guarda los cambios, aprueba el remito y envía el servicio a Facturación';
+    btn.dataset.axExplica='';btn.title=pending>0?`Falta resolver ${pending} diferencia${pending===1?'':'s'} de cargos`:'Guarda los cambios, aprueba el remito y envía el servicio a Facturación';
   }
   async function embed(serviceId,hostId='osv4-review-slot'){
     const seq=++E.loadSeq,changed=E.serviceId!==serviceId;

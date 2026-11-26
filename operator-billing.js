@@ -269,7 +269,8 @@
     .map(value => ({ value, label: value }));
 
   function applyLocalFilters() {
-    S.rows = S.allRows.filter(row => (!S.base || row.billing_base_name === S.base) && (!S.serviceType || row.service_name === S.serviceType));
+    // S.rows queda en el orden elegido (ver sorterFor): así la tabla, el detalle (‹ ›) y el Excel van en el mismo orden.
+    S.rows = sortTab('services', S.allRows.filter(row => (!S.base || row.billing_base_name === S.base) && (!S.serviceType || row.service_name === S.serviceType)));
     S.tollRows = S.allTollRows.filter(row => !S.base || row.billing_base_name === S.base);
     S.extraRows = (S.allExtraRows || []).filter(row => !S.base || row.billing_base_name === S.base);
     for (const id of [...S.selected]) if (!S.rows.some(row => String(row.service_id) === id)) S.selected.delete(id);
@@ -434,7 +435,7 @@
       <div><b>${esc(joinParts(selectionParts()))}</b><small>${esc(summary)}</small></div>
       <div class="ob-selection-actions">
         <button class="ob-button" data-ob="clear-selection" ${S.invoiceBusy ? 'disabled' : ''}>Limpiar</button>
-        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
+        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `data-ax-explica title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
       </div>
       ${hint}
       ${chainGapMarkup()}
@@ -522,7 +523,7 @@
   const COBRA = { provider: 'Prestadora', company: 'Empresa' };
   const collectorPill = row => {
     const key = isProviderExcess(row) ? 'provider' : 'company';
-    return `<span class="ob-collector is-${key}" title="${key === 'provider' ? 'Lo cobra la Prestadora: se le factura' : 'Lo cobra la Empresa al cliente'}">${esc(COBRA[key])}</span>`;
+    return `<span class="ob-collector is-${key}" data-ax-explica title="${key === 'provider' ? 'Lo cobra la Prestadora: se le factura' : 'Lo cobra la Empresa al cliente'}">${esc(COBRA[key])}</span>`;
   };
   function extraBillingState(row) {
     if (!isProviderExcess(row)) return '<span class="ob-state is-muted">Cobro al cliente</span><small>No se factura a la Prestadora</small>';
@@ -563,68 +564,68 @@
   const hasDelta = row => Math.abs(num(row.billing_delta)) > .009;
   const signedMoney = (value, currency) => `${num(value) > 0 ? '+' : '−'}${money(Math.abs(num(value)), currency)}`;
   function rowFlag(row) {
-    if (row.pricing_error) return `<small class="ob-flag is-error" title="${esc(row.pricing_error)}">${ico('circle-alert')}Error tarifario</small>`;
-    if (hasDelta(row)) return `<small class="ob-flag is-changed" title="Al cierre era ${esc(money(row.stored_company_amount, row.currency))}">${ico('triangle-alert')}Tarifa ${esc(signedMoney(row.billing_delta, row.currency))}</small>`;
+    if (row.pricing_error) return `<small class="ob-flag is-error" data-ax-explica title="${esc(row.pricing_error)}">${ico('circle-alert')}Error tarifario</small>`;
+    if (hasDelta(row)) return `<small class="ob-flag is-changed" data-ax-explica title="Al cierre era ${esc(money(row.stored_company_amount, row.currency))}">${ico('triangle-alert')}Tarifa ${esc(signedMoney(row.billing_delta, row.currency))}</small>`;
     return '';
   }
 
   const COLUMN_DEFS = {
     services: [
-      { key: 'order', label: 'N° Orden', td: row => `<b>${esc(orderCode(row))}</b>` },
-      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
-      { key: 'completed', label: 'Finalizado', optional: true, td: row => { const p = dateParts(row.completed_at); return row.completed_at ? stacked(p.day, p.time) : '<small>—</small>'; } },
+      { key: 'order', label: 'N° Orden', sort: { type: 'text', get: orderCode }, td: row => `<b>${esc(orderCode(row))}</b>` },
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, sort: { type: 'date', get: row => row.scheduled_for }, td: when },
+      { key: 'completed', label: 'Finalizado', optional: true, sort: { type: 'date', get: row => row.completed_at }, td: row => { const p = dateParts(row.completed_at); return row.completed_at ? stacked(p.day, p.time) : '<small>—</small>'; } },
       /* Base va debajo de la prestadora salvo que se pida su propia columna. */
-      { key: 'company', label: 'Prestadora', td: row => stacked(row.company_name || '—', colsFor('services').has('base') ? '' : row.billing_base_name || '') },
-      { key: 'base', label: 'Base', optional: true, td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
+      { key: 'company', label: 'Prestadora', sort: { type: 'text', get: row => row.company_name }, td: row => stacked(row.company_name || '—', colsFor('services').has('base') ? '' : row.billing_base_name || '') },
+      { key: 'base', label: 'Base', optional: true, sort: { type: 'text', get: row => row.billing_base_name }, td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
       /* Todas las filas de esta mesa están pendientes: en vez de repetirlo, debajo del tipo va la patente. */
-      { key: 'type', label: 'Tipo de Servicio', td: row => stacked(row.service_name || '—', colsFor('services').has('plate') ? '' : row.vehicle_plate || '') },
-      { key: 'origin', label: 'Origen', cls: 'ob-place', td: row => placeCell(row.origin) },
-      { key: 'destination', label: 'Destino', cls: 'ob-place', td: row => placeCell(row.destination) },
-      { key: 'client', label: 'Cliente', td: row => `<b>${esc(row.customer_name || '—')}</b>` },
-      { key: 'plate', label: 'Patente', optional: true, td: row => esc(row.vehicle_plate || '—') },
-      { key: 'vehicle', label: 'Vehículo', optional: true, td: row => esc(row.vehicle_make_model || '—') },
-      { key: 'km', label: 'KM', cls: 'ob-km', td: row => esc(kmText(billedKm(row).total)) },
+      { key: 'type', label: 'Tipo de Servicio', sort: { label: 'Tipo', type: 'text', get: row => row.service_name }, td: row => stacked(row.service_name || '—', colsFor('services').has('plate') ? '' : row.vehicle_plate || '') },
+      { key: 'origin', label: 'Origen', cls: 'ob-place', sort: { type: 'text', get: row => placeShort(row.origin) }, td: row => placeCell(row.origin) },
+      { key: 'destination', label: 'Destino', cls: 'ob-place', sort: { type: 'text', get: row => placeShort(row.destination) }, td: row => placeCell(row.destination) },
+      { key: 'client', label: 'Cliente', sort: { type: 'text', get: row => row.customer_name }, td: row => `<b>${esc(row.customer_name || '—')}</b>` },
+      { key: 'plate', label: 'Patente', optional: true, sort: { type: 'text', get: row => row.vehicle_plate }, td: row => esc(row.vehicle_plate || '—') },
+      { key: 'vehicle', label: 'Vehículo', optional: true, sort: { type: 'text', get: row => row.vehicle_make_model }, td: row => esc(row.vehicle_make_model || '—') },
+      { key: 'km', label: 'KM', cls: 'ob-km', sort: { type: 'number', get: row => billedKm(row).total || null }, td: row => esc(kmText(billedKm(row).total)) },
       { key: 'kmsplit', label: 'Km asfalto / ripio', optional: true, cls: 'ob-km', td: row => (row.estimated_asphalt_km != null || row.estimated_gravel_km != null) ? esc(`${num(billedKm(row).asphalt).toLocaleString('es-AR', { maximumFractionDigits: 1 })} / ${num(billedKm(row).gravel).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`) : '<small>—</small>' },
-      { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>${rowFlag(row)}` },
-      { key: 'remito', label: 'Remito', optional: true, td: row => row.remito_id ? 'Con remito' : '<small>Sin remito</small>' }
+      { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', sort: { label: 'Importe', type: 'number', get: row => row.current_company_amount }, td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>${rowFlag(row)}` },
+      { key: 'remito', label: 'Remito', optional: true, sort: { type: 'text', get: row => row.remito_id ? 'Con remito' : 'Sin remito' }, td: row => row.remito_id ? 'Con remito' : '<small>Sin remito</small>' }
     ],
     tolls: [
-      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
-      { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
-      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.vehicle_plate || '') },
-      { key: 'toll', label: 'Peaje', td: row => stacked(row.toll_name || 'Peaje', row.source || '') },
-      { key: 'route', label: 'Ruta', cls: 'ob-place', td: row => esc([row.road, row.direction].filter(Boolean).join(' · ') || `${row.origin || '—'} → ${row.destination || '—'}`) },
-      { key: 'base', label: 'Base', td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
-      { key: 'quantity', label: 'Cantidad', optional: true, td: row => esc(num(row.quantity || 1).toLocaleString('es-AR')) },
-      { key: 'client', label: 'Cliente', optional: true, td: row => esc(row.customer_name || '—') },
-      { key: 'payment', label: 'Medio de pago', optional: true, td: row => esc(paymentLabel(row.payment_method)) },
-      { key: 'source', label: 'Origen del dato', optional: true, td: row => esc({ planned: 'Planificado', actual: 'Real', manual: 'Manual' }[row.source] || row.source || '—') },
-      { key: 'crossed', label: 'Hora de pasada', optional: true, td: row => { if (!row.crossed_at) return '<small>—</small>'; const p = dateParts(row.crossed_at); return stacked(p.day, p.time); } },
-      { key: 'amount', label: 'Importe', td: row => `<b class="ob-money">${esc(money(row.amount, row.currency))}</b>` },
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, sort: { type: 'date', get: row => row.scheduled_for }, td: when },
+      { key: 'company', label: 'Prestadora', sort: { type: 'text', get: row => row.company_name }, td: row => `<b>${esc(row.company_name || '—')}</b>` },
+      { key: 'service', label: 'Servicio', sort: { type: 'text', get: orderCode }, td: row => stacked(orderCode(row), row.vehicle_plate || '') },
+      { key: 'toll', label: 'Peaje', sort: { type: 'text', get: row => row.toll_name }, td: row => stacked(row.toll_name || 'Peaje', row.source || '') },
+      { key: 'route', label: 'Ruta', cls: 'ob-place', sort: { type: 'text', get: row => [row.road, row.direction].filter(Boolean).join(' ') || row.origin }, td: row => esc([row.road, row.direction].filter(Boolean).join(' · ') || `${row.origin || '—'} → ${row.destination || '—'}`) },
+      { key: 'base', label: 'Base', sort: { type: 'text', get: row => row.billing_base_name }, td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
+      { key: 'quantity', label: 'Cantidad', optional: true, sort: { type: 'number', get: row => num(row.quantity || 1) }, td: row => esc(num(row.quantity || 1).toLocaleString('es-AR')) },
+      { key: 'client', label: 'Cliente', optional: true, sort: { type: 'text', get: row => row.customer_name }, td: row => esc(row.customer_name || '—') },
+      { key: 'payment', label: 'Medio de pago', optional: true, sort: { type: 'text', get: row => paymentLabel(row.payment_method) }, td: row => esc(paymentLabel(row.payment_method)) },
+      { key: 'source', label: 'Origen del dato', optional: true, sort: { type: 'text', get: row => row.source }, td: row => esc({ planned: 'Planificado', actual: 'Real', manual: 'Manual' }[row.source] || row.source || '—') },
+      { key: 'crossed', label: 'Hora de pasada', optional: true, sort: { type: 'date', get: row => row.crossed_at }, td: row => { if (!row.crossed_at) return '<small>—</small>'; const p = dateParts(row.crossed_at); return stacked(p.day, p.time); } },
+      { key: 'amount', label: 'Importe', sort: { type: 'number', get: row => row.amount }, td: row => `<b class="ob-money">${esc(money(row.amount, row.currency))}</b>` },
       { key: 'status', label: 'Estado', td: () => '<span class="ob-state is-pending">Disponible</span><small>Peaje separado del servicio</small>' }
     ],
     extras: [
-      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
-      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.vehicle_plate || '') },
-      { key: 'company', label: 'Prestadora', td: row => stacked(row.company_name || '—', row.billing_base_name || '') },
-      { key: 'concept', label: 'Adicional', td: row => stacked(row.concept_name || 'Adicional', ORIGEN[row.origin] || '') },
-      { key: 'client', label: 'Cliente', optional: true, td: row => esc(row.customer_name || '—') },
-      { key: 'quantity', label: 'Cant.', td: row => esc(num(row.quantity).toLocaleString('es-AR')) },
-      { key: 'amount', label: 'Importe', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.total_amount, row.currency))}</b>` },
-      { key: 'collector', label: 'Cobra', td: collectorPill },
-      { key: 'collect', label: 'Cobro', td: row => isProviderExcess(row) ? '<small>Se factura a la Prestadora</small>' : esc(paymentLabel(row.customer_payment_method)) },
-      { key: 'payer', label: 'Paga', optional: true, td: row => esc(PAGA[row.payer_agent] || row.payer_agent || '—') },
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, sort: { type: 'date', get: row => row.scheduled_for }, td: when },
+      { key: 'service', label: 'Servicio', sort: { type: 'text', get: orderCode }, td: row => stacked(orderCode(row), row.vehicle_plate || '') },
+      { key: 'company', label: 'Prestadora', sort: { type: 'text', get: row => row.company_name }, td: row => stacked(row.company_name || '—', row.billing_base_name || '') },
+      { key: 'concept', label: 'Adicional', sort: { type: 'text', get: row => row.concept_name }, td: row => stacked(row.concept_name || 'Adicional', ORIGEN[row.origin] || '') },
+      { key: 'client', label: 'Cliente', optional: true, sort: { type: 'text', get: row => row.customer_name }, td: row => esc(row.customer_name || '—') },
+      { key: 'quantity', label: 'Cant.', sort: { type: 'number', get: row => row.quantity }, td: row => esc(num(row.quantity).toLocaleString('es-AR')) },
+      { key: 'amount', label: 'Importe', cls: 'ob-money-cell', sort: { type: 'number', get: row => row.total_amount }, td: row => `<b class="ob-money">${esc(money(row.total_amount, row.currency))}</b>` },
+      { key: 'collector', label: 'Cobra', sort: { type: 'text', get: row => isProviderExcess(row) ? 'Prestadora' : 'Empresa' }, td: collectorPill },
+      { key: 'collect', label: 'Cobro', sort: { type: 'text', get: row => isProviderExcess(row) ? '' : paymentLabel(row.customer_payment_method) }, td: row => isProviderExcess(row) ? '<small>Se factura a la Prestadora</small>' : esc(paymentLabel(row.customer_payment_method)) },
+      { key: 'payer', label: 'Paga', optional: true, sort: { type: 'text', get: row => PAGA[row.payer_agent] || row.payer_agent }, td: row => esc(PAGA[row.payer_agent] || row.payer_agent || '—') },
       { key: 'billing', label: 'Facturación', td: extraBillingState }
     ],
     private: [
-      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
-      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.service_name || '') },
-      { key: 'client', label: 'Cliente', td: row => stacked(row.customer_name || '—', (!colsFor('private').has('driver') && row.driver_name) ? 'Chofer: ' + row.driver_name : '') },
-      { key: 'driver', label: 'Chofer', optional: true, td: row => esc(row.driver_name || '—') },
-      { key: 'document', label: 'DNI / CUIT', td: row => esc(row.customer_document || '—') },
-      { key: 'invoice', label: 'Factura', td: row => row.invoice_requested ? stacked('Pide factura', IVA[row.customer_tax_condition] || row.customer_tax_condition || '') : '<small>No pide</small>' },
-      { key: 'budget', label: 'Presupuesto', td: row => `<b class="ob-money">${esc(money(row.quoted_total, row.currency))}</b>` },
-      { key: 'collect', label: 'Cobro', td: row => { const saldo = num(row.balance); const medios = (row.methods || []).map(m => MEDIO[m] || m).join(' · '); return `${saldo > 0 ? `<span class="ob-state is-pending">Saldo ${esc(money(saldo, row.currency))}</span>` : '<span class="ob-state">Pagado</span>'}<small>${esc(medios)}</small>`; } }
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, sort: { type: 'date', get: row => row.scheduled_for }, td: when },
+      { key: 'service', label: 'Servicio', sort: { type: 'text', get: orderCode }, td: row => stacked(orderCode(row), row.service_name || '') },
+      { key: 'client', label: 'Cliente', sort: { type: 'text', get: row => row.customer_name }, td: row => stacked(row.customer_name || '—', (!colsFor('private').has('driver') && row.driver_name) ? 'Chofer: ' + row.driver_name : '') },
+      { key: 'driver', label: 'Chofer', optional: true, sort: { type: 'text', get: row => row.driver_name }, td: row => esc(row.driver_name || '—') },
+      { key: 'document', label: 'DNI / CUIT', sort: { type: 'text', get: row => row.customer_document }, td: row => esc(row.customer_document || '—') },
+      { key: 'invoice', label: 'Factura', sort: { type: 'text', get: row => row.invoice_requested ? 'Pide factura' : 'No pide' }, td: row => row.invoice_requested ? stacked('Pide factura', IVA[row.customer_tax_condition] || row.customer_tax_condition || '') : '<small>No pide</small>' },
+      { key: 'budget', label: 'Presupuesto', sort: { type: 'number', get: row => row.quoted_total }, td: row => `<b class="ob-money">${esc(money(row.quoted_total, row.currency))}</b>` },
+      { key: 'collect', label: 'Cobro', sort: { type: 'number', get: row => num(row.balance) }, td: row => { const saldo = num(row.balance); const medios = (row.methods || []).map(m => MEDIO[m] || m).join(' · '); return `${saldo > 0 ? `<span class="ob-state is-pending">Saldo ${esc(money(saldo, row.currency))}</span>` : '<span class="ob-state">Pagado</span>'}<small>${esc(medios)}</small>`; } }
     ]
   };
 
@@ -635,13 +636,28 @@
     return COLUMN_SETS[tab] || { list: () => COLUMN_DEFS[tab].filter(c => !c.optional).map(c => c.key), has: key => COLUMN_DEFS[tab].some(c => c.key === key && !c.optional), open: () => {}, isCustom: () => false };
   }
   const visibleDefs = tab => colsFor(tab).list().map(key => COLUMN_DEFS[tab].find(c => c.key === key)).filter(Boolean);
-  const headCells = tab => visibleDefs(tab).map(c => `<th data-col="${c.key}">${esc(c.label)}</th>`).join('');
+  /* Orden por columna (ui/table-sort-v1.js): tocar el título ordena; por defecto, fecha del más reciente al más
+     viejo. Cada pestaña recuerda su orden. El detalle (‹ ›) y la selección siguen el orden que se ve. */
+  const SORTERS = {};
+  function sorterFor(tab) {
+    const T = window.AuxiliosTableSort;
+    if (!T || !COLUMN_DEFS[tab]) return null;
+    if (!SORTERS[tab]) {
+      const fields = {};
+      for (const c of COLUMN_DEFS[tab]) if (c.sort) fields[c.key] = { label: c.key === 'datetime' ? 'Fecha' : c.label, ...c.sort };  // sort.label: nombre corto para «Ordenar por» del celular
+      SORTERS[tab] = T.create({ id: `facturacion.${tab}`, fields, defaultKey: 'datetime', defaultDir: 'desc', onChange: () => { if (tab === 'services') S.rows = sortTab('services', S.rows); render(); } });
+    }
+    return SORTERS[tab];
+  }
+  const sortTab = (tab, rows) => sorterFor(tab)?.apply(rows) || rows;
+  const sortMobile = tab => sorterFor(tab)?.mobile({ keys: visibleDefs(tab).map(c => c.key) }) || '';
+  const headCells = tab => { const so = sorterFor(tab); return visibleDefs(tab).map(c => so && c.sort ? so.th(c.key, c.label, { attrs: `data-col="${c.key}"` }) : `<th data-col="${c.key}">${esc(c.label)}</th>`).join(''); };
   const bodyCells = (tab, row) => visibleDefs(tab).map(c => `<td data-col="${c.key}" data-label="${esc(c.label)}"${c.cls ? ` class="${c.cls}"` : ''}>${c.td(row)}</td>`).join('');
 
   function privateTableMarkup() {
-    const rows = S.privRows || [];
+    const rows = sortTab('private', S.privRows || []);
     if (!rows.length) return '<div class="ob-empty">No hay servicios particulares pendientes de facturar con estos filtros.</div>';
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>${headCells('private')}<th class="ob-actions"></th></tr></thead><tbody>${rows.map(row => {
+    return `${sortMobile('private')}<div class="ob-table-wrap"><table class="ob-table"><thead><tr>${headCells('private')}<th class="ob-actions"></th></tr></thead><tbody>${rows.map(row => {
         const id = String(row.service_id);
         return `<tr data-billing-private="${esc(id)}" class="${S.selected.has(id) ? 'selected' : ''}">${bodyCells('private', row)}
           <td class="ob-actions ob-private-actions">${canInvoice() ? `<button class="ob-button primary" type="button" data-ob-private="invoice" data-service-id="${esc(id)}">Facturar</button><button class="ob-button" type="button" data-ob-private="no-invoice" data-service-id="${esc(id)}">Sin factura</button>` : ''}</td>
@@ -649,7 +665,7 @@
       }).join('')}</tbody></table></div>`;
   }
 
-  const visibleExtraRows = () => (S.extraRows || []).filter(row => S.extraCollector === 'all'
+  const visibleExtraRows = () => sortTab('extras', S.extraRows || []).filter(row => S.extraCollector === 'all'
     || (S.extraCollector === 'provider' ? isProviderExcess(row) : !isProviderExcess(row)));
 
   /* Resumen de Adicionales: qué falta facturar a la Prestadora, qué ya se facturó y qué cobra la Empresa. */
@@ -702,7 +718,7 @@
     const foot = defs.map((c, i) => c.key === 'amount'
       ? `<td class="ob-money-cell" data-col="amount"><b class="ob-money" data-ob-tween="${total}" data-ob-currency="${esc(rows[0]?.currency || 'ARS')}">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td>`
       : i === 0 ? `<td><b>Total ${S.extraCollector === 'provider' ? 'que cobra la Prestadora' : S.extraCollector === 'company' ? 'que cobra la Empresa' : 'adicionales'}</b></td>` : '<td></td>').join('');
-    return `${head}<div class="ob-table-wrap"><table class="ob-table ob-extras-table"><thead><tr><th class="ob-check">${selectAll}</th>${headCells('extras')}</tr></thead><tbody>${rows.map(extraRowMarkup).join('')}</tbody><tfoot><tr><td></td>${foot}</tr></tfoot></table></div>`;
+    return `${head}${sortMobile('extras')}<div class="ob-table-wrap"><table class="ob-table ob-extras-table"><thead><tr><th class="ob-check">${selectAll}</th>${headCells('extras')}</tr></thead><tbody>${rows.map(extraRowMarkup).join('')}</tbody><tfoot><tr><td></td>${foot}</tr></tfoot></table></div>`;
   }
 
   function tableMarkup() {
@@ -713,7 +729,7 @@
     if (!rowsSrv.length) return '<div class="ob-empty">No hay servicios disponibles para facturar con estos filtros.</div>';
     const selectable = rowsSrv.filter(row => !row.pricing_error);
     const allSelected = selectable.length > 0 && selectable.every(row => S.selected.has(String(row.service_id)));
-    return `<div class="ob-table-wrap"><table class="ob-table ob-services-table"><thead><tr>
+    return `${sortMobile('services')}<div class="ob-table-wrap"><table class="ob-table ob-services-table"><thead><tr>
       <th class="ob-check"><input type="checkbox" data-ob-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos"></th>
       ${headCells('services')}<th class="ob-actions"></th>
       </tr></thead><tbody>${rowsSrv.map(rowMarkup).join('')}</tbody>${servicesFootMarkup(rowsSrv)}</table></div>`;
@@ -747,7 +763,7 @@
     const cls = [checked ? 'selected' : '', row.pricing_error ? 'is-error' : hasDelta(row) ? 'is-changed' : '', S.detailId && String(S.detailId) === id ? 'is-open' : ''].filter(Boolean).join(' ');
     // Toda la fila abre el detalle (el tilde y el menú siguen haciendo lo suyo).
     return `<tr data-billing-service="${esc(id)}" data-ob-open="${esc(id)}" tabindex="0" class="${cls}">
-      <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
+      <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled data-ax-explica title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
       ${bodyCells('services', row)}
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio" aria-label="Acciones del servicio">${ico('ellipsis')}</button></td>
     </tr>`;
@@ -756,10 +772,10 @@
   function tollTableMarkup() {
     if (!S.tollRows.length) return '<div class="ob-empty">No hay peajes con facturación separada disponibles con estos filtros.</div>';
     const allSelected = S.tollRows.every(row => S.selectedTolls.has(String(row.service_toll_id)));
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
+    return `${sortMobile('tolls')}<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
       <th class="ob-check"><input type="checkbox" data-ob-toll-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos"></th>
       ${headCells('tolls')}
-      </tr></thead><tbody>${S.tollRows.map(tollRowMarkup).join('')}</tbody></table></div>`;
+      </tr></thead><tbody>${sortTab('tolls', S.tollRows).map(tollRowMarkup).join('')}</tbody></table></div>`;
   }
 
   function tollRowMarkup(row) {

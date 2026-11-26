@@ -38,6 +38,14 @@
   function decorateRelay(tr, td, id) {
     const r = relays.get(id)?.data, has = td?.querySelector('.os-relay-mark');
     tr.classList.toggle('os-relay-row', Boolean(r));
+    /* Si falta registrar la entrega, el desplegable de Estado lleva un punto que late: ahí está el siguiente paso. */
+    const st = tr.querySelector('.os-status[role="button"]'), next = relayStep(id);
+    if (st) {
+      st.classList.toggle('has-next-step', Boolean(next));
+      const dot = st.querySelector('.os-next-dot');
+      if (next && !dot) { const d = document.createElement('span'); d.className = 'os-next-dot'; d.setAttribute('aria-hidden', 'true'); st.appendChild(d); }
+      else if (!next) dot?.remove();
+    }
     if (!r || !td) { has?.remove(); return; }
     const label = r.handed_over ? 'Servicio con relevo: el vehículo ya se entregó' : 'Servicio con relevo: esperando la entrega del vehículo';
     if (has) { if (has.getAttribute('aria-label') !== label) has.setAttribute('aria-label', label); has.dataset.relayDone = String(Boolean(r.handed_over)); return; }
@@ -205,24 +213,56 @@
   const canHandover = () => ['administracion', 'operador'].includes(typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO?.roles?.name : '');
   /* Operaciones puede marcar la entrega si el chofer no pudo (mismo efecto que el botón del chofer). Doble toque para confirmar. */
   async function markHandover(btn) {
-    const dest = Boolean(btn.dataset.relayDelivered), id = btn.dataset.relayHandover || btn.dataset.relayDelivered, client = db();
+    const dest = Boolean(btn.dataset.relayDelivered), id = btn.dataset.relayHandover || btn.dataset.relayDelivered;
     const idle = dest ? 'Marcar entrega en destino' : 'Marcar entrega del vehículo';
-    if (!client || btn.disabled) return;
+    if (!db() || btn.disabled) return;
     if (btn.dataset.sure !== '1') { btn.dataset.sure = '1'; btn.textContent = 'Tocá de nuevo para confirmar la entrega'; return; }
     btn.disabled = true; btn.textContent = 'Marcando…';
+    if (!(await markRelay(id, dest))) { btn.disabled = false; btn.dataset.sure = ''; btn.textContent = idle; }
+  }
+  /* Llama a la misma RPC que la app del chofer; la base guarda que lo marcó Operaciones y deja el evento en Cambios. */
+  async function markRelay(id, dest) {
+    const client = db();
+    if (!client) return false;
     try {
       const { error } = await client.rpc(dest ? 'mark_operator_service_relay_delivered_v1' : 'mark_operator_service_relay_handover_v1', { p_service_id: id });
       if (error) throw error;
       relays.delete(id); await fetchRelays([id]);
       if (pop && !pop.hidden && anchor?.dataset.serviceId === id) { pop.innerHTML = relayBody(relayOf(id)); place_(pop); }
-      if (typeof window.toast === 'function') window.toast(dest ? 'Listo: el vehículo quedó entregado en destino' : 'Vehículo entregado: el servicio pasó al segundo chofer', 'success');
+      const to = relayOf(id)?.to_driver_name || 'el segundo chofer';
+      if (typeof window.toast === 'function') window.toast(dest ? 'Listo: el vehículo quedó entregado en destino' : `Entrega registrada: el servicio pasó a ${to}`, 'success');
       try { await window.OperatorServices?.loadServices?.(); } catch (_) {}
       decorate();
+      return true;
     } catch (e) {
-      btn.disabled = false; btn.dataset.sure = ''; btn.textContent = idle;
       const msg = String(e?.message || 'No se pudo marcar la entrega').replace(/^[A-Z_]{4,}:\s*/, '');
       if (typeof window.toast === 'function') window.toast(msg, 'error'); else console.error(msg);
+      return false;
     }
+  }
+  /* Paso del relevo que le falta al servicio, para el menú de Acciones y el siguiente paso recomendado.
+     Sólo Administración y Operaciones; null si no hay relevo o ya se entregó en destino. */
+  function relayStep(id) {
+    const r = relayOf(id);
+    if (!r || r.delivered || !canHandover()) return null;
+    return r.handed_over ? ['relay_delivered', 'Registrar entrega en destino (relevo)'] : ['relay_handover', 'Registrar entrega del relevo'];
+  }
+  /* Confirma con el mismo modal de AuxiliOS que Finalizar / Anular y registra la entrega en nombre del chofer. */
+  async function runRelayStep(id) {
+    id = String(id);
+    const r = relayOf(id), step = relayStep(id), ask = window.OperatorServiceLifecycleV2?.confirmAction;
+    if (!r || !step) { if (typeof window.toast === 'function') window.toast('El relevo cambió. Volvé a abrir el menú.', 'warning'); return false; }
+    if (typeof ask !== 'function') return false;
+    const dest = step[0] === 'relay_delivered', from = r.from_driver_name || 'El 1º chofer', to = r.to_driver_name || 'el 2º chofer';
+    const lines = dest
+      ? [`${to} entregó el vehículo en destino.`, 'Se registra en su nombre, como si lo hubiera marcado desde su app. El servicio sigue abierto hasta que lo finalices.']
+      : [`${from} le entregó el vehículo a ${to} en ${place(r.exchange_address)}.`, `Se registra en nombre de ${from}, como si lo hubiera marcado desde su app. El servicio pasa a ${to} y a su móvil.`,
+        !r.has_remito && `Ojo: todavía no hay remito. Después de la entrega, ${from} deja de ver el servicio en su app para hacer el remito.`,
+        !r.to_has_active_jornada && `Ojo: ${to} todavía no inició su jornada con un móvil. La entrega no se puede registrar hasta que la inicie.`];
+    lines.push('Queda registrado con tu usuario en Cambios.');
+    const ok = await ask({ title: dest ? 'Registrar entrega en destino' : 'Registrar entrega del relevo', subtitle: 'En nombre del chofer, si no pudo marcarla desde su app.',
+      message: lines.filter(Boolean).join('\n'), confirmLabel: 'Registrar entrega' });
+    return ok ? markRelay(id, dest) : false;
   }
 
   function ensurePop() {
@@ -333,5 +373,5 @@ document.addEventListener('auxilios:billing-rendered', refresh);
   }
 
   /* Al cambiar un enganche se vuelve a leer. */
-  window.AuxEngancheClip = { refresh, selectionGaps, isChained, isRelay, relayOf, warm, cached: cachedDetail, modeOf, ensureDetails, invalidate() { modes.clear(); details.clear(); relays.clear(); refresh(); }, _decorate: decorate };
+  window.AuxEngancheClip = { refresh, selectionGaps, isChained, isRelay, relayOf, warm, relayStep, runRelayStep, cached: cachedDetail, modeOf, ensureDetails, invalidate() { modes.clear(); details.clear(); relays.clear(); refresh(); }, _decorate: decorate };
 })();

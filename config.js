@@ -182,8 +182,11 @@ async function loadCriticalAuxiliosModules() {
   await Promise.all([
     loadAuxiliosModule('auxilios-address-parts-v1', '/address-parts-v1.js'),
     loadAuxiliosModule('auxilios-km-rounding-v1', '/km-rounding-v1.js'),
-    loadAuxiliosModule('auxilios-intake-match-v1', '/operator-intake-match-v1.js')
+    loadAuxiliosModule('auxilios-intake-match-v1', '/operator-intake-match-v1.js'),
+    // Orden de tablas al tocar el título: lo usan Servicios, Historial y Facturación.
+    loadAuxiliosModule('auxilios-table-sort-v1', '/ui/table-sort-v1.js')
   ]);
+  loadAuxiliosStyle('auxilios-table-sort-v1-css', '/ui/table-sort-v1.css');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),

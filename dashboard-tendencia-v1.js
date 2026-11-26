@@ -233,7 +233,7 @@
   }
 
   function delta(a, b, contra, plano) {
-    var titulo = contra ? ' title="' + esc(contra) + '"' : '';
+    var titulo = contra ? ' data-ax-explica title="' + esc(contra) + '"' : '';
     var v = variacion(a, b);
     if (v == null) return '<span class="rsm-delta is-flat"' + titulo + '>sin comparación</span>';
     if (Math.abs(v) < (plano || 0.05)) return '<span class="rsm-delta is-flat"' + titulo + '>= anterior</span>';

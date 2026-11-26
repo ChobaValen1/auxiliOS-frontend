@@ -136,3 +136,34 @@ test('el modal ofrece editar cada selección y guardar los cambios encima',()=>{
   const src=fs.readFileSync(path.join(root,'operator-billing-export.js'),'utf8');
   for(const s of ['data-obx-preset-edit','data-obx-edit-form','data-obx-edit-cancel','data-obx-preset-update','Guardar cambios'])assert.ok(src.includes(s),s);
 });
+
+test('solapas por Base: agrupa, ordena, deja «Sin base» al final y arma nombres válidos',()=>{
+  const{E}=load();
+  const rows=[{service_id:1,billing_base_name:'Rosario'},{service_id:2,billing_base_name:''},{service_id:3,billing_base_name:'Córdoba'},{service_id:4,billing_base_name:'Rosario'}];
+  const g=E.baseGroups(rows);
+  assert.deepEqual(plain(g.map(x=>[x.name,x.rows.length])),[['Córdoba',1],['Rosario',2],['Sin base',1]]);
+  const taken=new Set(['servicios']);
+  assert.equal(E.baseSheetName('Servicios',taken),'Servicios (2)','no pisa la hoja Servicios');
+  assert.equal(E.baseSheetName('Base: Norte/Sur [1]',taken),'Base Norte Sur 1');
+  const long='Una base con un nombre larguísimo de verdad';
+  const a=E.baseSheetName(long,taken),b=E.baseSheetName(long,taken);
+  assert.ok(a.length<=31&&b.length<=31);assert.notEqual(a,b);
+  const sheets=E.baseSheets([{id:'order',header:'N° Orden'}],rows,false,new Set(['servicios']));
+  assert.deepEqual(plain(sheets.map(s=>[s.name,s.kind,s.rows.length])),[['Córdoba','Servicios',1],['Rosario','Servicios',2],['Sin base','Servicios',1]]);
+  const styled=E.styledSheets(sheets,'hoy');
+  assert.match(styled[1].subtitle,/^Base Rosario · 2 servicios/);
+  assert.equal(styled[1].kind,undefined);assert.equal(typeof styled[1].group,'function','lleva la franja de grupos como Servicios');
+});
+
+test('solapas por Base se guarda en las selecciones como los Excedentes',()=>{
+  const{E}=load();
+  const a=E.savePreset({name:'Por base',service:['order'],toll:null,extrasMode:'sheet',includeExcess:true,splitBases:true});
+  assert.equal(a.splitBases,true);
+  const b=E.savePreset({name:'Sin solapas',service:['order'],toll:null,extrasMode:'sheet',includeExcess:true});
+  assert.equal(b.splitBases,false,'por defecto apagado');
+  const state={serviceRows:[1],tollRows:[],serviceOrder:E.serviceColumns.map(c=>c.id),tollOrder:[],serviceSelected:new Set(),tollSelected:new Set(),extrasMode:'sheet',includeExcess:true,splitBases:false};
+  E.applyPreset(state,a);assert.equal(state.splitBases,true);assert.equal(E.presetMatches(a,state),true);
+  state.splitBases=false;assert.equal(E.presetMatches(a,state),false);
+  const up=E.updatePreset(b.id,{name:'Sin solapas',service:['order'],toll:null,extrasMode:'sheet',includeExcess:true,splitBases:true});
+  assert.equal(up.splitBases,true);
+});

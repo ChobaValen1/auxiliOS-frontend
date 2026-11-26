@@ -171,7 +171,7 @@
      la baja. 'neutro': ni bueno ni malo (horas por jornada, km por servicio),
      va en gris. La flecha siempre dice para dónde se movió el número. */
   function delta(actual, anterior, alReves, contra) {
-    var titulo = contra ? ' title="' + esc(contra) + '"'
+    var titulo = contra ? ' data-ax-explica title="' + esc(contra) + '"'
       : (estado.rangoAnterior ? ' title="Contra ' + esc(estado.rangoAnterior) + '"' : '');
     if (actual == null || anterior == null || anterior <= 0) {
       return '<span class="rsm-delta is-flat"' + titulo + '>sin comparación</span>';
