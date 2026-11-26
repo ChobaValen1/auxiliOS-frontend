@@ -19,13 +19,16 @@ test('inicio de sesión: el ojo de la contraseña usa el ícono del sistema visu
 });
 
 test('ingresos sin servicio: una fila legible con recorrido, cargos y estado', () => {
-  assert.match(services, /<span>Servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span><span>Estado<\/span>/);
+  assert.match(services, /<span>Fecha y hora<\/span><span>N\.º servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span>/);
   assert.match(services, /function intakeState\(i\)\{if\(i\.driver_activated\)return\{kind:'Activado',label:'Activado sin servicio'/);
   assert.match(services, /<small class="osi-wait">El chofer todavía no firmó<\/small>/);
-  assert.match(css, /#screen-operaciones \.osi-head, #screen-operaciones \.osi-row \{ display: grid; grid-template-columns: minmax\(112px, \.8fr\) minmax\(0, 1\.5fr\)/);
+  assert.match(css, /#screen-operaciones \.osi-head, #screen-operaciones \.osi-row \{ display: grid; grid-template-columns: minmax\(100px, \.65fr\) 84px minmax\(0, 1\.55fr\)/);
   // En pantallas angostas, tarjetas; en el celular el botón va abajo a todo el ancho.
-  assert.match(css, /grid-template-areas: "id state" "route route" "client driver" "match match" "charges action";/);
-  assert.match(css, /grid-template-areas: "id state" "route route" "client driver" "match match" "charges charges" "action action";/);
+  assert.match(css, /grid-template-areas: "when id" "route route" "client driver" "match match" "charges action";/);
+  assert.match(css, /grid-template-areas: "when id" "route route" "client driver" "match match" "charges charges" "action action";/);
+  // Anular es un tacho que se pone rojo al pasar el mouse.
+  assert.match(services, /ico\('trash-2'\)/);
+  assert.match(css, /\.osi-row \.osi-annul:hover[^{]*\{ color: var\(--ax-danger\)/);
 });
 
 test('ingresos sin servicio: cola por antigüedad, servicio posible y espera', () => {

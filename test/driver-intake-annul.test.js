@@ -39,7 +39,8 @@ test('Chofer: anular su ingreso desde la ficha con motivo, paso deslizable y bot
 });
 
 test('Operador: Anular en la lista de ingresos y Pendientes sin chofer al vincular',()=>{
-  assert.match(services,/abrirAnularIngreso\('\$\{esc\(i\.intake_id\)\}'\)">Anular</);
+  assert.match(services,/abrirAnularIngreso\('\$\{esc\(i\.intake_id\)\}'\)" aria-label=/);
+  assert.match(services,/data-ax-tip="Anular ingreso">\$\{ico\('trash-2'\)\}/);
   assert.match(services,/rpc\('annul_driver_service_intake_v1',\{p_intake_id:id/);
   assert.match(services,/id="os-intake-annul" hidden role="dialog" aria-modal="true"/);
   assert.match(services,/const pending=S\.services\.filter\(s=>s\.status==='pending'&&!s\.remito_id&&!s\.assigned_driver_id\)/);
