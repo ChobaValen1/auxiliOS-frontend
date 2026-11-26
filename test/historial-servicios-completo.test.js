@@ -93,7 +93,7 @@ test('Historial: la ficha desliza, muestra base, km facturables y quién cambió
 
 test('Historial compacto: título arriba, sin resumen ni conteo, tabla con alto propio y volver con peso visual', () => {
   const js = read('operator-services.js'), css = read('operaciones-ax-v1.css');
-  assert.match(js, /title:\(\)=>S\.view==='history'\?'Historial de servicios':'Servicios'/);
+  assert.match(js, /SCREENS\.operaciones\.title='Historial de servicios'/);
   assert.match(js, /function fitHistoryWrap\(\)/);
   assert.match(css, /os-is-history #os-history-heading \{ display: none; \}/);
   assert.match(css, /os-is-history \.os-results-line \{ display: none; \}/);
