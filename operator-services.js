@@ -278,7 +278,38 @@ const columnCell=(k,s)=>{
   if(['driver','mobile'].includes(k)&&s.logistics_type!=='third_party'){const v=crewValue(s,k);return `<b class="${v.missing?'os-unassigned':''}">${esc(v.label)}</b>`+(k==='driver'?driverQueueCount(s):'');}
   return HISTORY_GROUPS[k]?historyCell(k,s):cell(k,s);
 };
-function renderTableHeader(){const h=document.getElementById('os-table-head');if(!h)return;h.innerHTML=columns().map(k=>`<th class="col-${k} ${k==='actions'?'actions':''}">${esc(columnLabel(k))}</th>`).join('');}
+/* Orden por columna (ui/table-sort-v1.js): tocar el título ordena; por defecto, fecha del más reciente al más viejo.
+   Cada columna —o grupo de columnas del Historial— ordena por un dato. Activos e Historial recuerdan su orden por separado. */
+const STATUS_STEP={pending:1,assigned:2,at_origin:3,completed:4,cancelled:5};
+const sortPlace=(s,kind)=>{const p=locationParts(s,kind);return[p.locality,p.address].filter(v=>v&&v!=='—').join(' ')||null;};
+const sortCrew=(s,kind)=>{if(s.logistics_type==='third_party')return s.outsourced_provider_name||null;const v=crewValue(s,kind);return v.missing?null:v.label;};
+const SORT_FIELDS={
+  date:{label:'Fecha',type:'date',get:s=>s.scheduled_for},
+  code:{label:'Código',type:'text',get:s=>s.service_order_number||s.service_number},
+  arrival:{label:'Arribo',type:'date',get:s=>s.arrived_at||s.estimated_arrival_at},
+  finish:{label:'Fin',type:'date',get:s=>s.completed_at||s.estimated_finish_at},
+  provider:{label:'Prestadora',type:'text',get:s=>s.company_name||company(s.company_id)?.trade_name||company(s.company_id)?.legal_name},
+  base:{label:'Base',type:'text',get:s=>s.billing_base_name},
+  type:{label:'Tipo',type:'text',get:s=>s.concept_name||concept(s.primary_concept_id)?.name},
+  origin:{label:'Origen',type:'text',get:s=>sortPlace(s,'origin')},
+  destination:{label:'Destino',type:'text',get:s=>sortPlace(s,'destination')},
+  /* La columna Cliente muestra la patente y el vehículo: ordena por lo que se ve. */
+  client:{label:'Cliente (patente)',type:'text',get:s=>svcFirst(s.vehicle_plate,s.remito_vehicle_plate)},
+  km:{label:'Km',type:'number',get:s=>serviceKm(s)||null},
+  driver:{label:'Chofer',type:'text',get:s=>sortCrew(s,'driver')},
+  mobile:{label:'Móvil',type:'text',get:s=>sortCrew(s,'mobile')},
+  delay:{label:'Demora',type:'number',get:s=>num(s.granted_delay_minutes)||null},
+  status:{label:'Estado',type:'number',words:{asc:'por etapa (sin asignar primero)',desc:'por etapa (finalizados primero)'},get:s=>isDriverActivated(s)&&!['completed','cancelled'].includes(s.status)?3.5:STATUS_STEP[normalizedStatus(s.status)]},
+  amount_due:{label:'Por cobrar',type:'number',get:s=>Object.prototype.hasOwnProperty.call(s,'customer_amount_due')?num(s.customer_amount_due):null}
+};
+/* Columna (o grupo) → dato por el que ordena. Recorrido ordena por km si se muestran, si no por origen. Peajes, Mapa y Acciones no ordenan. */
+const SORT_FIELD_OF={code:'code',datetime:'date',when:'date',arrival:'arrival',finish:'finish',provider:'provider',company:'provider',base:'base',type:'type',origin:'origin',destination:'destination',client:'client',km:'km',route:'km',driver:'driver',crew:'driver',mobile:'mobile',delay:'delay',status:'status',amount_due:'amount_due'};
+const sortFieldOf=k=>k==='route'?(groupShows('km')?'km':'origin'):SORT_FIELD_OF[k];
+const SORTERS={};
+function sorter(){const T=window.AuxiliosTableSort;if(!T)return null;const id=S.view==='history'?'servicios.historial':'servicios.activos';return SORTERS[id]||(SORTERS[id]=T.create({id,fields:SORT_FIELDS,defaultKey:'date',defaultDir:'desc',onChange:()=>{S.historyPage=1;renderServices();}}));}
+const sortServices=rows=>sorter()?.apply(rows)||rows;
+function renderTableHeader(){const h=document.getElementById('os-table-head');if(!h)return;const so=sorter();h.innerHTML=columns().map(k=>{const cls=`col-${k} ${k==='actions'?'actions':''}`.trim(),field=sortFieldOf(k);return so&&field?so.th(field,columnLabel(k),{className:cls}):`<th class="${cls}">${esc(columnLabel(k))}</th>`;}).join('');}
+function renderSortMobile(){const slot=document.getElementById('os-sort-slot'),so=sorter();if(!slot)return;const html=so?so.mobile({keys:columns().map(sortFieldOf).filter(Boolean)}):'';if(slot.dataset.html!==html){slot.dataset.html=html;slot.innerHTML=html;}}
 function row(s){return`<tr data-service-id="${s.service_id}" class="${pendingRemitoReview(s)?'os-remito-awaiting-review':''}" onclick="${S.view==='history'&&window.AuxiliosHistoryDetail?`abrirDetalleHistorial('${s.service_id}')`:`verServicioOperador('${s.service_id}')`}">${columns().map(k=>`<td class="col-${k} ${k==='actions'?'actions':''}" data-label="${esc(columnLabel(k))}">${columnCell(k,s)}</td>`).join('')}</tr>`;}
 function intakeLocation(i,kind){return i[`${kind}_formatted_address`]||i[kind]||'—'}
 function intakeCustomer(i){const details=[i.customer_document&&`DNI/CUIT ${i.customer_document}`,i.customer_phone&&`Tel. ${i.customer_phone}`].filter(Boolean).join(' · ');return`<b>${esc(i.customer_name||'Sin cliente')}</b>${details?`<small>${esc(details)}</small>`:''}`}
@@ -312,7 +343,7 @@ function renderServiceResults(total,shown){
   let summary=document.getElementById('os-results-summary');
   if(!summary){
     summary=document.createElement('section');summary.id='os-results-summary';summary.className='os-results-summary';summary.setAttribute('aria-label','Resultado de la búsqueda y filtros aplicados');
-    summary.innerHTML='<div class="os-results-line"><p class="os-results-count" role="status" aria-live="polite" aria-atomic="true"></p></div><div class="os-filter-chips" role="group" aria-label="Filtros aplicados"></div>';
+    summary.innerHTML='<div class="os-results-line"><p class="os-results-count" role="status" aria-live="polite" aria-atomic="true"></p></div><div class="os-filter-chips" role="group" aria-label="Filtros aplicados"></div><div id="os-sort-slot" class="os-sort-slot"></div>';
     wrap.before(summary);
     summary.addEventListener('click',event=>{const button=event.target.closest('[data-os-remove-filter]');if(button)removeServiceListFilter(button.dataset.osRemoveFilter);});
   }
@@ -332,7 +363,7 @@ function renderServiceResults(total,shown){
     empty.querySelector('[data-os-empty-reset]')?.addEventListener('click',()=>removeServiceListFilter('all'));
   }
 }
-function historyPageKey(){return[S.view,S.status,S.query,S.company,S.driverFilter,S.truckFilter,JSON.stringify(S.periodSel||{})].join('|');}
+function historyPageKey(){const so=sorter()?.state;return[S.view,S.status,S.query,S.company,S.driverFilter,S.truckFilter,JSON.stringify(S.periodSel||{}),so?so.key+':'+so.dir:''].join('|');}
 function renderPager(total){const wrap=document.querySelector('#screen-operaciones .os-table-wrap');if(!wrap)return;let pager=document.getElementById('os-history-pager');if(S.view!=='history'||total<=HISTORY_PAGE_SIZE){if(pager)pager.hidden=true;return;}if(!pager){pager=document.createElement('nav');pager.id='os-history-pager';pager.className='os-pager';pager.setAttribute('aria-label','Páginas del historial');wrap.after(pager);pager.addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b||b.disabled)return;S.historyPage=Number(b.dataset.page);renderServices();document.querySelector('#screen-operaciones .os-table-wrap')?.scrollIntoView({block:'start',behavior:'smooth'});});}const pages=Math.ceil(total/HISTORY_PAGE_SIZE),cur=S.historyPage,from=(cur-1)*HISTORY_PAGE_SIZE+1,to=Math.min(total,cur*HISTORY_PAGE_SIZE);const nums=[...new Set([1,cur-1,cur,cur+1,pages])].filter(n=>n>=1&&n<=pages).sort((a,b)=>a-b);let last=0,btns='';for(const n of nums){if(n-last>1)btns+='<span class="os-pager-gap">…</span>';btns+=`<button type="button" data-page="${n}" class="${n===cur?'is-current':''}" ${n===cur?'aria-current="page"':''}>${n}</button>`;last=n;}pager.hidden=false;pager.innerHTML=`<span class="os-pager-info">${from}–${to} de ${total}</span><div class="os-pager-pages"><button type="button" data-page="${cur-1}" ${cur<=1?'disabled':''} aria-label="Página anterior">${ico('chevron-left')}</button>${btns}<button type="button" data-page="${cur+1}" ${cur>=pages?'disabled':''} aria-label="Página siguiente">${ico('chevron-right')}</button></div>`;}
 /* Historial completo: list_operator_services trae como mucho los últimos 500/1000 servicios para la mesa activa.
    Los cerrados del período elegido se piden aparte (list_operator_service_history_v1, por tandas de 500) y se suman a
@@ -426,10 +457,10 @@ function renderServices(){
   if(!canRead())return;
   const table=document.querySelector('#screen-operaciones .os-table-wrap'),position=table?{top:table.scrollTop,left:table.scrollLeft}:null;
   renderFilterBar();renderIntakes();renderTabs();renderTableHeader();void window.AuxEngancheClip?.warm?.(S.services.map(x=>x.service_id));
-  const all=filtered(),body=document.getElementById('os-table-body'),empty=document.getElementById('os-empty');if(!body||!empty)return;
+  const all=sortServices(filtered()),body=document.getElementById('os-table-body'),empty=document.getElementById('os-empty');if(!body||!empty)return;
   let rows=all;if(S.view==='history'){const key=historyPageKey();if(S.historyPageKey!==key){S.historyPageKey=key;S.historyPage=1;}const pages=Math.max(1,Math.ceil(all.length/HISTORY_PAGE_SIZE));S.historyPage=Math.min(Math.max(1,S.historyPage||1),pages);rows=all.slice((S.historyPage-1)*HISTORY_PAGE_SIZE,S.historyPage*HISTORY_PAGE_SIZE);}
   S.visibleRows=rows;S.historyIds=S.view==='history'?all.map(x=>String(x.service_id)):[];
-  renderPager(all.length);closeRowMenu();body.innerHTML=rows.map(row).join('');empty.hidden=all.length>0;renderServiceResults(all.length,rows.length);renderHistoryStats(all);document.getElementById('screen-operaciones')?.classList.toggle('os-is-history',S.view==='history');if(S.view==='history')void loadPageTolls(rows);window.AuxiliosHistoryDetail?.refresh();
+  renderPager(all.length);closeRowMenu();body.innerHTML=rows.map(row).join('');empty.hidden=all.length>0;renderServiceResults(all.length,rows.length);renderSortMobile();renderHistoryStats(all);document.getElementById('screen-operaciones')?.classList.toggle('os-is-history',S.view==='history');if(S.view==='history')void loadPageTolls(rows);window.AuxiliosHistoryDetail?.refresh();
   if(table&&position){table.scrollTop=position.top;table.scrollLeft=position.left;}
   body.dispatchEvent(new CustomEvent('auxilios:services-rendered',{bubbles:true}));
 }

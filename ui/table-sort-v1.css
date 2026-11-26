@@ -1,0 +1,39 @@
+/* Orden de tablas (ui/table-sort-v1.js). El título entero es el botón; la flecha se ve fuerte en la
+   columna ordenada y tenue en las demás (se aclara al pasar el mouse o con el foco). */
+.ax-sort-th { padding: 0 !important; }
+.ax-sort-btn {
+  display: flex; align-items: center; gap: 4px; width: 100%; min-height: 38px; height: 100%;
+  padding: 0 12px; margin: 0; border: 0; background: transparent; color: inherit; cursor: pointer;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: inherit; white-space: nowrap;
+  border-radius: var(--ax-radius-sm, 6px);
+  transition: color var(--ax-dur-fast, .12s) var(--ax-ease, ease), background-color var(--ax-dur-fast, .12s) var(--ax-ease, ease);
+}
+th[data-col="amount"] > .ax-sort-btn, th.ob-money-cell > .ax-sort-btn { justify-content: flex-end; }
+.ax-sort-btn:hover { color: var(--ax-text); background: color-mix(in srgb, var(--ax-text) 5%, transparent); }
+.ax-sort-btn:focus-visible { outline: 2px solid var(--ax-focus, var(--ax-accent)); outline-offset: -2px; }
+.ax-sort-label { overflow: hidden; text-overflow: ellipsis; }
+.ax-sort-ico { display: inline-flex; flex: none; width: 12px; height: 12px; color: var(--ax-accent); }
+.ax-sort-ico svg { width: 12px; height: 12px; }
+.ax-sort-ico.is-idle { color: currentColor; opacity: .32; transition: opacity var(--ax-dur-fast, .12s) var(--ax-ease, ease); }
+.ax-sort-btn:hover .ax-sort-ico.is-idle, .ax-sort-btn:focus-visible .ax-sort-ico.is-idle { opacity: .7; }
+th.is-sorted > .ax-sort-btn { color: var(--ax-text); }
+
+/* Celular: la tabla pasa a tarjetas y no hay títulos. «Ordenar por» + sentido. */
+.ax-sort-mobile { display: none; align-items: center; gap: var(--ax-sp-2, 8px); margin: 0 0 var(--ax-sp-2, 8px); }
+.ax-sort-mobile label { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+.ax-sort-mobile label > span { white-space: nowrap; }
+.ax-sort-mobile select {
+  flex: 1 1 auto; min-width: 0; height: var(--ax-h, 36px); padding: 0 28px 0 10px; border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius, 8px); background-color: var(--ax-surface); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font);
+}
+.ax-sort-dir {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; height: var(--ax-h, 36px); padding: 0 12px; border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius, 8px); background: var(--ax-surface); color: var(--ax-text); cursor: pointer; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font);
+}
+.ax-sort-dir svg { width: 12px; height: 12px; color: var(--ax-accent); }
+.ax-sort-dir:focus-visible, .ax-sort-mobile select:focus-visible { outline: 2px solid var(--ax-focus, var(--ax-accent)); outline-offset: 1px; }
+@media (max-width: 720px) { #screen-operaciones .ax-sort-mobile { display: flex; } }
+@media (max-width: 760px) { #screen-facturacion .ax-sort-mobile { display: flex; } }
+
+.ax-sort-live { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { .ax-sort-btn, .ax-sort-ico.is-idle { transition: none; } }
