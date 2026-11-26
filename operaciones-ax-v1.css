@@ -566,7 +566,8 @@
 #screen-operaciones .os-history-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--ax-accent); color: var(--ax-accent-fg); font: 700 11px/18px var(--ax-font); text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--ax-bg); }
 #screen-operaciones .os-history-badge[hidden] { display: none; }
 #screen-operaciones .os-back-btn { display: inline-flex; align-items: center; gap: 8px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; transition: background var(--ax-dur) var(--ax-ease); }
-#screen-operaciones .os-back-btn:hover { background: var(--ax-surface-3); }
+#screen-operaciones .os-back-btn { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-bold); }
+#screen-operaciones .os-back-btn:hover { background: var(--ax-accent-hover); border-color: var(--ax-accent-hover); }
 #screen-operaciones .os-back-btn .ax-icon { width: 16px; height: 16px; }
 #screen-operaciones .os-back-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
 @media (min-width: 901px) {
@@ -660,3 +661,11 @@ body.ax-motion #screen-operaciones .os-commandbar.os-commandbar .os-actions .os-
   #screen-operaciones .osi-row .osi-action .btn { flex: 1 1 auto; min-height: 44px; }
   #screen-operaciones .osi-row .osi-annul { width: 44px; height: 44px; }
 }
+
+/* Historial compacto: el título ya está arriba, sin resumen de período ni conteo, y la tabla ocupa el alto que queda. */
+#screen-operaciones.os-is-history #os-history-heading { display: none; }
+#screen-operaciones.os-is-history .os-results-line { display: none; }
+#screen-operaciones.os-is-history .os-results-summary { margin: 0 0 var(--ax-sp-2); }
+#screen-operaciones.os-is-history .os-results-summary:not(:has(.os-filter-chip)) { margin: 0; }
+#screen-operaciones.os-is-history .os-commandbar { margin-bottom: var(--ax-sp-2); }
+#screen-operaciones.os-is-history .os-status-tabs { margin-bottom: var(--ax-sp-2); }
