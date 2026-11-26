@@ -18,3 +18,15 @@ test('route candidates match segments, not just vertices; exclude far, invalid a
  const a=api(),path=[{lat:-34,lng:-58},{lat:-34,lng:-57.99}],catalog=[{toll_id:'near',name:'Intermedio',latitude:-34.0001,longitude:-57.995},{toll_id:'far',latitude:-34.01,longitude:-57.995},{toll_id:'invalid',latitude:null,longitude:null}];
  const found=a.routeTolls(path,catalog,[]);assert.equal(found.length,1);assert.equal(found[0].kind,'route');assert.equal(found[0].amount,null);assert.equal(found[0].code,'R1');assert.equal(a.routeTolls(path,catalog,[{tollId:'near'}]).length,0);assert.equal(a.routeTolls([],catalog,[]).length,0);
 });
+test('vista completa: siempre base, origen, destino, base aunque la prestadora facture otro método; activado no se toca',()=>{
+ const a=api(),p=a.planFor(s,{...ctx,billing:{route_mode:'origin_destination'}},{full:true});
+ assert.equal(p.stops.length,4);assert.equal(p.label,'Base → Origen → Destino → Base');assert.equal(p.stops.at(-1).return,true);
+ assert.equal(a.planFor(s,{...ctx,billing:{route_mode:'origin_destination'}}).stops.length,2);
+ assert.equal(a.planFor({...s,driver_activated:true,activation_kind:'origin'},ctx,{full:true}).stops.length,2);
+});
+test('vista completa con relevo: el primer tramo termina en el punto de relevo y no en la base',()=>{
+ const a=api(),relay={exchange_address:'Ruta 5 km 100',exchange_lat:-34.75,exchange_lng:-57.95},p=a.planFor(s,ctx,{full:true,relay});
+ assert.deepEqual(Array.from(p.stops.map(x=>x.name)),['Base elegida','Origen','Punto de relevo','Destino','Regreso a base']);
+ assert.equal(p.relay,true);assert.equal(p.label,'Base → Origen → Relevo → Destino → Base');assert.equal(p.ready,true);
+ assert.equal(a.planFor(s,ctx,{full:true,relay:{exchange_address:'x'}}).ready,false);
+});

@@ -9,8 +9,10 @@ function coordinate(lat,lng){const a=number(lat),b=number(lng);return a!==null&&
 const samePoint=(a,b)=>!!a&&!!b&&Math.abs(a.lat-b.lat)+Math.abs(a.lng-b.lng)<.00001;
 const text=v=>String(v||'').trim();
 const MODES={base_origin_destination_base:'Base → Origen → Destino → Base',base_origin:'Base → Origen',origin_destination:'Origen → Destino'};
-function planFor(s,context){
+function planFor(s,context,opts){
   let mode=context?.billing?.route_mode;
+  /* Vista completa (Historial): siempre Base → Origen → Destino → Base, sin importar el método de facturación. */
+  if(opts?.full&&!s.driver_activated)mode='base_origin_destination_base';
   /* Activado Origen: el recorrido es solo de la base hasta el origen. */
   if(s.driver_activated){if(s.activation_kind!=='origin')return{stops:[],message:'Activado con kilometraje manual: no hay un recorrido automático.'};mode='base_origin';}
   if(!MODES[mode])return{stops:[],message:mode==='manual'?'Kilometraje manual: no hay un recorrido automático de facturación.':'La prestadora no tiene un método de recorrido configurado.'};
@@ -19,10 +21,13 @@ function planFor(s,context){
   const base={key:'base',letter:'A',name:b?.name||s.billing_base_name||s.branch_name||'Base',address:text(b?.address),point:coordinate(b?.latitude,b?.longitude)};
   const origin={key:'origin',letter:mode==='origin_destination'?'A':'B',name:'Origen',address:text(s.origin_formatted_address||s.origin),point:coordinate(s.origin_lat,s.origin_lng)};
   const dest={key:'destination',letter:mode==='origin_destination'?'B':'C',name:'Destino',address:text(single?origin.address:s.destination_formatted_address||s.destination),point:single?origin.point:coordinate(s.destination_lat,s.destination_lng)};
-  const stops=mode==='base_origin'?[base,origin]:mode==='origin_destination'?[origin,dest]:[base,origin,dest,{...base,name:'Regreso a base',return:true}];
+  let stops=mode==='base_origin'?[base,origin]:mode==='origin_destination'?[origin,dest]:[base,origin,dest,{...base,name:'Regreso a base',return:true}];
+  /* Con relevo el primer chofer termina en el punto de intercambio y el segundo sigue hasta el destino y la base. */
+  const relay=opts?.full&&opts.relay&&mode==='base_origin_destination_base'&&!single?opts.relay:null;
+  if(relay){const ex={key:'relay',letter:'C',name:'Punto de relevo',address:text(relay.exchange_address),point:coordinate(relay.exchange_lat,relay.exchange_lng)};dest.letter='D';stops=[base,origin,ex,dest,{...base,name:'Regreso a base',letter:'E',return:true}];}
   const value=p=>p.point?`${p.point.lat},${p.point.lng}`:p.address;
   let href='';if(stops.every(p=>value(p))){const u=new URL('https://www.google.com/maps/dir/');u.searchParams.set('api','1');u.searchParams.set('origin',value(stops[0]));u.searchParams.set('destination',value(stops.at(-1)));u.searchParams.set('travelmode','driving');if(stops.length>2)u.searchParams.set('waypoints',stops.slice(1,-1).map(value).join('|'));if(u.href.length<=2048)href=u.href;}
-  return{mode,label:single&&mode==='base_origin_destination_base'?'Base → Origen → Base':MODES[mode],stops,href,ready:stops.every(p=>p.point),message:stops.every(p=>p.point)?'':'Faltan coordenadas verificadas. Podés consultar las direcciones, pero no se dibujará un trazado inventado.'};
+  return{mode,relay:!!relay,full:!!opts?.full,label:relay?'Base → Origen → Relevo → Destino → Base':single&&mode==='base_origin_destination_base'?'Base → Origen → Base':MODES[mode],stops,href,ready:stops.every(p=>p.point),message:stops.every(p=>p.point)?'':'Faltan coordenadas verificadas. Podés consultar las direcciones, pero no se dibujará un trazado inventado.'};
 }
 function decode(poly){
   if(typeof poly!=='string'||poly.length>200000)return[];
@@ -99,7 +104,7 @@ function ensure(){
   modal=document.createElement('div');modal.id='service-route-modal';modal.className='srm-backdrop';modal.hidden=true;
   modal.innerHTML=`<section class="srm-dialog" role="dialog" aria-modal="true" aria-labelledby="srm-title" aria-describedby="srm-reference" tabindex="-1">
     <header class="srm-header"><span class="srm-header-icon">${icon('map')}</span><div><h2 id="srm-title">Ver recorrido</h2><p id="srm-reference"></p></div><button type="button" data-srm-close aria-label="Cerrar recorrido">${icon('x')}</button></header>
-    <div class="srm-content"><aside class="srm-side"><h3>RECORRIDO SEGÚN FACTURACIÓN</h3><p id="srm-method" class="srm-method"></p><ol id="srm-stops" class="srm-stops"></ol><div id="srm-distance" class="srm-distance"></div><section class="srm-tolls"><h3>PEAJES DEL SERVICIO <span id="srm-toll-count"></span></h3><p class="srm-caption">Del recorrido, previstos e informados: separados y sin cargos automáticos.</p><div id="srm-tolls"></div></section></aside>
+    <div class="srm-content"><aside class="srm-side"><div id="srm-tags" class="srm-tags"></div><h3 id="srm-side-title">RECORRIDO SEGÚN FACTURACIÓN</h3><p id="srm-method" class="srm-method"></p><ol id="srm-stops" class="srm-stops"></ol><div id="srm-legs" class="srm-legs"></div><div id="srm-distance" class="srm-distance"></div><section class="srm-tolls"><h3>PEAJES DEL SERVICIO <span id="srm-toll-count"></span></h3><p class="srm-caption">Del recorrido, previstos e informados: separados y sin cargos automáticos.</p><div id="srm-tolls"></div></section></aside>
     <div class="srm-stage"><div id="srm-map" role="region" aria-label="Mapa del recorrido"></div><div id="srm-map-status" class="srm-map-status" role="status"></div><div class="srm-map-controls"><button type="button" data-srm-fit title="Ver recorrido completo" aria-label="Ver recorrido completo">${icon('map')}</button></div><div id="srm-legend" class="srm-legend" hidden><span><i></i>Ida</span><span><i class="is-return"></i>Regreso a base</span></div><div id="srm-toll-detail" class="srm-toll-detail" hidden></div></div></div>
     <div id="srm-notice" class="srm-notice" role="status"></div>
     <footer class="srm-footer"><small>${icon('info')}Vista de consulta. No modifica kilómetros ni importes.</small><div><button type="button" id="srm-edit" hidden>${icon('pencil')}Editar servicio</button><a id="srm-external" target="_blank" rel="noopener noreferrer">${icon('external-link')}Abrir en Google Maps</a><button type="button" data-srm-close>Cerrar</button></div></footer>
@@ -127,16 +132,38 @@ function mapStatus(message,retry=false){modal.querySelector('#srm-map-status').i
 function showShell(view){
   ensure();modal.hidden=false;view.previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
   view.background=[...document.body.children].filter(el=>el!==modal&&el.tagName!=='SCRIPT'&&el.tagName!=='LINK').map(el=>({el,inert:el.inert}));view.background.forEach(({el})=>el.inert=true);
-  for(const id of ['srm-method','srm-stops','srm-distance','srm-tolls','srm-toll-count','srm-notice','srm-map'])modal.querySelector('#'+id).textContent='';
+  for(const id of ['srm-tags','srm-legs','srm-method','srm-stops','srm-distance','srm-tolls','srm-toll-count','srm-notice','srm-map'])modal.querySelector('#'+id).textContent='';
   modal.querySelector('#srm-reference').textContent='Consultando servicio…';modal.querySelector('#srm-edit').hidden=true;modal.querySelector('#srm-external').hidden=true;modal.querySelector('#srm-external').removeAttribute('href');modal.querySelector('#srm-toll-detail').hidden=true;modal.querySelector('#srm-legend').hidden=true;modal.querySelector('[data-srm-fit]').disabled=true;mapStatus('Cargando el recorrido del servicio…');modal.querySelector('[data-srm-close]').focus();
 }
 const safely=fn=>{try{fn();}catch{/* A failed SDK must not prevent returning to the app. */}};
 function dispose(view){if(!view)return;if(view.frame)cancelAnimationFrame(view.frame);view.frame=0;view.overlays?.forEach(o=>safely(()=>o.setMap(null)));view.lines?.forEach(l=>safely(()=>l.setMap(null)));view.mapListeners?.forEach(l=>safely(()=>l.remove()));if(view.map&&window.google?.maps?.event)safely(()=>window.google.maps.event.clearInstanceListeners(view.map));view.map=null;view.overlays=[];view.lines=[];view.mapListeners=[];}
 function close(restore=true){const view=current;current=null;serial++;if(modal){modal.hidden=true;modal.dataset.animating='false';}if(!view)return;view.background?.forEach(({el,inert})=>el.inert=inert);document.body.style.overflow=view.previousOverflow||'';dispose(view);modal?.querySelector('#srm-map')?.replaceChildren();if(restore)safely(()=>{const target=view.opener?.isConnected&&view.opener.getClientRects().length?view.opener:document.querySelector(`[data-os-route-service="${CSS.escape(String(view.id))}"]`);target?.focus?.();});}
+const kmFmt=v=>v.toLocaleString('es-AR',{maximumFractionDigits:1})+' km';
+/* Etiquetas del servicio: enganchado, activado y con relevo. */
+function tagsMarkup(view){
+  const s=view.service,c=view.chain,r=view.relay,tags=[];
+  if(c?.previous||c?.next||s.chained_to_service_id)tags.push(['Enganchado',[c?.previous?'Viene de '+(c.previous.label||'otro servicio'):'',c?.next?'Sigue '+(c.next.label||'otro servicio'):''].filter(Boolean).join(' · ')]);
+  if(s.driver_activated)tags.push(['Activado',s.activation_kind==='origin'?'Hasta el origen':'Km manual']);
+  if(r)tags.push(['Con relevo',r.delivered?'Entregado':r.handed_over?'En camino al segundo chofer':'Pendiente de entrega']);
+  return tags.map(([name,note])=>`<span class="srm-tag"><b>${esc(name)}</b>${note?`<small>${esc(note)}</small>`:''}</span>`).join('');
+}
+const crew=(driver,truck)=>[driver?'Chofer '+driver:'',truck?'Móvil '+truck:''].filter(Boolean).join(' · ')||'Sin asignar';
+/* Km por tramo del trazado (no son los km de facturación) y, con relevo, qué chofer y móvil hizo cada parte. */
+function legsMarkup(view){
+  const stops=view.plan.stops;if(!view.legs?.length||!stops.length)return'';
+  const s={...(O()?.service?.(view.id)||{}),...view.service},r=view.relay,groups=[1,...(view.plan.relay?[2]:[])].map(n=>{
+    const rows=view.legs.filter(l=>l.tramo===n),km=rows.reduce((t,l)=>t+l.km,0);
+    const who=view.plan.relay?(n===1?crew(r.from_driver_name,r.from_truck_label||r.from_truck_plate):crew(r.to_driver_name,r.to_truck_label||r.to_truck_plate)):crew(s.driver_name||s.assigned_driver_name,s.truck_label||s.truck_numero_interno);
+    return`<section class="srm-leg"><header><b>${view.plan.relay?'Tramo '+n:'Trazado'}</b><span>${esc(who)}</span></header>${rows.map(l=>`<p><span>${esc(stops[l.from]?.name||'')} → ${esc(stops[l.to]?.name||'')}</span><b>${kmFmt(l.km)}</b></p>`).join('')}<footer><span>Total del tramo</span><b>${kmFmt(km)}</b></footer></section>`;}).join('');
+  return`<h3>KM POR TRAMO</h3>${groups}<p class="srm-caption">Km del trazado en el mapa. Los km de facturación son los guardados en el servicio.</p>`;
+}
 function renderDetails(view){
   const {service:s,plan,tolls}=view;
   modal.querySelector('#srm-reference').textContent=`Servicio ${s.service_order_number||s.service_number||''} · ${s.company_name||'Prestadora'}`;
   modal.querySelector('#srm-method').textContent=plan.label||'Recorrido no disponible';
+  modal.querySelector('#srm-side-title').textContent=view.full?'RECORRIDO COMPLETO CON BASES':'RECORRIDO SEGÚN FACTURACIÓN';
+  modal.querySelector('#srm-tags').innerHTML=view.full?tagsMarkup(view):'';
+  modal.querySelector('#srm-legs').innerHTML=view.full?legsMarkup(view):'';
   modal.querySelector('#srm-stops').innerHTML=plan.stops.map(p=>`<li><span class="srm-stop-letter${p.return?' is-return':''}">${p.letter}</span><div><b>${esc(p.name)}</b><small>${esc(p.address||'Dirección sin informar')}</small>${!p.point?'<small>Sin coordenadas verificadas</small>':''}</div></li>`).join('');
   const km=number(s.estimated_distance_km);modal.querySelector('#srm-distance').innerHTML=`<b>${km===null?'—':km.toLocaleString('es-AR',{maximumFractionDigits:1})+' km'}</b><span>Kilómetros guardados<small>${plan.stops.length?plan.stops.length-1+' tramos':'Sin trazado automático'}</small></span>`;
   const external=modal.querySelector('#srm-external');external.hidden=!plan.href;if(plan.href)external.href=plan.href;
@@ -145,24 +172,41 @@ function renderDetails(view){
   modal.querySelector('#srm-tolls').innerHTML=tolls.length?tolls.map(r=>`<button type="button" class="srm-toll" data-srm-toll="${esc(r.id)}" aria-pressed="false"><span class="srm-toll-symbol">${r.code}</span><span><b>${esc(r.name)}</b><em>${tollLabel(r)}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><small>${r.point?'Ubicación del catálogo':'Sin ubicación exacta · solo en la lista'}${r.quantity>1?' · '+esc(r.quantity)+' pasadas':''}</small></span><strong>${esc(r.kind==='route'?'Sin cargo agregado':money(r))}<small>${r.kind==='route'?'Referencia del catálogo':r.kind==='planned'?'Estimado registrado':'Importe informado'}</small></strong></button>`).join(''):'<p class="srm-empty">No hay peajes registrados ni candidatos del catálogo sobre el trazado.</p>';
   if(view.catalogError)modal.querySelector('#srm-notice').textContent='No se pudo consultar la ubicación de los peajes. Se mantienen los cargos registrados, sin inventar marcadores.';
 }
-async function open(id,opener){
+async function open(id,opener,opts){
+  const full=!!opts?.full;
   if(!O()?.canRead?.()||!db())return;
   if(O()?.S?.wizard&&!document.getElementById('modal-operador-wizard')?.hidden&&O().S.wizard.dirty){window.toast?.('Guardá o cerrá la edición antes de abrir el recorrido.','warning');return;}
   if(current)close(false);
-  const view={id,opener,token:++serial,overlays:[],lines:[],mapListeners:[]};current=view;showShell(view);
+  const view={id,opener,full,token:++serial,overlays:[],lines:[],mapListeners:[]};current=view;showShell(view);
   try{
     const ctx=await rpc('get_operator_service_handoff_context_v2',{p_service_id:id});if(current!==view)return;
     if(!ctx?.service||String(ctx.service.service_id)!==String(id))throw Error('No se pudo validar el servicio consultado.');
     view.service=ctx.service;view.locks=ctx.locks||{};
     const config=await rpc('get_operator_service_context_v1',{p_company_id:ctx.service.company_id,p_scheduled_for:new Date(ctx.service.scheduled_for).toISOString()});if(current!==view)return;
-    view.plan=planFor(view.service,config);view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,[]);renderDetails(view);
+    if(full){const[relay,chain]=await Promise.all([rpc('get_operator_service_relay_v1',{p_service_id:id}).catch(()=>null),rpc('get_operator_service_chain_v1',{p_service_id:id}).catch(()=>null)]);if(current!==view)return;view.relay=relay||null;view.chain=chain||null;}
+    view.plan=planFor(view.service,config,{full,relay:view.relay});view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,[]);renderDetails(view);
     try{const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(ctx.service.scheduled_for));const catalog=await rpc('list_toll_catalog',{p_as_of:date,p_include_inactive:false});if(current!==view)return;view.catalog=Array.isArray(catalog)?catalog:[];view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,view.catalog);}catch{view.catalogError=true;}if(current!==view)return;renderDetails(view);
     if(!view.plan.ready){mapStatus(view.plan.message||'No hay trazado automático para este servicio.');return;}
     // Admin list may carry stored geometry. Operators get fresh coordinates from the
     // protected handoff; the viewer never widens that RPC's projection or saves data.
-    const stored=O().service?.(id)?.route_polyline||view.service.route_polyline;
+    /* En la vista completa el trazado guardado sólo sirve si es del mismo recorrido (sin relevo y con el método completo). */
+    const storedOk=!full||(!view.plan.relay&&config?.billing?.route_mode==='base_origin_destination_base');
+    const stored=storedOk?(O().service?.(id)?.route_polyline||view.service.route_polyline):null;
     let path=decode(stored),segments=splitPath(path,view.plan.stops);view.geometrySource=segments.length?'Trazado guardado':'Trazado consultado ahora';
-    if(!segments.length){
+    if(!segments.length&&full){
+      const st=view.plan.stops,point=p=>({latitude:p.lat,longitude:p.lng}),b=st[0].point,o=st[1].point,departureTime=new Date(view.service.scheduled_for).toISOString();
+      const call=async body=>{const r=await timeout(db().functions.invoke('maps-proxy',{body:{action:'route',departureTime,...body}}),20000,'No se pudo consultar el trazado a tiempo.');if(r.error||r.data?.error)throw Error('No se pudo consultar el trazado. Los kilómetros guardados no se modificaron.');return r.data;};
+      if(view.plan.relay){
+        const ex=st[2].point,d=st[3].point,[a,c]=await Promise.all([call({routeMode:'base_origin_destination',base:point(b),origin:point(o),destination:point(ex)}),call({routeMode:'origin_destination_base',base:point(b),origin:point(ex),destination:point(d)})]);
+        if(current!==view)return;path=[...decode(a.polyline),...decode(c.polyline)];
+        view.legs=[...(a.legs||[]).map((l,i)=>({from:i,to:i+1,km:l.distanceMeters/1000,tramo:1})),...(c.legs||[]).map((l,i)=>({from:i+2,to:i+3,km:l.distanceMeters/1000,tramo:2}))];
+      }else{
+        const d=st[2].point,r=await call({routeMode:'base_origin_destination_base',base:point(b),origin:point(o),destination:point(d)});
+        if(current!==view)return;path=decode(r.polyline);view.legs=(r.legs||[]).map((l,i)=>({from:i,to:i+1,km:l.distanceMeters/1000,tramo:1}));
+      }
+      segments=splitPath(path,st);view.geometrySource='Trazado consultado ahora';
+    }
+    if(!segments.length&&!full){
       const point=p=>({latitude:p.lat,longitude:p.lng}),st=view.plan.stops;
       const result=await timeout(db().functions.invoke('maps-proxy',{body:{action:'route',routeMode:view.plan.mode,base:point(st.find(p=>p.key==='base')?.point||st[0].point),origin:point(st.find(p=>p.key==='origin').point),destination:point(st.find(p=>p.key==='destination')?.point||st.find(p=>p.key==='origin').point),departureTime:new Date(view.service.scheduled_for).toISOString()}}),20000,'No se pudo consultar el trazado a tiempo.');
       if(current!==view)return;if(result.error||result.data?.error)throw Error('No se pudo consultar el trazado. Los kilómetros guardados no se modificaron.');path=decode(result.data?.polyline);segments=splitPath(path,view.plan.stops);
