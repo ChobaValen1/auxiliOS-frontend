@@ -214,10 +214,12 @@ function render(){
   renderFoot();
 }
 
+/* Medios de pago: los remitos nuevos los guardan en customer_payment_*; los viejos en pago_1/pago_2. */
+const mediosPago=r=>window.AuxMedioPago?.delRemito?.(r)||[[r.pago_1_metodo,r.pago_1_monto],[r.pago_2_metodo,r.pago_2_monto]].filter(([m])=>m).map(([m,v])=>({label:String(m).charAt(0).toUpperCase()+String(m).slice(1),amount:v}));
 /* Resumen arriba del detalle: lo cobrado en el lugar, cómo se pagó y lo que hay que mirar. */
 function resumen(r,pagos){
-  const cobrado=[r.pago_1_monto,r.pago_2_monto].reduce((t,v)=>t+(Number(v)||0),0);
-  const medios=[r.pago_1_metodo,r.pago_2_metodo].filter(Boolean).map(m=>esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))).join(' + ');
+  const cobrado=mediosPago(r).reduce((t,m)=>t+(Number(m.amount)||0),0);
+  const medios=mediosPago(r).map(m=>esc(m.label)).join(' + ');
   const marcas=[];
   if(r.status==='anulado')marcas.push(['void','Remito anulado']);
   else if(r.firmado_at||['firmado','cerrado_admin'].includes(r.status))marcas.push(['ok','Firmado por el cliente']);
@@ -243,7 +245,7 @@ function renderDetalle(r,s){
     fila('Desde',esc(r.origen||'—'))+fila('Hasta',esc(r.destino||'—'))+
     fila('Km',r.km_reales!=null?`${Number(r.km_reales).toLocaleString('es-AR')} km`:'<span class="rmp-empty">Sin cargar</span>')+relevoFilas(P.relevo),irServicio);
   const aprobado=r.accepted_imp_total_extras!=null&&Number(r.accepted_imp_total_extras)!==Number(r.imp_total_extras||0);
-  const pagos=[[r.pago_1_metodo,r.pago_1_monto],[r.pago_2_metodo,r.pago_2_monto]].filter(([m])=>m).map(([m,v])=>`${esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))} ${v!=null?money(v):''}`).join(' + ');
+  const pagos=mediosPago(r).map(m=>`${esc(m.label)} ${m.amount!=null?money(m.amount):''}`).join(' + ');
   const cargos=seccion('Cargos y pago',
     fila('Peajes cobrados al cliente',money(r.imp_peaje))+fila('Excedente',money(r.imp_excedente))+(Number(r.imp_otros)?fila('Otros',money(r.imp_otros)):'')+
     fila('<b>Total firmado</b>',`<b>${money(r.imp_total_extras)}</b>`)+

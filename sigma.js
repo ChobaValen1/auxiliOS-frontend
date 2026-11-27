@@ -1889,8 +1889,8 @@ function guardarDocForm() {
 }
 
 // ── VER REMITO MODAL ──────────────────────────
-const PAY_ICONS = { Efectivo:'💵', Transferencia:'🏦', Tarjeta:'💳', App:'📱' };
-const PAY_COLORS = { Efectivo:'var(--green)', Transferencia:'var(--blue)', Tarjeta:'var(--purple)', App:'var(--cyan)' };
+const PAY_ICONS = { Efectivo:'💵', Transferencia:'🏦', Tarjeta:'💳', App:'📱', 'Mercado Pago':'📱', Otro:'💳', 'No cobrado':'⏳' };
+const PAY_COLORS = { Efectivo:'var(--green)', Transferencia:'var(--blue)', Tarjeta:'var(--purple)', App:'var(--cyan)', 'Mercado Pago':'var(--cyan)' };
 
 /**
  * Abre el modal de detalles de un remito y puebla los datos.
@@ -6048,6 +6048,31 @@ function renderTablaRemitos(data) {
       mcard.setAttribute('data-rem', JSON.stringify(r));
       mcard.setAttribute('role', 'button');
       mcard.tabIndex = 0;
+      if (r.historyEntry && !esGestionM) {
+        // Historial del chofer: misma lectura que las tarjetas de Servicios de Operaciones
+        // (rótulos chicos, recorrido con puntos, cobro con su medio de pago).
+        mcard.classList.add('dhc-card');
+        mcard.style.setProperty('--i', String(Math.min(mobileList.children.length, 10)));
+        const [fh, hh] = String(r.fecha || '—').split(' ');
+        const medio = r.pago && r.pago !== '—' ? r.pago.split('+').join(' + ') : (cobrado ? 'Medio sin informar' : '');
+        const peajes = r.historyTolls && !r.historyTolls.load_error && (r.historyTolls.history_tolls || []).length
+          ? `<div class="dhc-field dhc-tolls"><small>Peajes</small>${window.AuxiliosHistoryTolls?.render(r.historyTolls, { compact: true }) || ''}</div>` : '';
+        mcard.innerHTML = `
+        <div class="rmx-mc-top"><span class="rmx-mc-srv">${_rmxEsc(r.srvOrden || r.nroSrv || 'Sin N° de servicio')}</span>${_rmxEstadoHTML(r)}</div>
+        <div class="dhc-grid">
+          <div class="dhc-field"><small>Fecha</small><b>${_rmxEsc(fh)}</b>${hh ? `<span>${_rmxEsc(hh)}</span>` : ''}</div>
+          <div class="dhc-field"><small>Tipo</small><span class="dhc-pill">${_rmxEsc(tipo)}</span></div>
+        </div>
+        <div class="dhc-field dhc-route"><small>Recorrido</small><p><i class="is-from"></i>${_rmxEsc(r.origen || '—')}</p><p><i class="is-to"></i>${_rmxEsc(r.destino || '—')}</p></div>
+        <div class="dhc-grid">
+          <div class="dhc-field"><small>Cliente</small><b>${_rmxEsc(r.cliente || 'Sin nombre')}</b><span>${_rmxEsc([r.patente, r.marca].filter(Boolean).join(' · ') || '—')}</span></div>
+          <div class="dhc-field"><small>Cobrado</small><b>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '—'}</b>${medio ? `<span class="dhc-pay">${_rmxEsc(medio)}</span>` : ''}</div>
+        </div>
+        ${peajes}
+        ${pendiente ? `<button class="rmx-mc-cta btn-firmar-remito" type="button">Completar remito</button>` : ''}`;
+        mobileList.appendChild(mcard);
+        return;
+      }
       mcard.innerHTML = `
         <div class="rmx-mc-top"><span class="rmx-mc-srv">${_rmxEsc(r.srvOrden || r.nroSrv || 'Sin N° de servicio')}</span>${_rmxEstadoHTML(r)}</div>
         <div class="rmx-mc-main"><span class="rmx-mc-client">${_rmxEsc(r.cliente || '—')}</span>${cobrado ? `<span class="rmx-mc-money">$ ${cobrado.toLocaleString('es-AR')}</span>` : ''}</div>

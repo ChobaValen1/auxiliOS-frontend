@@ -1,0 +1,127 @@
+/* Celular (todos los roles en la barra y el borde superior; el resto, sólo el chofer).
+   1) Barra superior debajo de la hora y la muesca del iPhone (la app se instala con viewport-fit=cover).
+   2) Barra de navegación inferior más baja, con los iconos centrados (antes sumaba el borde del iPhone por dentro).
+   3) Indicador «Ver más» abajo al centro cuando la pantalla sigue hacia abajo.
+   4) Vista previa del servicio: acciones ordenadas (una principal y dos secundarias lado a lado).
+   5) Historial del chofer con tarjetas y movimiento como Servicios de Operaciones. */
+@media (max-width: 767px) {
+  :root { --dm-safe-top: env(safe-area-inset-top, 0px); --dm-nav-h: 58px; --dm-nav-gap: max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px)); }
+
+  /* ── 1 · Borde superior ── La hora del iPhone es blanca: la franja de arriba va oscura en los dos temas. */
+  body::before { content: ""; position: fixed; z-index: 100000; top: 0; left: 0; right: 0; height: var(--dm-safe-top); background: #0f1116; pointer-events: none; }
+  body .main { padding-top: var(--dm-safe-top); box-sizing: border-box; }
+  body .main > .topbar { position: sticky; top: var(--dm-safe-top); z-index: 150; }
+  body #banner-jornada-activa { top: var(--dm-safe-top) !important; }
+  body .topbar .alx-bubble { top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; font-size: 10px; }
+  /* Servicios del chofer: el panel llena el alto libre (contando muesca y barra), sin sobrar scroll. */
+  .p3-driver-remitos.p3-hide-remitos-archive .p3-remitos-assigned { min-height: calc(100dvh - var(--dm-safe-top) - var(--dm-nav-gap) - var(--dm-nav-h) - 106px) !important; }
+  .p3-preview > section, .dsh-dialog, .dtr-dialog { max-height: calc(100dvh - var(--dm-safe-top) - 12px) !important; }
+  .modal-backdrop .modal-box { max-height: calc(100dvh - var(--dm-safe-top) - 16px); }
+
+  /* ── 2 · Barra inferior ── Flotante, 58 px, iconos y textos centrados. */
+  body.ax-motion .sidenav, body .sidenav {
+    height: var(--dm-nav-h); bottom: var(--dm-nav-gap); padding: 4px; box-sizing: border-box;
+    align-items: stretch; justify-content: space-between; overflow: hidden;
+  }
+  body .sidenav .nav-item, body.ax-motion .sidenav .nav-item {
+    flex: 1 1 0; min-width: 0; height: auto; padding: 0 2px; gap: 3px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  body .sidenav .nav-item .nav-icon { display: grid; place-items: center; width: 24px; height: 22px; margin: 0; }
+  body .sidenav .nav-item .nav-icon svg { width: 21px; height: 21px; }
+  body .sidenav .nav-item .nav-label { font-size: 10.5px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  body .sidenav .nav-item .alx-bubble, body .sidenav .nav-item .ax-nav-alert, body .sidenav .nav-item .p3-nav-badge { top: 2px; left: calc(50% + 6px); right: auto; }
+  body.ax-motion .main, body .main { padding-bottom: calc(var(--dm-nav-h) + var(--dm-nav-gap) + 10px); }
+  body.ax-motion .ax-toasts.ax-motion-stack { bottom: calc(var(--dm-nav-h) + var(--dm-nav-gap) + 10px); }
+  .fab-new-remito.ax-scroll-fab, .dtr-fab { bottom: calc(var(--dm-nav-h) + var(--dm-nav-gap) + 14px) !important; }
+
+  /* ── 3 · Ver más ── */
+  .dm-more { position: fixed; z-index: 10050; left: 50%; bottom: calc(var(--dm-nav-h) + var(--dm-nav-gap) + 12px); transform: translate(-50%, 8px); display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px 0 16px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: color-mix(in srgb, var(--ax-surface-2) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--ax-text); font: 600 13px/1 var(--ax-font); box-shadow: 0 6px 22px rgba(0,0,0,.22); opacity: 0; pointer-events: none; transition: opacity 200ms ease, transform 240ms cubic-bezier(.2,.8,.2,1); cursor: pointer; }
+  .dm-more.is-visible { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .dm-more.in-sheet { bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dm-sheet-foot, 96px)); }
+  .dm-more svg { width: 16px; height: 16px; color: var(--ax-accent); animation: dm-more-nudge 1.6s ease-in-out infinite; }
+  .dm-more:focus-visible { outline: none; box-shadow: var(--ax-focus), 0 6px 22px rgba(0,0,0,.22); }
+  .dm-more:active { transform: translate(-50%, 0) scale(.96); }
+  /* Fundido abajo del contenido: se nota que sigue. */
+  .dm-fade { position: fixed; z-index: 140; left: 0; right: 0; height: 56px; bottom: calc(var(--dm-nav-h) + var(--dm-nav-gap)); background: linear-gradient(to bottom, transparent, var(--ax-bg)); opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+  .dm-fade.is-visible { opacity: 1; }
+  @keyframes dm-more-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+  /* ── 4 · Vista previa del servicio ── */
+  #p3-service-preview footer .p3-actions-hint { margin: -2px 0 2px; text-align: center; }
+  #p3-service-preview footer .p3-action-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+  #p3-service-preview footer .p3-action-pair.is-single { grid-template-columns: 1fr; }
+  #p3-service-preview footer .p3-two-line { display: grid; place-content: center; gap: 2px; min-height: 56px; padding: 6px 8px; line-height: 1.15; }
+  #p3-service-preview footer .p3-two-line b { font-size: 14px; font-weight: 600; }
+  #p3-service-preview footer .p3-two-line small { color: var(--ax-text-3); font-size: 11.5px; font-weight: 500; }
+  #p3-service-preview .p3-sheet-toll-pay { display: flex; justify-content: space-between; gap: 12px; }
+  #p3-service-preview .p3-sheet-toll-pay strong { color: var(--ax-accent); }
+  #p3-service-preview .p3-sheet-tolls { display: grid !important; grid-template-columns: 1fr; gap: 6px; }
+  #p3-service-preview .p3-sheet-tolls > div { gap: 6px; }
+  #p3-service-preview .p3-sheet-tolls .p3-sheet-excess-item { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  #p3-service-preview .p3-sheet-tolls .p3-sheet-excess-item span { text-align: left; }
+  .p3-summary-line.p3-toll-pay strong { color: var(--ax-accent); }
+  /* Detalle del historial: hoja desde abajo como la ficha del servicio; botones iguales y anchos. */
+  .dsh-dialog { margin: auto 0 0 !important; width: 100% !important; max-width: 100% !important; border-radius: 20px 20px 0 0 !important; border-bottom: 0 !important; }
+  .dsh-dialog[open] { animation: dm-sheet-in 280ms cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes dm-sheet-in { from { transform: translateY(24px); opacity: .4; } }
+  .dsh-dialog dl { grid-template-columns: 1fr 1fr; gap: 14px 12px !important; }
+  .dsh-dialog dl > div:nth-child(n+6) { grid-column: 1 / -1; }
+  .dsh-dialog header { padding: 16px 16px 14px !important; }
+  .dsh-dialog .dsh-body { padding: 16px !important; }
+  .dsh-dialog header button[data-dsh-close] { width: 40px; height: 40px; min-width: 40px; min-height: 40px; padding: 0; border-color: transparent; background: transparent; font-size: 22px; color: var(--ax-text-2); }
+  .dsh-dialog footer { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .dsh-dialog footer button { min-height: 48px; font-weight: 600; border-radius: 12px; }
+  .dsh-dialog footer [data-dsh-remito] { order: 2; border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg, #111); }
+  .dsh-dialog footer [data-dsh-close] { order: 1; background: transparent; }
+  /* Remito: Cerrar y Descargar PDF del mismo alto y ancho. */
+  #modal-ver-remito .modal-footer { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  #modal-ver-remito .modal-footer > div { display: contents !important; }
+  #modal-ver-remito .modal-footer #btn-anular-remito { grid-column: 1 / -1; order: 3; }
+  #modal-ver-remito .modal-footer .btn { min-height: 48px; justify-content: center; border-radius: 12px; font-size: 14px; font-weight: 600; width: 100%; }
+
+  /* ── 5 · Historial del chofer ── */
+  #screen-remitos .rmx-mcard.dhc-card { gap: 12px; padding: 14px 14px 12px; border-radius: 16px; border-color: var(--ax-border); background: var(--ax-surface); }
+  #screen-remitos .dhc-card .rmx-mc-top { padding-bottom: 2px; }
+  #screen-remitos .dhc-card .rmx-mc-srv { font-size: 15px; letter-spacing: .2px; }
+  .dhc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dhc-field { display: grid; gap: 2px; min-width: 0; align-content: start; }
+  .dhc-field > small { color: var(--ax-text-3); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .dhc-field > b { font-size: 14px; font-weight: 600; color: var(--ax-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dhc-field > span { font-size: 12px; color: var(--ax-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dhc-field > .dhc-pay { color: var(--ax-ok, #1f9d63); font-weight: 600; }
+  .dhc-pill { justify-self: start; padding: 3px 10px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: var(--ax-surface-2); color: var(--ax-text) !important; font-weight: 500; }
+  .dhc-route p { position: relative; margin: 2px 0 0; padding-left: 16px; font-size: 13px; line-height: 1.35; color: var(--ax-text); }
+  .dhc-route p i { position: absolute; left: 1px; top: 5px; width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; }
+  .dhc-route p i.is-from { border: 2px solid var(--ax-text-3); }
+  .dhc-route p i.is-to { background: var(--ax-accent); }
+  .dhc-route p + p::before { content: ""; position: absolute; left: 4.5px; top: -6px; height: 10px; border-left: 1px dashed var(--ax-border-strong); }
+  #screen-remitos .dhc-card .dhc-tolls .hlt { margin: 0; padding: 0; border: 0; }
+  #screen-remitos .dhc-card .dhc-tolls .hlt-compact { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #screen-remitos .dhc-card .dhc-tolls .hlt-total { font-size: 14px; }
+  #screen-remitos .dhc-card .dhc-tolls small { font-size: 12px; color: var(--ax-text-2); }
+  /* Movimiento: al cambiar a Historial las tarjetas entran escalonadas, como en Servicios. */
+  #mobile-remitos-list.dhc-animate .dhc-card { animation: dhc-in 420ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  #phase3-driver-services .p3-service-list.dhc-animate > * { animation: dhc-in 380ms cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes dhc-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+  #screen-remitos .rmx-mcard.dhc-card { transition: transform 160ms ease, border-color 160ms ease; }
+  #screen-remitos .rmx-mcard.dhc-card:active { transform: scale(.985); border-color: var(--ax-accent); }
+  /* Activos / Historial: la marca se desliza de una opción a la otra. */
+  #phase3-driver-services .p3-view-switch { position: relative; isolation: isolate; }
+  #phase3-driver-services .p3-view-switch .dm-ink { position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; border-radius: var(--ax-radius-sm, 8px); background: var(--ax-surface-3); box-shadow: inset 0 0 0 1px var(--ax-border-strong); transition: transform 320ms cubic-bezier(.2,.8,.2,1), width 320ms cubic-bezier(.2,.8,.2,1); }
+  #phase3-driver-services .p3-view-switch.has-ink .p3-refresh.active { background: transparent; box-shadow: none; }
+  #phase3-driver-services .p3-view-switch .p3-refresh { position: relative; z-index: 1; transition: color 200ms ease; }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .dm-more, .dm-more svg, .dm-fade, #mobile-remitos-list.dhc-animate .dhc-card, #phase3-driver-services .p3-service-list.dhc-animate > *, #phase3-driver-services .p3-view-switch .dm-ink { animation: none !important; transition: none !important; }
+}
+@media (max-width: 767px) {
+  /* Remito a pantalla completa: el aviso del servicio y la cabecera arrancan debajo de la muesca (antes el aviso quedaba tapado por la hora). */
+  #remitos-nuevo.rmv-flow:not([style*="none"]) { padding-top: var(--dm-safe-top); box-sizing: border-box; }
+  #remitos-nuevo.rmv-flow > .rem-wizard-header { padding-top: 4px !important; }
+}
+@media (max-width: 767px) {
+  /* La cruz de la ficha: borde fino; el anillo grueso sólo cuando se navega con teclado. */
+  #p3-service-preview > section > header button { border: 1px solid var(--ax-border-strong) !important; background: transparent; }
+  #p3-service-preview > section > header button:focus:not(:focus-visible) { outline: none; box-shadow: none; }
+}
