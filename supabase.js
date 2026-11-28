@@ -724,6 +724,25 @@ window._remitosPagina = window._remitosPagina || 1;
 window._REMITOS_PAGE_SIZE = window._REMITOS_PAGE_SIZE || 50;
 window._remitosTotal = window._remitosTotal || 0;
 
+// Medio de pago del remito. Los remitos nuevos (peajes y excedentes v2) guardan el cobro en
+// customer_payment_primary/secondary y dejan pago_1_metodo vacío: sin esto se veía «—».
+const MEDIOS_PAGO_LABEL = { cash:'Efectivo', efectivo:'Efectivo', transfer:'Transferencia', transferencia:'Transferencia', card:'Tarjeta', tarjeta:'Tarjeta', mercado_pago:'Mercado Pago', app:'App', other:'Otro', not_collected:'No cobrado', to_define:'A definir' };
+function medioPagoLabel(code) { const k = String(code || '').trim(); return k ? (MEDIOS_PAGO_LABEL[k.toLowerCase()] || capitalizar(k)) : ''; }
+function _remitoMediosPago(r) {
+  const legacy = [[r?.pago_1_metodo, r?.pago_1_monto], [r?.pago_2_metodo, r?.pago_2_monto]].filter(([m]) => m);
+  if (legacy.length) return legacy.map(([m, v]) => ({ code: m, label: medioPagoLabel(m), amount: v != null ? Number(v) : null }));
+  const total = Number(r?.imp_total_extras) || ((Number(r?.imp_peaje) || 0) + (Number(r?.imp_excedente) || 0) + (Number(r?.imp_otros) || 0));
+  const out = [];
+  if (r?.customer_payment_primary) {
+    const second = r.customer_payment_secondary ? Math.max(0, Number(r.customer_payment_secondary_amount) || 0) : 0;
+    out.push({ code: r.customer_payment_primary, label: medioPagoLabel(r.customer_payment_primary), amount: total ? Math.max(0, total - second) : null });
+    if (r.customer_payment_secondary) out.push({ code: r.customer_payment_secondary, label: medioPagoLabel(r.customer_payment_secondary), amount: second });
+  }
+  return out;
+}
+function _remitoPagoTexto(r) { const m = _remitoMediosPago(r).map(x => x.label).filter(Boolean); return m.length ? m.join('+') : '—'; }
+window.AuxMedioPago = { label: medioPagoLabel, delRemito: _remitoMediosPago, texto: _remitoPagoTexto };
+
 function _mapRemitoRow(r) {
   return {
     id:            r.remito_id,
@@ -753,12 +772,7 @@ function _mapRemitoRow(r) {
     excedente:     String(r.imp_excedente || 0),
     otros:         String(r.imp_otros     || 0),
     tipo:          r.tipo_servicio   || '—',
-    pago: (() => {
-      const p1 = r.pago_1_metodo ? capitalizar(r.pago_1_metodo) : null;
-      const p2 = r.pago_2_metodo ? capitalizar(r.pago_2_metodo) : null;
-      if (p1 && p2) return `${p1}+${p2}`;
-      return p1 || '—';
-    })(),
+    pago: _remitoPagoTexto(r),
     estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : r.status === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
     creadoPor:     r.creado_por || null,
     confirmaciones: armarConfirmaciones(r),

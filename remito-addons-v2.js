@@ -34,6 +34,8 @@
   const tollCoverageLabel=(mode,assigned=!!currentServiceId())=>TOLL_COVERAGE_LABELS[String(mode||'')]||(assigned?'Sin formato configurado':'A definir por Operaciones');
   const providerTolls=()=>state.reference.toll_coverage_mode==='provider_roundtrip';
   const tollPayer=line=>line?.payer_agent||(providerTolls()?'provider':'customer');
+  /* Cómo pagó el cliente (uno o dos medios), para mostrarlo junto a cada peaje y excedente. */
+  const paymentCombo=()=>[state.cp.primary,state.cp.secondary].filter(Boolean).map(paymentLabel).join(' + ');
   const tollPaymentLabel=line=>tollPayer(line)==='provider'?'A cargo de la prestadora':paymentLabel(line.customer_payment_method);
   const amountText=line=>line.amount_pending||number(line.unit_amount)<=0?'A definir por Administración':money(line.unit_amount);
   const passes=line=>Math.min(MAX_PASSES,Math.max(1,Math.round(number(line?.quantity)||1)));
@@ -215,7 +217,7 @@
     if(totalRow)totalRow.hidden=!lines.length;
     if(!lines.length){host.innerHTML='';return}
     /* Nombre (y las pasadas) arriba, el medio de pago abajo: en el celular no se corta. */
-    const label=line=>`<b class="rem-addon-line-name">${esc(lineName(kind,line))}${kind==='toll'&&passes(line)>1?` <i class="rem-qty-badge">×${passes(line)}</i>`:''}</b>${kind==='toll'&&tollPayer(line)==='provider'?'<small>A cargo de la prestadora</small>':''}`;
+    const label=line=>`<b class="rem-addon-line-name">${esc(lineName(kind,line))}${kind==='toll'&&passes(line)>1?` <i class="rem-qty-badge">×${passes(line)}</i>`:''}</b>${kind==='toll'&&tollPayer(line)==='provider'?'<small>A cargo de la prestadora</small>':`<small class="rem-addon-line-pay${state.cp.primary?'':' is-missing'}">${state.cp.primary?'Cobro: '+esc(paymentCombo()):'Cobro: elegí abajo cómo pagó'}</small>`}`;
     const amount=line=>kind==='toll'?lineTotal(line):number(line.unit_amount)*number(line.quantity||1);
     const first=lines[0];const rows=[`<div class="rem-addon-summary-line"><span>${label(first)}</span><strong>${first.amount_pending?'A definir':money(amount(first))}</strong></div>`];
     if(lines.length===2){const second=lines[1];rows.push(`<div class="rem-addon-summary-line"><span>${label(second)}</span><strong>${second.amount_pending?'A definir':money(amount(second))}</strong></div>`)}
@@ -233,7 +235,7 @@
     const card=$('#rem-cp-card'),slot=$('#rem-cp-slot');if(!card||!slot)return;const total=customerPaymentTotal(),show=total>0;card.hidden=!show;if(!show||!window.AuxiliosCustomerPayment)return;
     const t=totals();window.AuxiliosCustomerPayment.render(slot,{total,compact:true,allowNotCollected:true,title:'Cobro al cliente',question:'¿Cómo pagó el cliente?',showErrors:state.cpErrors,value:state.cp,
       breakdown:[{label:'Peajes',amount:providerTolls()?0:t.toll},{label:'Excedentes',amount:t.excess}],
-      onChange:next=>{state.cp={...state.cp,...next};if(!state.cp.secondary)state.cp.secondary_amount='';renderCustomerPayment();renderSignatureSummary();}});
+      onChange:next=>{state.cp={...state.cp,...next};if(!state.cp.secondary)state.cp.secondary_amount='';renderCustomerPayment();compactSummary('toll');renderSignatureSummary();}});
   }
   function customerPaymentPayload(){const total=customerPaymentTotal(),cp=state.cp||{},two=!!cp.secondary;return{primary:total>0?(cp.primary||null):null,secondary:total>0&&two?cp.secondary:null,secondary_amount:total>0&&two?Math.round(Math.max(0,number(cp.secondary_amount))*100)/100:null}}
   /* Peajes del cliente que cargó Operaciones: aparecen ya cargados (con el importe sugerido) y el cobro previsto preseleccionado. */
@@ -290,13 +292,13 @@
     const tolls=(data.history_tolls??(approved?data.approved_tolls||[]:data.tolls||[])).map(line=>{
       const accepted=line.review?.accepted||null,rejected=line.display_status==='rejected'||(!approved&&line.review?.decision==='rejected');
       const current=line.display_status?line:approved?line:{...line,...accepted};
-      const payer=current.payer_agent==='provider'?'A cargo de la prestadora':tollPaymentLabel(current);
+      const payer=current.payer_agent==='provider'?'A cargo de la prestadora':tollPaymentLabel({...current,customer_payment_method:current.customer_payment_method||data.customer_payment?.primary||''});
       const qty=number(current.quantity)>1?` ×${number(current.quantity)}`:'';
       const status=({planned:'Previsto',reported:'Informado',approved:'Aprobado',rejected:'Rechazado'})[line.display_status];
       return`<div class="rem-addon-summary-line"><span>${esc(current.toll_name||line.toll_name||'Peaje')}${qty} · ${esc(payer)}${status?` · ${status}`:''}</span><strong>${rejected?'Rechazado':money(current.total_amount)}</strong></div>`;
     });
     if(approved&&!tolls.length&&number(data.accepted_toll_total)>0)tolls.push(`<div class="rem-addon-summary-line"><span>Peajes aprobados</span><strong>${money(data.accepted_toll_total)}</strong></div>`);
-    const excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
+    const excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method||data.customer_payment?.primary))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
     host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes</div><div class="rem-addons-help">Todos los peajes vinculados al servicio, con su estado.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div>${data.customer_payment?.primary?`<div class="rem-toll-coverage-line"><span>Cobro al cliente</span><strong>${esc(paymentLabel(data.customer_payment.primary))}${data.customer_payment.secondary?` · ${esc(paymentLabel(data.customer_payment.secondary))} ${money(data.customer_payment.secondary_amount)}`:''}</strong></div>`:''}<div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">Sin peajes ni excedentes registrados en este detalle.</div>'}</div>`;
   }
   async function restore(report){

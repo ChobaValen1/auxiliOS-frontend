@@ -4,6 +4,10 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const amount=v=>Number(v)||0;
 const money=v=>'$ '+amount(v).toLocaleString('es-AR',{maximumFractionDigits:2});
 const statuses={approved:'Aprobado',reported:'Informado',planned:'Previsto',rejected:'Rechazado'};
+/* Quién paga y, si paga el cliente, cómo (Efectivo, Transferencia…): el chofer lo necesita para rendir. */
+const METHODS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir'};
+const method=t=>{const m=t.customer_payment_method||(t.payment_method&&METHODS[t.payment_method]?t.payment_method:'');return m?(METHODS[m]||m):''};
+const payerText=(t,long)=>t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?(method(t)?'Cliente · '+method(t):long?'Cliente · medio sin informar':'Cliente'):long?'Responsable sin informar':'Sin informar';
 async function enrich(rows,db,kind){
   const selected=kind==='services'?rows.filter(r=>['completed','cancelled'].includes(r.status)):rows;
   const key=kind==='services'?'service_id':'id',ids=[...new Set(selected.map(r=>r[key]).filter(Boolean))],found=new Map();
@@ -26,12 +30,12 @@ function render(data,{heading=false,compact=false}={}){
   const planned=rows.some(t=>t.display_status==='planned');
   /* Compacto (tabla del Historial de Servicios): total y cantidad en dos renglones; el detalle va en el título y en el servicio. */
   if(compact){
-    const count=rows.reduce((n,t)=>n+Math.max(1,amount(t.quantity)),0),payers=[...new Set(rows.map(t=>t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Sin informar'))];
-    const detail=rows.map(t=>`${t.toll_name||'Peaje'}${amount(t.quantity)>1?' ×'+amount(t.quantity):''}: ${money(t.total_amount)} (${statuses[t.display_status]||'Informado'})`).join('\n');
+    const count=rows.reduce((n,t)=>n+Math.max(1,amount(t.quantity)),0),payers=[...new Set(rows.map(t=>t.payer_agent==='customer'&&method(t)?method(t):payerText(t,false)))];
+    const detail=rows.map(t=>`${t.toll_name||'Peaje'}${amount(t.quantity)>1?' ×'+amount(t.quantity):''}: ${money(t.total_amount)} · ${payerText(t,true)} (${statuses[t.display_status]||'Informado'})`).join('\n');
     return`<div class="hlt hlt-compact" data-ax-explica title="${esc(detail)}"><strong class="hlt-total">${money(total)}</strong><small>${count} peaje${count===1?'':'s'} · ${esc(payers.join(' y '))}${planned?' · incluye previstos':''}</small></div>`;
   }
   return`<div class="hlt">${heading?'<span class="hlt-heading">Peajes</span>':''}<strong class="hlt-total">${money(total)}</strong>${planned?'<small class="hlt-note">Incluye previstos</small>':''}<ul class="hlt-list">${rows.map(t=>{
-    const payer=t.payer_agent==='provider'?'Prestadora':t.payer_agent==='customer'?'Cliente':'Responsable sin informar';
+    const payer=payerText(t,true);
     const qty=amount(t.quantity)>1?' ×'+amount(t.quantity):'';
     return`<li><span class="hlt-name">${esc(t.toll_name||'Peaje')}${qty}</span><span class="hlt-amount">${money(t.total_amount)}</span><small>${esc(payer)} · ${statuses[t.display_status]||'Informado'}</small></li>`;
   }).join('')}</ul></div>`;
